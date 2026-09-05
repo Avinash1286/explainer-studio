@@ -4,6 +4,10 @@
 
 `npm run check` passed with TypeScript, ESLint, twelve Vitest/convex-test tests, Next.js static export, and the Node worker bundle. Tests require no external credentials.
 
+A separate clean checkout of implementation commit `6182229`, without `.env.local`, dependencies, or build caches, also passed `npm ci` and `npm run check` on Windows/Node 24.15.0. Installation reported zero known npm audit vulnerabilities. The configured GitHub runner uses Node 22/Linux, which remains unverified because the hosted job could not start.
+
+GitHub Actions was configured and triggered by the public push, but no steps ran. The run annotation states: "The job was not started because your account is locked due to a billing issue." Account billing must be resolved before hosted CI can be verified. Local validation remains separate evidence.
+
 The backend cases cover normalized brief input, workspace isolation, missing/malformed capabilities, idempotent creation, request-key collisions, invalid inputs, cancellation, quota accounting, bounded global queue capacity, session expiry, honest health state, and heartbeat authentication/validation.
 
 ## Browser checks

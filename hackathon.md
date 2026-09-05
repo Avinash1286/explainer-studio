@@ -33,7 +33,11 @@ Actual dependencies used: Next.js, TypeScript, React, Convex database/functions/
 
 Built the responsive static studio, anonymous workspace capabilities with server-side hashing, validated idempotent brief creation, indexed ownership checks, scheduled expiry, rate limits, cancellation, and authenticated heartbeat protocol. Added separate Convex development/production deployments and static frontend hosting. Added TypeScript, lint, backend tests, build scripts, and CI.
 
-Validation: 12 isolated backend tests passed locally; production build passed; desktop/mobile UI inspected; real cloud-backed save, reload, and cancellation exercised. No benchmark or provider quality claim is made.
+Validation: 12 isolated backend tests passed locally; production build passed; desktop/mobile UI inspected; real cloud-backed save, reload, and cancellation exercised. The local heartbeat worker authenticated successfully against cloud development. No media benchmark or provider quality claim is made.
+
+Publication: implementation commit `6182229` was pushed to the public repository. The production static deployment includes asset license notices and the production Convex URL (no development URL in its client chunks). GitHub Actions run [33956613116](https://github.com/Avinash1286/explainer-studio/actions/runs/33956613116) could not start: GitHub reported an account lock due to a billing issue. This is an external CI blocker; it is not recorded as a passing CI run.
+
+A separate clean checkout then passed dependency installation, TypeScript, lint, all 12 tests, static frontend build, and worker build without local credentials or preexisting caches. See `docs/foundation-validation.md` for environment and limits.
 
 Development tooling: Codex used for implementation. Official Convex agent guidance installed through `convex ai-files install`; generated guidance is recorded in the repository. The separate organizer hackathon log skill has not yet been installed; this file is maintained directly from observed work.
 

@@ -16,6 +16,7 @@ The detailed H0–H6 acceptance gates remain in `plan.md`, section 11. This stat
 ## H0a acceptance evidence
 
 - `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` passed locally; 12 backend tests.
+- A separate clean checkout also passed `npm ci` and the complete check without credentials. Hosted GitHub CI is blocked by an account billing lock; its result is not a pass.
 - Browser: save a lesson, reload the address, observe persisted data, cancel, and observe realtime cancelled state.
 - Browser: desktop and 390-pixel mobile layout inspected; no browser runtime errors observed.
 - Public Convex production deployment: `wooden-pheasant-677`; separate development deployment: `lovely-dalmatian-395`.
