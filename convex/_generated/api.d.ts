@@ -13,7 +13,9 @@ import type * as generation from "../generation.js";
 import type * as http from "../http.js";
 import type * as icons from "../icons.js";
 import type * as jobs from "../jobs.js";
+import type * as lib_authoring from "../lib/authoring.js";
 import type * as lib_critic from "../lib/critic.js";
+import type * as lib_factCheck from "../lib/factCheck.js";
 import type * as lib_generationConfig from "../lib/generationConfig.js";
 import type * as lib_limits from "../lib/limits.js";
 import type * as lib_providers from "../lib/providers.js";
@@ -27,6 +29,7 @@ import type * as reviewActions from "../reviewActions.js";
 import type * as reviews from "../reviews.js";
 import type * as serviceReadiness from "../serviceReadiness.js";
 import type * as sessions from "../sessions.js";
+import type * as showcase from "../showcase.js";
 import type * as testFixtures from "../testFixtures.js";
 import type * as workers from "../workers.js";
 
@@ -42,7 +45,9 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   icons: typeof icons;
   jobs: typeof jobs;
+  "lib/authoring": typeof lib_authoring;
   "lib/critic": typeof lib_critic;
+  "lib/factCheck": typeof lib_factCheck;
   "lib/generationConfig": typeof lib_generationConfig;
   "lib/limits": typeof lib_limits;
   "lib/providers": typeof lib_providers;
@@ -56,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   reviews: typeof reviews;
   serviceReadiness: typeof serviceReadiness;
   sessions: typeof sessions;
+  showcase: typeof showcase;
   testFixtures: typeof testFixtures;
   workers: typeof workers;
 }>;

@@ -132,5 +132,8 @@ describe("worker HTTP boundary", () => {
     const workers = await t.run((ctx) => ctx.db.query("workers").take(10));
     expect(workers).toHaveLength(1);
     expect(workers[0].capabilities).toEqual(["heartbeat"]);
+    const capabilities = ["kokoro", "remotion", "fixture-v1", "generated-v1", "review-frames-v1", "explicit-connections-v1", "text-cards-v1"];
+    expect((await t.fetch("/worker/heartbeat", { method: "POST", headers, body: JSON.stringify({ ...JSON.parse(body), capabilities }) })).status).toBe(200);
+    expect((await t.fetch("/worker/heartbeat", { method: "POST", headers, body: JSON.stringify({ ...JSON.parse(body), capabilities: Array(9).fill("too-many") }) })).status).toBe(400);
   });
 });

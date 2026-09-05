@@ -73,12 +73,15 @@ export function alignDraftCues(value: unknown): Draft {
 export function validateDraft(value: unknown, sources: Research, duration: number): Draft {
   const draft = draftSchema.parse(value);
   const errors: string[] = [];
-  if (new Set(draft.scenes.map(s => s.layout)).size < 2) errors.push("Use at least two layout families");
+  if (draft.scenes.some(s => s.connections === undefined) && new Set(draft.scenes.map(s => s.layout)).size < 2) errors.push("Use at least two layout families");
   const ids = new Set<string>();
   const normalize = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
   for (const scene of draft.scenes) {
     if (ids.has(scene.id)) errors.push("Scene IDs must be unique");
     ids.add(scene.id);
+    for (const edge of scene.connections || []) {
+      if (edge.from === edge.to || edge.from >= scene.nodes.length || edge.to >= scene.nodes.length) errors.push(`Scene ${scene.id}: invalid diagram connection`);
+    }
     if (scene.nodes.length !== (scene.layout === "comparison" ? 2 : 3)) errors.push(`Scene ${scene.id}: layout node count mismatch`);
     let previousCue = -1;
     for (const node of scene.nodes) {
@@ -93,7 +96,9 @@ export function validateDraft(value: unknown, sources: Research, duration: numbe
   }
   if (new Set(draft.scenes.flatMap(s => s.evidence.map(e => e.sourceId))).size < 2) errors.push("Use at least two retrieved sources");
   const words = draft.scenes.reduce((n, s) => n + s.narration.trim().split(/\s+/).length, 0);
-  if (words < duration * 1.8 || words > duration * 2.4) errors.push(`Narration needs ${Math.ceil(duration * 1.8)}-${Math.floor(duration * 2.4)} words; received ${words}`);
+  const modern = draft.scenes.every(s => s.connections !== undefined);
+  const minimum = duration * (modern ? 1.6 : 1.8), maximum = duration * (modern ? 2.8 : 2.4);
+  if (words < minimum || words > maximum) errors.push(`Narration needs ${Math.ceil(minimum)}-${Math.floor(maximum)} words; received ${words}`);
   if (errors.length) throw new Error(errors.join("\n"));
   return draft;
 }

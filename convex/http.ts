@@ -26,7 +26,7 @@ http.route({
     if (typeof data.workerId !== "string" || !/^[a-zA-Z0-9_-]{1,80}$/.test(data.workerId)
       || typeof data.instanceId !== "string" || !/^[a-zA-Z0-9-]{1,80}$/.test(data.instanceId)
       || typeof data.version !== "string" || data.version.length > 30
-      || !Array.isArray(data.capabilities) || data.capabilities.length > 5
+      || !Array.isArray(data.capabilities) || data.capabilities.length > 8
       || !data.capabilities.every((cap) => typeof cap === "string" && cap.length < 40)) {
       return new Response("Invalid heartbeat", { status: 400 });
     }
@@ -41,7 +41,7 @@ http.route({
 const id = <T extends "mediaTasks" | "_storage">() => z.string().min(10).max(100).transform(value => value as Id<T>);
 const lease = { taskId: id<"mediaTasks">(), attempt: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), worker: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/) };
 const mediaRequest = z.discriminatedUnion("op", [
-  z.object({ op: z.literal("claim"), worker: lease.worker, protocol: z.union([z.literal(2), z.literal(3)]).optional() }).strict(),
+  z.object({ op: z.literal("claim"), worker: lease.worker, protocol: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional() }).strict(),
   z.object({ op: z.literal("renew"), ...lease, message: z.string().max(120) }).strict(),
   z.object({ op: z.literal("uploadUrl"), ...lease }).strict(),
   z.object({ op: z.literal("abandon"), ...lease }).strict(),

@@ -30,7 +30,7 @@ export async function renderProject(value: unknown, directory: string, stage: (m
   const catalog = JSON.parse(await readFile("public/openmoji/manifest.json", "utf8")) as { entries: { id: string }[] };
   for (const scene of inputProject.scenes) {
     if (scene.nodes.length !== (scene.layout === "comparison" ? 2 : 3)) throw new Error("Invalid layout node count");
-    if (scene.nodes.some(n => !catalog.entries.some(e => e.id === n.icon))) throw new Error("Unknown icon");
+    if (scene.nodes.some(n => n.icon !== "TEXT" && !catalog.entries.some(e => e.id === n.icon))) throw new Error("Unknown icon");
   }
   const started = performance.now();
   const root = process.cwd();
@@ -74,7 +74,7 @@ export async function renderProject(value: unknown, directory: string, stage: (m
   });
   const project: RenderProject = { ...inputProject, scenes, fps: FPS, width: 1280, height: 720, durationInFrames: cursor, attribution: "OpenMoji contributors, CC BY-SA 4.0; animated stroke/fill adaptations. See icon-manifest.json.", timingMethod: speech.timingMethod };
   const icons: Record<string, string> = {};
-  for (const id of new Set(scenes.flatMap(scene => scene.nodes.map(node => node.icon)))) icons[id] = await readFile(path.join(root, "public/openmoji", `${id}.svg`), "utf8");
+  for (const id of new Set(scenes.flatMap(scene => scene.nodes.map(node => node.icon)).filter(id => id !== "TEXT"))) icons[id] = await readFile(path.join(root, "public/openmoji", `${id}.svg`), "utf8");
   const manifest = await readFile("public/openmoji/manifest.json", "utf8");
   await copyFile("public/openmoji/manifest.json", path.join(destination, "icon-manifest.json"));
   const captions = scenes.flatMap(scene => {

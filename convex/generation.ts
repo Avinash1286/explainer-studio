@@ -18,14 +18,27 @@ export const run = workflow.define({ args: { jobId: v.id("jobs") }, returns: v.n
 
 export const availability = query({ args: {}, handler: async ctx => ({ enabled: await generationReady(ctx) }) });
 
+export const retryPlanning = mutation({ args: { token: v.string(), jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, args) => {
+  const session = await requireSession(ctx, args.token, Date.now());
+  const job = await ctx.db.get(args.jobId);
+  if (!job || job.sessionId !== session._id) throw new ConvexError("Lesson not found");
+  if (job.status === "planning" && job.planningRetries) return null;
+  if ((job.planningRetries || 0) >= 1) throw new ConvexError("Retry limit reached. Create a new lesson with a clearer question.");
+  const active = await Promise.all(["researching", "planning", "rendering", "reviewing"].map(status => ctx.db.query("jobs").withIndex("by_status", q => q.eq("status", status as "researching" | "planning" | "rendering" | "reviewing")).take(5)));
+  if (active.flat().length >= 5) throw new ConvexError("Generation queue is full. Try again later");
+  await ctx.runMutation(internal.generation.resumePlanning, { jobId: args.jobId });
+  await ctx.db.patch(args.jobId, { planningRetries: 1 });
+  return null;
+} });
+
 // Operator recovery after a planner fix. Research is reused; no public retry loop.
 export const resumePlanning = internalMutation({ args: { jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, { jobId }) => {
   const job = await ctx.db.get(jobId);
   if (!job?.generation || job.status !== "failed") throw new ConvexError("Only failed generation can resume");
   const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(4);
-  if (!artifacts.some(a => a.stage === "research") || artifacts.some(a => a.stage !== "research")) throw new ConvexError("Only a failed pre-render plan can resume");
+  if (artifacts.some(a => a.stage !== "research")) throw new ConvexError("Only a failed pre-render plan can resume");
   if (!await generationReady(ctx)) throw new ConvexError("Providers must be qualified");
-  await ctx.db.patch(jobId, { status: "planning", stageMessage: "Retrying the lesson plan using saved research", updatedAt: Date.now() });
+  await ctx.db.patch(jobId, { status: "planning", stageMessage: artifacts.length ? "Retrying the lesson plan using saved research" : "Retrying research for this lesson", updatedAt: Date.now() });
   const workflowId = await start(ctx, internal.generation.run, { jobId }, { onComplete: internal.generation.finished, context: { jobId }, startAsync: true });
   await ctx.db.patch(jobId, { workflowId });
   await ctx.db.insert("jobEvents", { jobId, kind: "planning_retry", message: "Operator resumed planning using saved research", createdAt: Date.now() });
@@ -89,7 +102,9 @@ export const finished = internalMutation({ args: { workflowId: vWorkflowId, resu
   const job = await ctx.db.get(args.context.jobId);
   if (!job || job.workflowId !== args.workflowId || !["researching", "planning"].includes(job.status)) return null;
   if (args.result.kind !== "success") {
-    await ctx.db.patch(job._id, { status: "failed", stageMessage: "Research or planning could not produce a supported lesson. Try a clearer science or everyday-mechanism question.", updatedAt: Date.now() });
+    const error = args.result.kind === "failed" ? args.result.error : "";
+    const providerUnavailable = /request failed|timed out|timeout/i.test(error);
+    await ctx.db.patch(job._id, { status: "failed", stageMessage: providerUnavailable ? "An AI or research service could not respond. Saved research is retained; retry later if available below." : "Planning could not produce a supported lesson. Try a clearer science or everyday-mechanism question.", updatedAt: Date.now() });
     await ctx.db.insert("jobEvents", { jobId: job._id, kind: "failed", message: "Generation workflow stopped before rendering", createdAt: Date.now() });
   }
   return null;
@@ -102,5 +117,5 @@ export const details = query({ args: { token: v.string(), jobId: v.id("jobs") },
   const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(4);
   const source = artifacts.find(a => a.stage === "research");
   const sources = source ? (JSON.parse(source.json) as { sources: { id: string; title: string; url: string }[] }).sources.map(({ id, title, url }) => ({ id, title, url })) : [];
-  return { generated: Boolean(job.generation), stages: artifacts.map(a => a.stage), sources };
+  return { generated: Boolean(job.generation), stages: artifacts.map(a => a.stage), sources, canRetry: job.status === "failed" && artifacts.every(a => a.stage === "research") && (job.planningRetries || 0) < 1 };
 } });

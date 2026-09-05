@@ -6,6 +6,11 @@ import { providerConfig } from "./lib/generationConfig";
 import { EMBEDDING_SPACE, NVIDIA_MODEL, CLOUDFLARE_MODEL } from "../packages/contracts/generation";
 import { embed, research, structured } from "./lib/providers";
 import manifest from "../public/openmoji/manifest.json";
+import schema from "./schema";
+
+export const catalog = internalQuery({ args: {}, returns: v.array(schema.doc("iconEmbeddings")), handler: async ctx =>
+  ctx.db.query("iconEmbeddings").withIndex("by_space_and_iconId", q => q.eq("space", EMBEDDING_SPACE)).take(manifest.entries.length + 1)
+});
 
 export const hydrate = internalQuery({ args: { ids: v.array(v.id("iconEmbeddings")) }, handler: async (ctx, { ids }) => {
   if (ids.length > 3) throw new Error("Too many icon hits");

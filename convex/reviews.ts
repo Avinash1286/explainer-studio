@@ -12,7 +12,7 @@ import { reviewReady } from "./lib/generationConfig";
 const versionArgs = { jobId: v.id("jobs"), revision: v.number() };
 const reportValidator = v.object({ summary: v.string(), scenes: v.array(v.object({ sceneId: v.string(), factualPass: v.boolean(), visualPass: v.boolean(), issues: v.array(v.object({ sceneId: v.string(), kind: v.union(v.literal("factual"), v.literal("icon"), v.literal("layout"), v.literal("timing")), detail: v.string(), repair: v.string() })) })) });
 export const run = workflow.define({ args: versionArgs, returns: v.null() }).handler(async (step, args): Promise<null> => {
-  try { await step.runAction(internal.reviewActions.inspect, args, { retry: { maxAttempts: 2, initialBackoffMs: 5000, base: 2 } }); }
+  try { await step.runAction(internal.reviewActions.inspect, args, { retry: { maxAttempts: 3, initialBackoffMs: 30000, base: 2 } }); }
   catch { await step.runMutation(internal.reviews.unavailable, args); }
   return null;
 });
@@ -38,7 +38,7 @@ export const unavailable = internalMutation({ args: versionArgs, returns: v.null
   await ctx.db.patch(job._id, { status: "failed", stageMessage: "Review unavailable. Your draft is saved and has not been approved for delivery.", updatedAt: Date.now() });
   return null;
 } });
-export const commit = internalMutation({ args: { ...versionArgs, reportJson: v.string(), provider: v.literal("cloudflare"), model: v.string(), responseId: v.optional(v.string()), usageJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
+export const commit = internalMutation({ args: { ...versionArgs, reportJson: v.string(), provider: v.union(v.literal("cloudflare"), v.literal("nvidia")), model: v.string(), responseId: v.optional(v.string()), usageJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
   const current = await ctx.runQuery(internal.reviews.context, { jobId: args.jobId, revision: args.revision });
   if (!current) return null;
   if (args.reportJson.length > 40_000 || args.usageJson.length > 4000 || args.model.length > 100 || (args.responseId?.length || 0) > 200) throw new Error("Review too large");
@@ -107,13 +107,13 @@ export const revise = mutation({ args: { token: v.string(), jobId: v.id("jobs"),
   await start(ctx, internal.reviews.repair, { requestId }, { startAsync: true });
   return null;
 } });
-export const details = query({ args: { token: v.string(), jobId: v.id("jobs") }, returns: v.union(v.null(), v.object({ revision: v.number(), canRevise: v.boolean(), scenes: v.array(v.object({ id: v.string(), title: v.string() })), reviews: v.array(v.object({ revision: v.number(), status: v.string(), provider: v.union(v.string(), v.null()), model: v.union(v.string(), v.null()), report: v.union(v.null(), reportValidator) })) })), handler: async (ctx, args) => {
+export const details = query({ args: { token: v.string(), jobId: v.id("jobs") }, returns: v.union(v.null(), v.object({ revision: v.number(), canRevise: v.boolean(), canRetryReview: v.boolean(), scenes: v.array(v.object({ id: v.string(), title: v.string() })), reviews: v.array(v.object({ revision: v.number(), status: v.string(), provider: v.union(v.string(), v.null()), model: v.union(v.string(), v.null()), report: v.union(v.null(), reportValidator) })) })), handler: async (ctx, args) => {
   const session = await requireSession(ctx, args.token);
   const job = await ctx.db.get(args.jobId);
   if (!job || job.sessionId !== session._id || !job.generation) return null;
   const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", args.jobId)).unique();
   const reviews = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId)).order("desc").take(5);
-  return { revision: job.revision, canRevise: Boolean(reviewReady() && task?.result && ["failed", "completed"].includes(job.status) && (job.userRevisions || 0) < 2), scenes: task?.projectJson ? projectSchema.parse(JSON.parse(task.projectJson)).scenes.map(s => ({ id: s.id, title: s.title })) : [], reviews: reviews.map(r => ({ revision: r.revision, status: r.status, provider: r.provider ?? null, model: r.model ?? null, report: r.reportJson ? validateReview(JSON.parse(r.reportJson), projectSchema.parse(JSON.parse(task!.projectJson!))) : null })) };
+  return { revision: job.revision, canRetryReview: job.status === "failed" && (job.reviewRetries || 0) < 1 && reviews.some(r => r.revision === job.revision && r.status === "unavailable"), canRevise: Boolean(reviewReady() && task?.result && ["failed", "completed"].includes(job.status) && (job.userRevisions || 0) < 2), scenes: task?.projectJson ? projectSchema.parse(JSON.parse(task.projectJson)).scenes.map(s => ({ id: s.id, title: s.title })) : [], reviews: reviews.map(r => ({ revision: r.revision, status: r.status, provider: r.provider ?? null, model: r.model ?? null, report: r.reportJson ? validateReview(JSON.parse(r.reportJson), projectSchema.parse(JSON.parse(task!.projectJson!))) : null })) };
 } });
 
 // Operator migration for a pre-H3 rendered draft. Retain the original version;
@@ -127,6 +127,27 @@ export const upgradeLegacy = internalMutation({ args: { jobId: v.id("jobs") }, r
   await ctx.db.patch(jobId, { revision: job.revision + 1, status: "rendering", stageMessage: "Rendering the saved draft with frame evidence for review", updatedAt: Date.now() });
   return null;
 } });
+export const recheckApproved = internalMutation({ args: versionArgs, returns: v.null(), handler: async (ctx, args) => {
+  const job = await ctx.db.get(args.jobId);
+  const review = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId).eq("revision", args.revision)).unique();
+  if (!job || job.revision !== args.revision || job.status !== "completed" || review?.status !== "passed") throw new Error("Only a currently approved version can be rechecked");
+  await ctx.db.patch(review._id, { status: "pending" });
+  await ctx.db.patch(job._id, { status: "reviewing", stageMessage: "Rechecking the saved video with the updated factual and visual review", updatedAt: Date.now() });
+  await ctx.db.insert("jobEvents", { jobId: job._id, kind: "review_recheck", message: "Operator requested fresh review after a critic implementation update", createdAt: Date.now() });
+  await start(ctx, internal.reviews.run, args, { startAsync: true });
+  return null;
+} });
+
+export const retryReview = mutation({ args: { token: v.string(), ...versionArgs }, returns: v.null(), handler: async (ctx, args) => {
+  const session = await requireSession(ctx, args.token);
+  const job = await ctx.db.get(args.jobId);
+  if (!job || job.sessionId !== session._id) throw new ConvexError("Lesson not found");
+  if ((job.reviewRetries || 0) >= 1) throw new ConvexError("Review retry limit reached");
+  await ctx.runMutation(internal.reviews.retryUnavailable, { jobId: args.jobId, revision: args.revision });
+  await ctx.db.patch(args.jobId, { reviewRetries: 1 });
+  return null;
+} });
+
 export const retryUnavailable = internalMutation({ args: versionArgs, returns: v.null(), handler: async (ctx, args) => {
   const job = await ctx.db.get(args.jobId);
   const review = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId).eq("revision", args.revision)).unique();

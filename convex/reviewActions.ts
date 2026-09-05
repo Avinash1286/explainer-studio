@@ -6,6 +6,8 @@ import { projectSchema, type TimedScene } from "../packages/contracts/scene";
 import { frameSamples } from "../packages/contracts/review";
 import { researchSchema } from "../packages/contracts/generation";
 import { inspectFrames } from "./lib/critic";
+import { inspectFacts, combineReviews } from "./lib/factCheck";
+import { validateReview } from "../packages/contracts/review";
 import { repairScenes } from "./lib/repair";
 import { providerConfig } from "./lib/generationConfig";
 
@@ -40,8 +42,10 @@ export const inspect = internalAction({ args: { jobId: v.id("jobs"), revision: v
     // URLs was rejected in live qualification; never omit the images to retry.
     frames.push({ ...sample, url: `data:image/jpeg;base64,${btoa(binary)}` });
   }
+  const facts = await inspectFacts(providerConfig(), project, sources);
   const review = await inspectFrames(providerConfig(), project, sources, frames);
-  await ctx.runMutation(internal.reviews.commit, { ...args, ...review });
+  const combined = combineReviews(validateReview(JSON.parse(review.reportJson), project), facts.data);
+  await ctx.runMutation(internal.reviews.commit, { ...args, ...review, reportJson: JSON.stringify(combined), usageJson: JSON.stringify({ visual: JSON.parse(review.usageJson), factualAttempts: facts.attempts }) });
   return null;
 } });
 

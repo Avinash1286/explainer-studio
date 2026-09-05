@@ -158,3 +158,14 @@ footer { display:flex; justify-content:space-between; margin-top:34px; padding:1
 .draft-notice { border-left: 4px solid #b88924; padding: 12px; background: #fff4d9; }
 .shared-lesson { max-width: 980px; margin: 40px auto; padding: 24px; line-height: 1.7; }
 .shared-lesson video { width: 100%; border-radius: 16px; }
+
+.showcase { max-width: 1200px; margin: 40px auto; padding: 32px; }
+.showcase-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+.showcase-grid > a { color:inherit; text-decoration:none; border:1px solid #dce1d5; border-radius:18px; padding:16px; background:#fbfaf5; }
+.showcase-image { position:relative; width:100%; aspect-ratio:16/9; }
+.showcase-image img { object-fit:contain; }
+.showcase-grid h3 { font-size:20px; margin:16px 0 8px; }
+.showcase-grid p { font-size:14px; color:#576b51; }
+.share-panel { margin:24px 0; }
+.share-panel input { width:100%; box-sizing:border-box; margin:10px 0; padding:12px; }
+@media(max-width:700px) { .showcase-grid { grid-template-columns:1fr; } .showcase { padding:20px; } }

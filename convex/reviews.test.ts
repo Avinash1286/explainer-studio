@@ -6,8 +6,29 @@ import { inspectFrames } from "./lib/critic";
 import { testSources } from "./testFixtures";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers(); });
-const response = (report = goodReview()) => Response.json({ success: true, result: { response: report, usage: { prompt_tokens: 100, completion_tokens: 100 } } });
+const response = (report = goodReview()) => Response.json({ choices: [{ message: { content: JSON.stringify(report) } }], success: true, result: { response: report, usage: { prompt_tokens: 100, completion_tokens: 100 } } });
 describe("source and rendered-frame review", () => {
+  it("allows only one owner retry of an unavailable review", async () => {
+    const { t, jobId, lease, result } = await reviewSetup();
+    vi.stubEnv("CLOUDFLARE_API_TOKEN", "test"); vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    await t.mutation(internal.media.complete, { ...lease, result });
+    await t.mutation(internal.reviews.unavailable, { jobId, revision: 1 });
+    const other = "d".repeat(64); await t.mutation(api.sessions.start, { token: other });
+    await expect(t.mutation(api.reviews.retryReview, { token: other, jobId, revision: 1 })).rejects.toThrow("not found");
+    await t.mutation(api.reviews.retryReview, { token: owner, jobId, revision: 1 });
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.reviewRetries).toBe(1);
+    await t.mutation(internal.reviews.unavailable, { jobId, revision: 1 });
+    await expect(t.mutation(api.reviews.retryReview, { token: owner, jobId, revision: 1 })).rejects.toThrow("limit");
+  });
+  it("uses the qualified NVIDIA vision fallback after Cloudflare rate limits, retaining actual image bytes", async () => {
+    const frames = sampleProject.scenes.flatMap((s,i) => [0,1].map(j => ({ sceneId: s.id, frame: i*360+j, url: "data:image/jpeg;base64,cGl4ZWxz" })));
+    const config = { NVIDIA_API_KEY: "test", CLOUDFLARE_ACCOUNT_ID: "a".repeat(32), CLOUDFLARE_API_TOKEN: "test" };
+    const transport = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response("", { status: 429 })).mockResolvedValueOnce(Response.json({ id: "vision-result", choices: [{ finish_reason: "stop", message: { content: JSON.stringify(goodReview()) } }] }));
+    const result = await inspectFrames(config, sampleProject, testSources, frames, transport);
+    expect(result.provider).toBe("nvidia");
+    expect(result.responseId).toBe("vision-result");
+    expect(JSON.parse(String(transport.mock.calls[1][1]?.body)).messages[1].content.filter((part: { type: string }) => part.type === "image_url")).toHaveLength(frames.length);
+  });
   it("recovers one failed automatic repair without resetting budgets or accepting stale retries", async () => {
     const { t, jobId, lease, result } = await reviewSetup();
     vi.stubEnv("CLOUDFLARE_API_TOKEN", "test"); vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
@@ -43,16 +64,17 @@ describe("source and rendered-frame review", () => {
     await t.mutation(internal.media.complete, { ...lease, result });
     expect((await t.query(api.media.result, { token: owner, jobId }))?.approved).toBe(false);
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("reviewing");
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response()); vi.stubGlobal("fetch", fetcher); vi.stubEnv("CLOUDFLARE_API_TOKEN", "test"); vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => response()); vi.stubGlobal("fetch", fetcher); vi.stubEnv("NVIDIA_API_KEY", "test"); vi.stubEnv("CLOUDFLARE_API_TOKEN", "test"); vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
     await t.action(internal.reviewActions.inspect, { jobId, revision: 1 });
-    const payload = JSON.parse(String(fetcher.mock.calls[0][1]?.body));
-    expect(fetcher.mock.calls[0][0]).toBe(`https://api.cloudflare.com/client/v4/accounts/${"a".repeat(32)}/ai/run/@cf/meta/llama-4-scout-17b-16e-instruct`);
+    const payload = JSON.parse(String(fetcher.mock.calls[1][1]?.body));
+    expect(fetcher.mock.calls[0][0]).toBe("https://integrate.api.nvidia.com/v1/chat/completions");
+    expect(fetcher.mock.calls[1][0]).toBe(`https://api.cloudflare.com/client/v4/accounts/${"a".repeat(32)}/ai/run/@cf/meta/llama-4-scout-17b-16e-instruct`);
     expect(payload.messages[1].content.filter((c: { type: string }) => c.type === "image_url")).toHaveLength(8);
     expect(payload.messages[1].content.find((c: { type: string }) => c.type === "image_url").image_url.url).toBe(`data:image/jpeg;base64,${btoa("synthetic frame")}`);
     expect(payload.messages[1].content[0].text).toContain(testSources[0].text);
     expect((await t.query(api.media.result, { token: owner, jobId }))?.approved).toBe(true);
     await t.action(internal.reviewActions.inspect, { jobId, revision: 1 });
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(2);
     await t.mutation(api.sessions.start, { token: "b".repeat(64) });
     expect(await t.query(api.reviews.details, { token: "b".repeat(64), jobId })).toBeNull();
   });

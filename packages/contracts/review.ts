@@ -35,7 +35,7 @@ export function validateReplacement(previous: Project, value: unknown, sceneIds:
   next.scenes.forEach((scene, index) => {
     if (scene.id !== previous.scenes[index].id) throw new Error("Revision reordered scenes");
     if (!sceneIds.includes(scene.id) && JSON.stringify(scene) !== JSON.stringify(previous.scenes[index])) throw new Error("Revision changed an unaffected scene");
-    if (scene.nodes.length !== (scene.layout === "comparison" ? 2 : 3) || scene.nodes.some(n => !manifest.entries.some(e => e.id === n.icon))) errors.push(`Scene ${scene.id}: unsupported repaired diagram`);
+    if (scene.nodes.length !== (scene.layout === "comparison" ? 2 : 3) || scene.nodes.some(n => n.icon !== "TEXT" && !manifest.entries.some(e => e.id === n.icon))) errors.push(`Scene ${scene.id}: unsupported repaired diagram`);
     const words: string[] = scene.narration.toLowerCase().match(/[a-z]+/g) || [];
     const cues = scene.nodes.map(n => words.indexOf((n.cue || "").toLowerCase()));
     cues.forEach((cue, i) => {
@@ -43,8 +43,13 @@ export function validateReplacement(previous: Project, value: unknown, sceneIds:
     });
   });
   const count = next.scenes.reduce((n, s) => n + s.narration.trim().split(/\s+/).length, 0);
-  if (count < (next.targetDuration || 60) * 1.8 || count > (next.targetDuration || 60) * 2.4) errors.push(`Repair narration does not fit duration: received ${count} words, need ${Math.ceil((next.targetDuration || 60) * 1.8)}-${Math.floor((next.targetDuration || 60) * 2.4)} total across all scenes.`);
+  const modern = previous.scenes.every(s => s.connections !== undefined);
+  const min = (next.targetDuration || 60) * (modern ? 1.6 : 1.8), max = (next.targetDuration || 60) * (modern ? 2.8 : 2.4);
+  if (count < min || count > max) errors.push(`Repair narration does not fit duration: received ${count} words, need ${Math.ceil(min)}-${Math.floor(max)} total across all scenes.`);
   for (const issue of knownIconIssues(next).filter(issue => sceneIds.includes(issue.sceneId))) errors.push(`Scene ${issue.sceneId}: icon category error: ${issue.detail} ${issue.repair}`);
+  for (const scene of next.scenes.filter(s => sceneIds.includes(s.id))) {
+    for (const edge of scene.connections || []) if (edge.from === edge.to || edge.from >= scene.nodes.length || edge.to >= scene.nodes.length) errors.push(`Scene ${scene.id}: invalid diagram connection`);
+  }
   if (errors.length) throw new Error(errors.join("\n"));
   return next;
 }

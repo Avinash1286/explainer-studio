@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { embed, research, structured } from "./lib/providers";
+import { decodingSchema, embed, research, structured } from "./lib/providers";
 import { alignDraftCues, planningInput, validateDraft } from "../packages/contracts/generation";
 import { testDraft, testSources } from "./testFixtures";
 const config = { NVIDIA_API_KEY: "test", CLOUDFLARE_API_TOKEN: "test", CLOUDFLARE_ACCOUNT_ID: "a".repeat(32), FIRECRAWL_API_KEY: "test" };
@@ -8,6 +8,15 @@ const schema = z.object({ answer: z.literal("yes") });
 const primary = (content: unknown) => Response.json({ choices: [{ message: { content: JSON.stringify(content) } }] });
 const backup = (content: unknown) => Response.json({ success: true, result: { response: content } });
 describe("provider boundaries", () => {
+  it("keeps complete-string decoding while enforcing string bounds locally", async () => {
+    const bounded = z.object({ sentence: z.string().max(12).regex(/[.!?]$/), rows: z.array(z.string()).max(2) });
+    const json = decodingSchema(z.toJSONSchema(bounded));
+    expect(JSON.stringify(json)).not.toContain("maxLength");
+    expect(JSON.stringify(json)).toContain("maxItems");
+    const transport = vi.fn<typeof fetch>().mockResolvedValueOnce(primary({ sentence: "A complete sentence that is too long.", rows: [] })).mockResolvedValueOnce(primary({ sentence: "It works.", rows: [] }));
+    const result = await structured(config, "JSON", "question", z.toJSONSchema(bounded), x => bounded.parse(x), transport);
+    expect(result.attempts.map(a => a.outcome)).toEqual(["invalid-output", "success"]);
+  });
   it("optionally switches a repair to Cloudflare only after exhausting bounded validation attempts", async () => {
     const transport = vi.fn<typeof fetch>().mockImplementation(async url => String(url).includes("nvidia") ? primary({ answer: "wrong" }) : backup({ answer: "yes" }));
     const result = await structured(config, "JSON", "question", {}, x => schema.parse(x), transport, "nvidia", { fallbackOnInvalid: true });

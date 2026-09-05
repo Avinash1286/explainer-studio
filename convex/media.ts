@@ -67,7 +67,12 @@ export const claim = internalMutation({
     if (owned) return { taskId: owned._id, attempt: owned.attempt, fixtureVersion: owned.fixtureVersion, projectJson: owned.projectJson, provenanceJson: owned.provenanceJson };
     const queued = await ctx.db.query("mediaTasks").withIndex("by_status_and_leaseUntil", q => q.eq("status", "queued")).take(5);
     for (const task of queued) {
-      if (task.fixtureVersion === "generated-v1" && protocol !== 3) continue;
+      if (task.fixtureVersion === "generated-v1") {
+        const scenes = projectSchema.parse(JSON.parse(task.projectJson!)).scenes;
+        const explicit = scenes.some(s => s.connections !== undefined);
+        const textCards = scenes.some(s => s.nodes.some(n => n.icon === "TEXT"));
+        if ((protocol || 0) < (textCards ? 5 : explicit ? 4 : 3)) continue;
+      }
       const job = await ctx.db.get(task.jobId);
       if (!job || job.status === "cancelled") { await ctx.db.patch(task._id, { status: "cancelled" }); continue; }
       const attempt = task.attempt + 1;

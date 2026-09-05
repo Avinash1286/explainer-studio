@@ -5,6 +5,14 @@ import { testSources } from "./testFixtures";
 import { validateReplacement } from "../packages/contracts/review";
 
 describe("bounded scene repair", () => {
+  it("orders cues without reversing the intended causal edge or touching other scenes", () => {
+    const input = repairInput(sampleProject, testSources, ["water-0"], "Clarify the diagram");
+    const scene = { ...sampleProject.scenes[0], layout: "comparison", nodes: [{ icon: "1F4A7", label: "Water", cue: "water" }, { icon: "2600", label: "Sun", cue: "sun" }], connections: [{ from: 1, to: 0, label: "warms" }], evidenceIds: [input.evidence[0].id] };
+    const result = input.validate({ scenes: [scene] }).project;
+    expect(result.scenes[0].nodes.map(n => n.cue)).toEqual(["sun", "water"]);
+    expect(result.scenes[0].connections).toEqual([{ from: 0, to: 1, label: "warms" }]);
+    expect(result.scenes.slice(1)).toEqual(sampleProject.scenes.slice(1));
+  });
   it("provides schema and exact evidence references, then compiles only selected scenes", () => {
     const input = repairInput(sampleProject, testSources, ["water-0"], "Shorten title");
     expect(JSON.parse(input.prompt).schema).toHaveProperty("properties.scenes");

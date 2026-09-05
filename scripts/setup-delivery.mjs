@@ -11,7 +11,8 @@ function set(key, value) {
   console.log(`Configured ${key}`);
 }
 try {
-
+  const response = await fetch(`https://api.agentmail.to/v0/inboxes/${encodeURIComponent(process.env.AGENTMAIL_INBOX_ID.trim())}`, { headers: { Authorization: `Bearer ${process.env.AGENTMAIL_API_KEY.trim()}` }, signal: AbortSignal.timeout(20000), redirect: "error" });
+  if (!response.ok) throw new Error(`AgentMail inbox access failed (${response.status}). Check the API key, inbox ID and permissions before configuring Convex. No email was sent.`);
   for (const key of required) set(key, process.env[key].trim());
   console.log(`Email configured on ${target.length ? "production" : "development"}. Generation configuration is unchanged. No email was sent.`);
 } catch (error) { console.error(error.message); process.exit(1); }

@@ -7,8 +7,9 @@ export const sceneSchema = z.object({
   layout: z.enum(["process", "comparison", "relationship"]),
   title: z.string().min(1).max(64),
   narration: z.string().min(10).max(600),
-  nodes: z.array(z.object({ icon: z.string().regex(/^[A-F0-9-]+$/), label: z.string().min(1).max(24), cue: z.string().min(1).max(24).optional() })).min(2).max(3),
+  nodes: z.array(z.object({ icon: z.string().regex(/^(?:[A-F0-9-]+|TEXT)$/), label: z.string().min(1).max(24), cue: z.string().min(1).max(24).optional() })).min(2).max(3),
   takeaway: z.string().max(90),
+  connections: z.array(z.object({ from: z.number().int().min(0).max(2), to: z.number().int().min(0).max(2), label: z.string().min(1).max(28) })).max(3).optional(),
 });
 export const projectSchema = z.object({
   version: z.literal(1), id: z.string().regex(/^[a-zA-Z0-9-]{1,80}$/), title: z.string().min(1).max(100),

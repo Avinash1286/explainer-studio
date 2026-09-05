@@ -29,12 +29,36 @@ function mockProviders() {
     if (String(url).includes("firecrawl")) return Response.json({ success: true, data: { web: testSources.map(s => ({ title: s.title, url: s.url, markdown: s.text })) } });
     if (String(url).includes("bge-base")) return Response.json({ success: true, result: { data: body.text.map(() => vector) } });
     const prompt = JSON.parse(body.messages[1].content);
-    const content = prompt.candidates ? { icons: prompt.candidates.map((c: { options: { icon: string }[] }) => c.options[0].icon) }
-      : { ...testDraft, scenes: testDraft.scenes.map(s => ({ ...s, evidence: s.evidence.map(e => ({ ...e, quote: prompt.sources.find((source: { id: string }) => source.id === e.sourceId).quotes[0] })) })) };
+    const content = { title: testDraft.title, scenes: testDraft.scenes.map((scene, i) => ({
+      title: scene.title, narration: "The sun warms water in lakes and rivers, helping liquid water change into an invisible gas that rises into air. This process moves water around the planet every day.",
+      optionalNarration: "", takeaway: "Sunlight helps water move through the atmosphere.", icons: ["sun", "water"], connections: [],
+      evidenceIds: [prompt.evidence.find((e: { sourceId: string }) => e.sourceId === (i % 2 ? "source-2" : "source-1")).id],
+    })) };
     return Response.json({ choices: [{ message: { content: JSON.stringify(content) } }] });
   });
 }
 describe("durable topic generation", () => {
+  it("permits only one owner planning retry and fences text cards from older workers", async () => {
+    vi.useFakeTimers();
+    const { t, jobId } = await setup(true); vi.stubGlobal("fetch", mockProviders());
+    await t.run(ctx => ctx.db.patch(jobId, { generation: true, status: "failed" }));
+    const other = "f".repeat(64); await t.mutation(api.sessions.start, { token: other });
+    await expect(t.mutation(api.generation.retryPlanning, { token: other, jobId })).rejects.toThrow("not found");
+    await t.mutation(api.generation.retryPlanning, { token, jobId });
+    await t.run(ctx => ctx.db.patch(jobId, { status: "failed" }));
+    await expect(t.mutation(api.generation.retryPlanning, { token, jobId })).rejects.toThrow("Retry limit");
+    await t.run(ctx => ctx.db.patch(jobId, { status: "planning" }));
+    await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
+    await t.run(async ctx => {
+      const task = (await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).unique())!;
+      const project = JSON.parse(task.projectJson!); project.scenes[0].nodes[0].icon = "TEXT";
+      await ctx.db.patch(task._id, { projectJson: JSON.stringify(project) });
+      await ctx.db.patch(jobId, { status: "failed" });
+    });
+    await t.run(ctx => ctx.db.patch(jobId, { status: "rendering" }));
+    expect(await t.mutation(internal.media.claim, { worker: "older", protocol: 4 })).toBeNull();
+    expect(await t.mutation(internal.media.claim, { worker: "current", protocol: 5 })).not.toBeNull();
+  });
   it("lets an operator resume a failed plan without repeating research or reopening rendered work", async () => {
     vi.useFakeTimers();
     const { t, jobId } = await setup(true); const fetcher = mockProviders(); vi.stubGlobal("fetch", fetcher);
@@ -65,9 +89,9 @@ describe("durable topic generation", () => {
     expect(job?.status).toBe("rendering");
     const artifacts = await t.run(ctx => ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(4));
     expect(artifacts.map(a => a.stage).sort()).toEqual(["plan", "project", "research"]);
-    expect(fetcher).toHaveBeenCalledTimes(4);
+    expect(fetcher).toHaveBeenCalledTimes(2); // Research + authoring; qualified icon vectors are reused.
     expect(await t.mutation(internal.media.claim, { worker: "old-worker" })).toBeNull();
-    const task = await t.mutation(internal.media.claim, { worker: "new-worker", protocol: 3 });
+    const task = await t.mutation(internal.media.claim, { worker: "new-worker", protocol: 4 });
     expect(task?.fixtureVersion).toBe("generated-v1");
     expect(JSON.parse(task!.projectJson!).scenes).toHaveLength(4);
   });

@@ -140,3 +140,32 @@ export const shared = query({ args: { token: v.string() }, returns: v.union(v.nu
   const project = projectSchema.parse(JSON.parse(version.projectJson));
   return { title: project.title, revision: share.revision, video: await ctx.storage.getUrl(version.result.video), captions: await ctx.storage.getUrl(version.result.captions), sources: project.sources };
 } });
+
+export const createShare = mutation({ args: { token: v.string(), jobId: v.id("jobs"), revision: v.number(), shareToken: v.string() }, returns: v.string(), handler: async (ctx, args) => {
+  const session = await requireSession(ctx, args.token, Date.now());
+  const job = await ctx.db.get(args.jobId);
+  if (!job || job.sessionId !== session._id) throw new ConvexError("Lesson not found");
+  if (!/^[a-f0-9]{64}$/.test(args.shareToken) || args.shareToken === args.token) throw new ConvexError("Invalid share token");
+  const review = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", job._id).eq("revision", args.revision)).unique();
+  const version = await ctx.db.query("lessonVersions").withIndex("by_jobId_and_revision", q => q.eq("jobId", job._id).eq("revision", args.revision)).unique();
+  if (job.revision !== args.revision || job.status !== "completed" || review?.status !== "passed" || !version) throw new ConvexError("Only a reviewed, completed version can be shared");
+  const tokenHash = await hashToken(args.shareToken);
+  const existing = await ctx.db.query("lessonShares").withIndex("by_tokenHash", q => q.eq("tokenHash", tokenHash)).unique();
+  if (existing && (existing.jobId !== job._id || existing.revision !== args.revision || existing.expiresAt <= Date.now())) throw new ConvexError("Share token already used");
+  if (!existing) {
+    const shares = await ctx.db.query("lessonShares").withIndex("by_jobId", q => q.eq("jobId", job._id)).take(6);
+    if (shares.length >= 5) throw new ConvexError("Revoke existing links before making more (maximum five)");
+    const shareId = await ctx.db.insert("lessonShares", { jobId: job._id, revision: args.revision, tokenHash, expiresAt: Date.now()+7*86400_000 });
+    await ctx.scheduler.runAfter(7*86400_000, internal.delivery.expireShare, { shareId });
+  }
+  return `${env.CONVEX_SITE_URL}/lesson/index.html?share=${args.shareToken}`;
+} });
+
+export const revokeShares = mutation({ args: { token: v.string(), jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, args) => {
+  const session = await requireSession(ctx, args.token, Date.now());
+  const job = await ctx.db.get(args.jobId);
+  if (!job || job.sessionId !== session._id) throw new ConvexError("Lesson not found");
+  const shares = await ctx.db.query("lessonShares").withIndex("by_jobId", q => q.eq("jobId", job._id)).take(20);
+  for (const share of shares) await ctx.db.delete(share._id);
+  return null;
+} });

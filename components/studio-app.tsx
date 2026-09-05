@@ -10,13 +10,14 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DURATION_PRESETS, LIMITS, PIPELINE_STAGES } from "@/packages/contracts";
 import { LessonReview } from "./lesson-review";
+import { Showcase } from "./showcase";
 import { StyleStudy } from "./style-study";
 
 type Job = FunctionReturnType<typeof api.jobs.list>[number];
 type Brief = { topic: string; duration: number; audience: "beginner" | "student"; requestId: string };
 const EMPTY_JOBS: Job[] = [];
 const SESSION_KEY = "explainer.session.v1";
-const SUGGESTIONS = ["Why do leaves change color?", "How does a solar panel work?", "Why do recessive traits skip a generation?"];
+const SUGGESTIONS = ["Why do leaves change color?", "How does a solar panel work?", "Why does the Moon appear to change shape?"];
 
 function subscribeToLocation(callback: () => void) {
   window.addEventListener("popstate", callback);
@@ -77,7 +78,7 @@ function ConnectedStudio() {
     return () => { active = false; };
   }, [start]);
   const jobs = useQuery(api.jobs.list, token ? { token } : "skip");
-  return <Studio
+  return <><Studio
     jobs={jobs ?? EMPTY_JOBS} ready={Boolean(token && jobs)}
     connectionMessage={connectionError || (token && jobs ? "Your workspace is connected" : "Connecting your workspace…")}
     save={async (brief) => { if (!token) throw new Error("No session"); return create({ ...brief, token }); }}
@@ -86,14 +87,17 @@ function ConnectedStudio() {
     generationEnabled={availability?.enabled ?? false}
     generate={async jobId => { if (!token) throw new Error("No session"); await generate({ token, jobId }); }}
     resultPanel={(jobId) => token ? <MediaResult token={token} jobId={jobId} /> : null}
-  />;
+  /><Showcase /></>;
 }
 
 function MediaResult({ token, jobId }: { token: string; jobId: Id<"jobs"> }) {
   const result = useQuery(api.media.result, { token, jobId });
   const details = useQuery(api.generation.details, { token, jobId });
+  const retryPlanning = useMutation(api.generation.retryPlanning);
+  const [retryError, setRetryError] = useState("");
+  const [retrying, setRetrying] = useState(false);
   const sources = details?.sources.length ? <details className="source-list"><summary>Research sources ({details.sources.length})</summary><ul>{details.sources.map(source => <li key={source.id}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul><small>Sources inform the script. Review findings appear below when the draft is rendered.</small></details> : null;
-  if (!result?.video) return <>{sources}<LessonReview key={jobId} token={token} jobId={jobId} approved={false} /></>;
+  if (!result?.video) return <>{sources}{details?.canRetry ? <button className="primary-button" disabled={retrying} onClick={async () => { setRetrying(true); setRetryError(""); try { await retryPlanning({ token, jobId }); } catch (error) { setRetryError(friendlyError(error)); } finally { setRetrying(false); } }}>{details.sources.length ? "Retry using saved research" : "Retry generation"}</button> : null}{retryError ? <p role="alert">{retryError}</p> : null}<LessonReview key={jobId} token={token} jobId={jobId} approved={false} /></>;
   return <div className="media-result">
     {result.generated && !result.approved ? <p className="draft-notice"><strong>Unapproved draft</strong>: For your review. Email delivery is disabled until this version passes.</p> : null}
     <video controls preload="metadata" poster={result.poster || undefined} src={result.video} crossOrigin="anonymous" aria-label="Rendered explainer lesson">
@@ -177,7 +181,7 @@ function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPa
         <div className="sidebar-bottom"><span className="avatar">Y</span><div>Your personal studio<small>Early access · Media demo</small></div></div>
       </aside>
       <div className="main-column">
-        <header className="topbar"><div>Workspace <ChevronRight size={14} /><span>Create a lesson</span></div><span className="release-pill"><span /> In the making</span></header>
+        <header className="topbar"><div>Workspace <ChevronRight size={14} /><span>Create a lesson</span></div><span className="release-pill"><span /> Source-backed explainers</span></header>
         <main>
           <div className="intro"><div className="eyebrow"><span /> A LITTLE CURIOSITY GOES A LONG WAY</div><h1>Big ideas.<br /><em>Clearly explained.</em></h1><p>Start with a question. Shape it into a short, illustrated lesson<br className="desktop-break" /> that makes the complicated feel simple.</p></div>
           {showInfo ? <section className="info-banner"><button onClick={() => setShowInfo(false)} aria-label="Close explanation"><X size={17} /></button><strong>From a question to a visual lesson</strong><p>Topic generation researches your question, plans supported scenes, selects illustrations and renders a narrated lesson. It becomes available after service setup is verified. You can save a brief and render the scripted demo now. Automated frame review comes next.</p></section> : null}
