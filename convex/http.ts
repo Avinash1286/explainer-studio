@@ -8,7 +8,7 @@ const http = httpRouter();
 
 http.route({
   path: "/health", method: "GET",
-  handler: httpAction(async () => Response.json({ ok: true, service: "explainer-studio", phase: "media", generationEnabled: false, fixtureGenerationEnabled: true })),
+  handler: httpAction(async (ctx) => Response.json({ ok: true, service: "explainer-studio", phase: "topic-generation", generationEnabled: (await ctx.runQuery(internal.serviceReadiness.read, {})).enabled, fixtureGenerationEnabled: true })),
 });
 
 http.route({
@@ -41,12 +41,12 @@ http.route({
 const id = <T extends "mediaTasks" | "_storage">() => z.string().min(10).max(100).transform(value => value as Id<T>);
 const lease = { taskId: id<"mediaTasks">(), attempt: z.number().int().min(1).max(3), worker: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/) };
 const mediaRequest = z.discriminatedUnion("op", [
-  z.object({ op: z.literal("claim"), worker: lease.worker }).strict(),
+  z.object({ op: z.literal("claim"), worker: lease.worker, protocol: z.literal(2).optional() }).strict(),
   z.object({ op: z.literal("renew"), ...lease, message: z.string().max(120) }).strict(),
   z.object({ op: z.literal("uploadUrl"), ...lease }).strict(),
   z.object({ op: z.literal("abandon"), ...lease }).strict(),
   z.object({ op: z.literal("registerUpload"), ...lease, storageId: id<"_storage">() }).strict(),
-  z.object({ op: z.literal("complete"), ...lease, result: z.object({ video: id<"_storage">(), project: id<"_storage">(), captions: id<"_storage">(), poster: id<"_storage">(), durationSeconds: z.number().min(15).max(45) }).strict() }).strict(),
+  z.object({ op: z.literal("complete"), ...lease, result: z.object({ video: id<"_storage">(), project: id<"_storage">(), captions: id<"_storage">(), poster: id<"_storage">(), durationSeconds: z.number().min(15).max(90) }).strict() }).strict(),
 ]);
 http.route({ path: "/worker/media", method: "POST", handler: httpAction(async (ctx, request) => {
   if (!env.WORKER_AUTH_TOKEN || env.WORKER_AUTH_TOKEN.length < 32) return new Response("Worker not configured", { status: 503 });
@@ -60,7 +60,7 @@ http.route({ path: "/worker/media", method: "POST", handler: httpAction(async (c
   const data = parsed.data;
   try {
     switch (data.op) {
-      case "claim": return Response.json(await ctx.runMutation(internal.media.claim, { worker: data.worker }));
+      case "claim": return Response.json(await ctx.runMutation(internal.media.claim, { worker: data.worker, protocol: data.protocol }));
       case "renew": { const { op, ...value } = data; void op; return Response.json(await ctx.runMutation(internal.media.renew, value)); }
       case "uploadUrl": { const { op, ...value } = data; void op; return Response.json(await ctx.runMutation(internal.media.uploadUrl, value)); }
       case "abandon": { const { op, ...value } = data; void op; return Response.json(await ctx.runMutation(internal.media.abandon, value)); }

@@ -2,7 +2,7 @@
 
 Turn a question into a short, illustrated lesson. This repository implements a staged agentic explainer-video system.
 
-**Current release: media demo.** Visitors can save lesson briefs and render a fresh, scripted plant-energy demo with Kokoro narration and three animated layouts. Free-text research and generation are next. The static plant sketch is labelled separately from rendered results.
+**Current release: topic pipeline awaiting provider setup.** Visitors can save lesson briefs and render a fresh, scripted plant-energy demo with Kokoro narration and three animated layouts. Topic research and generation are implemented behind a provider qualification gate. The static plant sketch is labelled separately from rendered results.
 
 - Live app: https://wooden-pheasant-677.convex.site
 - Build status and next steps: [PHASES.md](PHASES.md)
@@ -17,9 +17,9 @@ Turn a question into a short, illustrated lesson. This repository implements a s
 - Validated brief creation, idempotent retries, cancellation, per-workspace and global creation quotas using the Convex rate-limiter component.
 - Kokoro 82M narration, predicted token timing, three Remotion layouts, 24 OpenMoji assets, and MP4/captions/poster/project outputs.
 - Authenticated media leases with cancellation, fencing, bounded retries, artifact validation, and idempotent publication.
-- Twenty-one backend tests and GitHub Actions configuration. Hosted CI remains blocked by an account billing lock.
+- Thirty-five backend tests and GitHub Actions configuration. Hosted CI remains blocked by an account billing lock.
 
-Convex Workflow is installed for the later research/planning pipeline. Remaining integrations are NVIDIA NIM with Cloudflare Workers AI fallback, icon embeddings, Firecrawl, OpenAI frame review, and opt-in AgentMail. See [the media phase guide](docs/media-phase.md) for renderer setup, measured results, and recovery limits.
+Convex Workflow now coordinates Firecrawl research, NVIDIA planning with Cloudflare fallback, and Cloudflare embeddings in Convex vector search. These provider integrations await live qualification with account credentials. OpenAI frame review and opt-in AgentMail remain planned. See [provider setup and the H2 guide](docs/topic-generation.md). See [the media phase guide](docs/media-phase.md) for renderer setup, measured results, and recovery limits.
 
 ## Local development
 

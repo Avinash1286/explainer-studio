@@ -49,26 +49,27 @@ export const result = query({
     const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).unique();
     if (!task?.result || task.status !== "completed" || job.status !== "completed") return null;
     const [video, project, captions, poster] = await Promise.all([ctx.storage.getUrl(task.result.video), ctx.storage.getUrl(task.result.project), ctx.storage.getUrl(task.result.captions), ctx.storage.getUrl(task.result.poster)]);
-    return { video, project, captions, poster, durationSeconds: task.result.durationSeconds };
+    return { video, project, captions, poster, durationSeconds: task.result.durationSeconds, generated: Boolean(job.generation) };
   },
 });
 
 export const claim = internalMutation({
-  args: { worker: v.string() },
-  handler: async (ctx, { worker }) => {
+  args: { worker: v.string(), protocol: v.optional(v.number()) },
+  handler: async (ctx, { worker, protocol }) => {
     if (!/^[a-zA-Z0-9_-]{1,100}$/.test(worker)) throw new ConvexError("Invalid worker identity");
     const existing = await ctx.db.query("mediaTasks").withIndex("by_status_and_leaseUntil", q => q.eq("status", "running")).take(10);
     const owned = existing.find(t => t.worker === worker && t.leaseUntil > Date.now());
-    if (owned) return { taskId: owned._id, attempt: owned.attempt, fixtureVersion: owned.fixtureVersion };
+    if (owned) return { taskId: owned._id, attempt: owned.attempt, fixtureVersion: owned.fixtureVersion, projectJson: owned.projectJson, provenanceJson: owned.provenanceJson };
     const queued = await ctx.db.query("mediaTasks").withIndex("by_status_and_leaseUntil", q => q.eq("status", "queued")).take(5);
     for (const task of queued) {
+      if (task.fixtureVersion === "generated-v1" && protocol !== 2) continue;
       const job = await ctx.db.get(task.jobId);
       if (!job || job.status === "cancelled") { await ctx.db.patch(task._id, { status: "cancelled" }); continue; }
       const attempt = task.attempt + 1;
       await ctx.db.patch(task._id, { status: "running", attempt, worker, leaseUntil: Date.now() + LEASE_MS });
-      await ctx.db.patch(task.jobId, { stageMessage: "Media worker is preparing the demo", updatedAt: Date.now() });
+      await ctx.db.patch(task.jobId, { stageMessage: "Media worker is preparing your lesson", updatedAt: Date.now() });
       await ctx.scheduler.runAfter(LEASE_MS, internal.media.recover, { taskId: task._id, attempt });
-      return { taskId: task._id, attempt, fixtureVersion: task.fixtureVersion };
+      return { taskId: task._id, attempt, fixtureVersion: task.fixtureVersion, projectJson: task.projectJson, provenanceJson: task.provenanceJson };
     }
     return null;
   },
@@ -96,7 +97,7 @@ export const recover = internalMutation({
     if (task.leaseUntil > Date.now()) { await ctx.scheduler.runAt(task.leaseUntil, internal.media.recover, { taskId, attempt }); return null; }
     const failed = attempt >= MAX_ATTEMPTS;
     await ctx.db.patch(taskId, { status: failed ? "failed" : "queued", worker: undefined, leaseUntil: 0 });
-    if (job) await ctx.db.patch(job._id, { status: failed ? "failed" : "rendering", stageMessage: failed ? "The demo could not finish after three worker attempts" : "Worker interrupted. Demo queued for a fresh attempt", updatedAt: Date.now() });
+    if (job) await ctx.db.patch(job._id, { status: failed ? "failed" : "rendering", stageMessage: failed ? "The video could not finish after three worker attempts" : "Worker interrupted. Video queued for a fresh attempt", updatedAt: Date.now() });
     return null;
   },
 });
@@ -139,7 +140,7 @@ export const complete = internalMutation({
       return null;
     }
     const task = await activeLease(ctx, args);
-    if (!Number.isFinite(args.result.durationSeconds) || args.result.durationSeconds < 15 || args.result.durationSeconds > 45) throw new ConvexError("Invalid demo duration");
+    if (!Number.isFinite(args.result.durationSeconds) || args.result.durationSeconds < (task.projectJson ? 60 : 15) || args.result.durationSeconds > (task.projectJson ? 90 : 45)) throw new ConvexError("Invalid video duration");
     const uploads = await ctx.db.query("mediaUploads").withIndex("by_taskId_and_attempt", q => q.eq("taskId", args.taskId).eq("attempt", args.attempt)).take(5);
     const expected = [[args.result.video, "video/mp4"], [args.result.project, "application/json"], [args.result.captions, "text/vtt"], [args.result.poster, "image/png"]] as const;
     if (new Set(expected.map(([id]) => id)).size !== 4) throw new ConvexError("Artifacts must be distinct");
@@ -150,7 +151,7 @@ export const complete = internalMutation({
       await ctx.db.patch(upload._id, { committed: true });
     }
     await ctx.db.patch(task._id, { status: "completed", result: args.result });
-    await ctx.db.patch(task.jobId, { status: "completed", duration: args.result.durationSeconds, stageMessage: "Original demo rendered with Kokoro narration. Free-text generation comes next.", updatedAt: Date.now() });
+    await ctx.db.patch(task.jobId, { status: "completed", duration: args.result.durationSeconds, stageMessage: task.projectJson ? "Your narrated lesson is ready. Sources and transcript are included." : "Original scripted demo rendered with Kokoro narration.", updatedAt: Date.now() });
     return null;
   },
 });

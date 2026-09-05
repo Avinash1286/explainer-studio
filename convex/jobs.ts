@@ -1,3 +1,5 @@
+import { cancel as cancelWorkflow, type WorkflowId } from "@convex-dev/workflow";
+import { components } from "./_generated/api";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireSession } from "./lib/session";
@@ -44,7 +46,7 @@ export const create = mutation({
     const now = Date.now();
     const jobId = await ctx.db.insert("jobs", {
       sessionId: session._id, topic, duration: args.duration, audience: args.audience,
-      status: "queued", stageMessage: "Brief saved. Video generation is being built in the next phase.",
+      status: "queued", stageMessage: "Brief saved. Start generation when the service is ready.",
       revision: 1, requestId: args.requestId, createdAt: now, updatedAt: now,
     });
     await ctx.db.insert("jobEvents", { jobId, kind: "created", message: "Lesson brief saved", createdAt: now });
@@ -62,6 +64,7 @@ export const cancel = mutation({
     if (job.status === "cancelled") return null;
     if (job.status === "completed" || job.status === "failed") throw new ConvexError("This lesson has already finished.");
     await ctx.db.patch(jobId, { status: "cancelled", stageMessage: "Lesson cancelled", updatedAt: Date.now() });
+    if (job.workflowId) await cancelWorkflow(ctx, components.workflow, job.workflowId as WorkflowId);
     const media = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).unique();
     if (media) await ctx.db.patch(media._id, { status: "cancelled" });
     await ctx.db.insert("jobEvents", { jobId, kind: "cancelled", message: "Cancelled by owner", createdAt: Date.now() });

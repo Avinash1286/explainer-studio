@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "scenes": 4,
+  "durationSeconds": 60.0,
+  "checks": [
+    "contiguous timeline",
+    "audio fits each scene",
+    "word timings bounded",
+    "H.264/AAC metadata verified"
+  ],
+  "input": "manually scripted renderer validation, not a live AI result"
+}

@@ -53,6 +53,8 @@ function ConnectedStudio() {
   const create = useMutation(api.jobs.create);
   const cancel = useMutation(api.jobs.cancel);
   const createSample = useMutation(api.media.createSample);
+  const generate = useMutation(api.generation.generate);
+  const availability = useQuery(api.generation.availability);
   const [token, setToken] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState("");
   useEffect(() => {
@@ -80,25 +82,31 @@ function ConnectedStudio() {
     save={async (brief) => { if (!token) throw new Error("No session"); return create({ ...brief, token }); }}
     cancel={async (jobId) => { if (!token) throw new Error("No session"); await cancel({ token, jobId }); }}
     sample={async (requestId) => { if (!token) throw new Error("No session"); return createSample({ token, requestId }); }}
+    generationEnabled={availability?.enabled ?? false}
+    generate={async jobId => { if (!token) throw new Error("No session"); await generate({ token, jobId }); }}
     resultPanel={(jobId) => token ? <MediaResult token={token} jobId={jobId} /> : null}
   />;
 }
 
 function MediaResult({ token, jobId }: { token: string; jobId: Id<"jobs"> }) {
   const result = useQuery(api.media.result, { token, jobId });
-  if (!result?.video) return null;
+  const details = useQuery(api.generation.details, { token, jobId });
+  const sources = details?.sources.length ? <details className="source-list"><summary>Research sources ({details.sources.length})</summary><ul>{details.sources.map(source => <li key={source.id}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul><small>Sources inform the script. Automated factual and frame review comes in the next phase.</small></details> : null;
+  if (!result?.video) return sources;
   return <div className="media-result">
-    <video controls preload="metadata" poster={result.poster || undefined} src={result.video} crossOrigin="anonymous" aria-label="Rendered plant energy demo">
+    <video controls preload="metadata" poster={result.poster || undefined} src={result.video} crossOrigin="anonymous" aria-label="Rendered explainer lesson">
       {result.captions ? <track kind="captions" src={result.captions} srcLang="en" label="English" /> : null}
     </video>
-    <p>Original scripted demo · {result.durationSeconds.toFixed(1)} seconds · Kokoro voice</p>
+    <p>{result.generated ? "AI-planned lesson" : "Original scripted demo"} · {result.durationSeconds.toFixed(1)} seconds · Kokoro voice</p>
     <div className="artifact-links"><a href={result.video} target="_blank" rel="noreferrer">Open video</a>{result.project ? <a href={result.project} target="_blank" rel="noreferrer">Project, transcript & sources</a> : null}{result.captions ? <a href={result.captions} target="_blank" rel="noreferrer">Captions</a> : null}</div>
-    <small>Illustrations by <a href="https://openmoji.org/">OpenMoji</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Stroke and fill animation adaptations. The candy icon represents sugar molecules.</small>
+    <small>Illustrations by <a href="https://openmoji.org/">OpenMoji</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Stroke and fill animation adaptations.</small>
+    {sources}
   </div>;
 }
 
-function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPanel }: {
-  jobs: Job[]; ready: boolean; connectionMessage: string;
+function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPanel, generate, generationEnabled = false }: {
+  jobs: Job[]; ready: boolean; connectionMessage: string; generationEnabled?: boolean;
+  generate?: (jobId: Id<"jobs">) => Promise<void>;
   save?: (brief: Brief) => Promise<Id<"jobs">>;
   cancel?: (id: Id<"jobs">) => Promise<void>;
   sample?: (requestId: string) => Promise<Id<"jobs">>;
@@ -127,8 +135,14 @@ function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPa
     const brief = pendingBrief?.topic === topic && pendingBrief.duration === duration && pendingBrief.audience === audience
       ? pendingBrief : { topic, duration, audience, requestId: crypto.randomUUID() };
     setPendingBrief(brief);
-    try { select(await save(brief)); setPendingBrief(null); }
+    try { const id = await save(brief); select(id); setPendingBrief(null); if (generationEnabled) await generate?.(id); }
     catch (err) { setError(friendlyError(err)); }
+    finally { setBusy(false); }
+  }
+  async function generateSelected() {
+    if (!selected || !generate || busy) return;
+    setBusy(true); setError("");
+    try { await generate(selected._id); } catch (err) { setError(friendlyError(err)); }
     finally { setBusy(false); }
   }
   async function cancelSelected() {
@@ -163,7 +177,7 @@ function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPa
         <header className="topbar"><div>Workspace <ChevronRight size={14} /><span>Create a lesson</span></div><span className="release-pill"><span /> In the making</span></header>
         <main>
           <div className="intro"><div className="eyebrow"><span /> A LITTLE CURIOSITY GOES A LONG WAY</div><h1>Big ideas.<br /><em>Clearly explained.</em></h1><p>Start with a question. Shape it into a short, illustrated lesson<br className="desktop-break" /> that makes the complicated feel simple.</p></div>
-          {showInfo ? <section className="info-banner"><button onClick={() => setShowInfo(false)} aria-label="Close explanation"><X size={17} /></button><strong>From a question to a visual lesson</strong><p>The finished app will research your topic, plan the diagrams, narrate and animate the explanation, then check the result. You can save your own topic as a brief and render our scripted animation demo now. Automatic research and topic generation come next.</p></section> : null}
+          {showInfo ? <section className="info-banner"><button onClick={() => setShowInfo(false)} aria-label="Close explanation"><X size={17} /></button><strong>From a question to a visual lesson</strong><p>Topic generation researches your question, plans supported scenes, selects illustrations and renders a narrated lesson. It becomes available after service setup is verified. You can save a brief and render the scripted demo now. Automated frame review comes next.</p></section> : null}
           <div className="creation-grid">
             <section className="brief-card" aria-labelledby="brief-heading">
               <div className="section-heading"><span className="step-number">01</span><h2 id="brief-heading">What are we explaining?</h2><PencilLine size={18} /></div>
@@ -175,8 +189,8 @@ function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPa
                 <div className="suggestions">{SUGGESTIONS.slice(0, 2).map((suggestion) => <button type="button" key={suggestion} onClick={() => { setTopic(suggestion); document.getElementById("topic")?.focus(); }}><Sparkles size={12} />{suggestion}</button>)}</div>
                 <div className="form-divider" />
                 <div className="settings-row"><fieldset><legend><Clock3 size={14} /> Lesson length</legend><div className="segments">{DURATION_PRESETS.map((value) => <button key={value} type="button" aria-pressed={duration === value} className={duration === value ? "selected" : ""} onClick={() => setDuration(value)}>{value}s</button>)}</div></fieldset><div className="audience-field"><label htmlFor="audience"><BookOpen size={14} /> Explain it for</label><select id="audience" value={audience} onChange={(event) => setAudience(event.target.value as "beginner" | "student")}><option value="beginner">A curious beginner</option><option value="student">A school student</option></select></div></div>
-                <button className="primary-button" type="submit" disabled={!ready || busy}>{busy ? <Loader2 size={17} className="spin" /> : <Plus size={17} />} Save lesson brief <ArrowRight size={17} /></button>
-                <p className="foundation-note">Your topic is saved as a brief.<br />Try the animation demo while topic generation is being built.</p>
+                <button className="primary-button" type="submit" disabled={!ready || busy}>{busy ? <Loader2 size={17} className="spin" /> : <Plus size={17} />} {generationEnabled ? "Generate lesson" : "Save lesson brief"} <ArrowRight size={17} /></button>
+                <p className="foundation-note">{generationEnabled ? "Research, narration and animation take a few minutes. Lesson length is a target." : "Topic generation is awaiting service setup. Save your brief or try the animation demo."}</p>
                 <div className={`connection-line ${ready ? "connected" : ""}`} role="status"><span />{connectionMessage}</div>
               </form>
             </section>
@@ -185,11 +199,11 @@ function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPa
               <StyleStudy />
               <div className="preview-note"><span className="small-check"><Check size={13} /></span><p>Illustrations that explain. A voice that guides.<br /><strong>Room for the idea to breathe.</strong></p></div>
               <div className="style-disclaimer">Original layout sketch · not a generated video</div>
-              <div className="sample-card"><strong>See the animation come to life</strong><p>Render a fresh copy of our scripted plant-energy demo with a real voice and three animated scenes.</p><button className="primary-button" type="button" disabled={!ready || busy} onClick={renderSample}><Layers3 size={17} /> Render demo lesson <ArrowRight size={17} /></button><small>This uses a fixed demo script. Generating from your own topic comes next.</small></div>
+              <div className="sample-card"><strong>See the animation come to life</strong><p>Render a fresh copy of our scripted plant-energy demo with a real voice and three animated scenes.</p><button className="primary-button" type="button" disabled={!ready || busy} onClick={renderSample}><Layers3 size={17} /> Render demo lesson <ArrowRight size={17} /></button><small>This uses a fixed demo script. Your own topic uses the separate generation pipeline.</small></div>
             </section>
           </div>
           {error ? <p className="error-banner" role="alert">{error}</p> : null}
-          {selected ? <section className="selected-brief" aria-live="polite"><div className="selected-top"><span className="eyebrow">YOUR LESSON BRIEF</span><span className={`status-badge ${selected.status}`}>{selected.status === "queued" ? "Brief saved" : selected.status}</span></div><h2>{selected.topic}</h2><p>{selected.stageMessage}</p>{resultPanel?.(selected._id)}{selected.status === "queued" ? <div className="pipeline">{PIPELINE_STAGES.map((stage, index) => <div key={stage.id}><span>{index + 1}</span><strong>{stage.label}</strong><small>{stage.description}</small></div>)}</div> : null}{selected.status !== "cancelled" && selected.status !== "completed" && selected.status !== "failed" ? <button className="text-button" disabled={busy} onClick={cancelSelected}><X size={14} /> Cancel this lesson</button> : null}</section> : null}
+          {selected ? <section className="selected-brief" aria-live="polite"><div className="selected-top"><span className="eyebrow">YOUR LESSON BRIEF</span><span className={`status-badge ${selected.status}`}>{selected.status === "queued" ? "Brief saved" : selected.status}</span></div><h2>{selected.topic}</h2><p>{selected.stageMessage}</p>{resultPanel?.(selected._id)}{selected.status === "queued" && generationEnabled ? <button className="primary-button" disabled={busy} onClick={generateSelected}>Generate this lesson <ArrowRight size={17} /></button> : null}{["researching", "planning", "rendering"].includes(selected.status) ? <div className="pipeline">{PIPELINE_STAGES.filter(stage => stage.id !== "reviewing").map((stage, index) => <div key={stage.id}><span>{index + 1}</span><strong>{stage.label}</strong><small>{stage.description}</small></div>)}</div> : null}{selected.status !== "cancelled" && selected.status !== "completed" && selected.status !== "failed" ? <button className="text-button" disabled={busy} onClick={cancelSelected}><X size={14} /> Cancel this lesson</button> : null}</section> : null}
           <section id="your-lessons" className="library-section"><div className="library-heading"><div><span className="eyebrow">YOUR NEXT EXPLANATION STARTS HERE</span><h2>Your lessons <span>{jobs.length.toString().padStart(2, "0")}</span></h2></div><span className="private-note">Saved to this browser’s workspace</span></div>
             {jobs.length ? <div className="lesson-list">{jobs.map((job) => <button key={job._id} className={`lesson-row ${selectedId === job._id ? "current" : ""}`} onClick={() => select(job._id)}><span className="lesson-icon"><FileText size={20} /></span><span className="lesson-copy"><strong>{job.topic}</strong><small>{job.duration}s · {job.audience === "student" ? "School student" : "Curious beginner"}</small></span><span className={`status-badge ${job.status}`}>{job.status === "queued" ? "Brief saved" : job.status}</span><ArrowRight size={17} /></button>)}</div> : <div className="empty-library"><div><FileText size={23} /></div><h3>A blank page is a good beginning.</h3><p>Your saved lesson briefs will appear here.<br />Start with one question above.</p></div>}
           </section>

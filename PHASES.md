@@ -6,8 +6,8 @@ The detailed H0–H6 acceptance gates remain in `plan.md`, section 11. This stat
 |---|---|---|
 | H0a: application foundation | Implemented | Public static app; real Convex create/list/cancel; ownership and quotas; worker heartbeat contract; automated checks and browser verification. |
 | H0b: external service and media qualification | Pending | Media runtime qualified on Zerops. NVIDIA, Cloudflare, Firecrawl, OpenAI and AgentMail account qualification, intended inbox and official hackathon log integration remain pending. |
-| H1: original rendered fixture | Next build milestone | Three scene layouts, licensed assets, Kokoro narration/timing, Remotion/FFmpeg, Convex media leases, upload and recovery. A playable 20–30-second original fixture is the exit gate. |
-| H2: topic to complete explainer | Pending | Real research, structured planning, icon retrieval, scene compilation, 60–90-second result, qualified provider fallback. |
+| H1: original rendered fixture | Complete | Deployed and verified; see `docs/media-phase.md`. |
+| H2: topic to complete explainer | Implemented; live qualification pending | Durable research/planning, provider fallback, icon vectors and variable-length rendering implemented. Owner will add credentials; see `docs/topic-generation.md`. |
 | H3: review, revision, delivery | Pending | OpenAI frame review, bounded repair, targeted revision, opt-in verified AgentMail delivery. |
 | H4: evaluation | Pending | Five unseen topics, real user trials, failure/recovery and access checks. |
 | H5: release evidence | Pending | Reproducible setup, final licenses, recorded demo, social/submission draft. |
@@ -33,12 +33,14 @@ The detailed H0–H6 acceptance gates remain in `plan.md`, section 11. This stat
 - A simulated worker stopped renewing its lease. Scheduled recovery reassigned the job and a real worker published attempt 2. See `docs/media-recovery-live.json`.
 - Scripted demo is explicitly labelled. General topic generation remains disabled.
 
-## Next implementation work: H2
+## H2 implementation evidence
 
-1. Qualify server-side Firecrawl, NVIDIA NIM and Cloudflare Workers AI credentials with actual requests and structured-output/fallback probes.
-2. Add a durable Convex research-to-script-to-scenes workflow with persisted evidence, bounded retries and visible progress.
-3. Populate a versioned icon embedding index and retrieve licensed icons for generated scene concepts.
-4. Compile validated generated projects into the existing media queue; reject unsupported or weakly sourced plans instead of substituting the fixture.
-5. Produce and verify a new 60?90-second explainer from a topic, including a deliberately exercised provider rate-limit fallback.
+- Durable Convex workflow: research, plan, semantic icon retrieval and media handoff.
+- Shared validation for NVIDIA and Cloudflare, bounded repair and transient-error fallback.
+- Provider setup command reads ignored `.env`, qualifies real APIs and initializes the icon vector index before enabling generation.
+- Isolated workflow tests use simulated providers. No live provider quality or general-generation success is claimed before credentials are added.
+- Existing scripted demo remains available while topic generation is disabled.
 
-H0 as originally planned is **not complete** until its remaining external-service gates pass. Each milestone ends with a tested commit, GitHub push, completion report and next gate. H3 adds frame review, revision and opt-in delivery after the full generation path works.
+## Next gate
+
+Add the four provider values described in `docs/topic-generation.md`, run development qualification, and verify a new 60-90-second lesson from the browser. Then qualify production. H3 adds frame review, revision and opt-in delivery after H2's live acceptance passes. H0b's OpenAI/AgentMail qualification is still pending.

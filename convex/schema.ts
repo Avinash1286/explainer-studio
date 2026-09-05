@@ -16,6 +16,7 @@ export default defineSchema({
     duration: v.number(), audience: v.union(v.literal("beginner"), v.literal("student")),
     status: jobStatus, stageMessage: v.string(), revision: v.number(),
     requestId: v.string(), createdAt: v.number(), updatedAt: v.number(),
+    workflowId: v.optional(v.string()), generation: v.optional(v.boolean()),
   }).index("by_sessionId_and_createdAt", ["sessionId", "createdAt"])
     .index("by_sessionId_and_requestId", ["sessionId", "requestId"])
     .index("by_status", ["status"]),
@@ -28,9 +29,15 @@ export default defineSchema({
   }).index("by_workerId", ["workerId"]),
   mediaTasks: defineTable({
     jobId: v.id("jobs"), fixtureVersion: v.string(),
+    projectJson: v.optional(v.string()), provenanceJson: v.optional(v.string()),
     status: v.union(v.literal("queued"), v.literal("running"), v.literal("completed"), v.literal("failed"), v.literal("cancelled")),
     attempt: v.number(), worker: v.optional(v.string()), leaseUntil: v.number(), createdAt: v.number(),
     result: v.optional(v.object({ video: v.id("_storage"), project: v.id("_storage"), captions: v.id("_storage"), poster: v.id("_storage"), durationSeconds: v.number() })),
   }).index("by_jobId", ["jobId"]).index("by_status_and_leaseUntil", ["status", "leaseUntil"]),
   mediaUploads: defineTable({ taskId: v.id("mediaTasks"), attempt: v.number(), storageId: v.id("_storage"), createdAt: v.number(), committed: v.boolean() }).index("by_taskId_and_attempt", ["taskId", "attempt"]),
+  generationArtifacts: defineTable({ jobId: v.id("jobs"), stage: v.string(), json: v.string(), createdAt: v.number() }).index("by_jobId_and_stage", ["jobId", "stage"]),
+  iconEmbeddings: defineTable({ iconId: v.string(), name: v.string(), space: v.string(), embedding: v.array(v.float64()) })
+    .index("by_space_and_iconId", ["space", "iconId"])
+    .vectorIndex("by_embedding", { vectorField: "embedding", dimensions: 768, filterFields: ["space"] }),
+  providerQualification: defineTable({ key: v.string(), passed: v.boolean(), reportJson: v.string(), updatedAt: v.number() }).index("by_key", ["key"]),
 });

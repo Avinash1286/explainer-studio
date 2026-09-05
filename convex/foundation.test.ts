@@ -111,7 +111,7 @@ describe("worker HTTP boundary", () => {
     it("distinguishes fixture rendering from free-text generation", async () => {
     const response = await backend().fetch("/health");
     expect(response.status).toBe(200);
-      expect(await response.json()).toMatchObject({ generationEnabled: false, phase: "media", fixtureGenerationEnabled: true });
+      expect(await response.json()).toMatchObject({ generationEnabled: false, phase: "topic-generation", fixtureGenerationEnabled: true });
   });
 
   it("fails closed when worker configuration is missing", async () => {

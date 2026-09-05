@@ -11,9 +11,11 @@ export const sceneSchema = z.object({
   takeaway: z.string().max(90),
 });
 export const projectSchema = z.object({
-  version: z.literal(1), id: z.literal(FIXTURE_VERSION), title: z.string(),
+  version: z.literal(1), id: z.string().regex(/^[a-zA-Z0-9-]{1,80}$/), title: z.string().min(1).max(100),
+  targetDuration: z.number().min(60).max(90).optional(),
+  origin: z.enum(["generated", "validation"]).optional(),
   voice: z.literal("af_heart"), speed: z.number().min(0.7).max(1.2),
-  scenes: z.array(sceneSchema).length(3),
+  scenes: z.array(sceneSchema).min(3).max(8),
   sources: z.array(z.object({ title: z.string(), url: z.string().url() })).max(10),
 });
 export type Scene = z.infer<typeof sceneSchema>;

@@ -1,0 +1,14 @@
+{
+  "totalSeconds": 120.7598451,
+  "synthesisSeconds": 40.71900000004098,
+  "renderSeconds": 71.615307,
+  "ttsPeakRssMb": null,
+  "durationSeconds": 60,
+  "frames": 1440,
+  "videoBytes": 3210520,
+  "videoSha256": "7781ca886a0e7d36710e1c97279e1bc2edbbf9ba90bfd0ee9cfcebdefecd1123",
+  "platform": "win32",
+  "node": "v24.15.0",
+  "remotion": "4.0.520",
+  "concurrency": 2
+}

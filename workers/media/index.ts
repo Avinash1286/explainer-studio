@@ -2,7 +2,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
-import { renderFixture } from "./render";
+import { renderFixture, renderProject } from "./render";
 
 const origin = process.env.CONVEX_SITE_URL;
 const token = process.env.WORKER_AUTH_TOKEN;
@@ -24,7 +24,7 @@ async function api<T>(body: Record<string, unknown>): Promise<T> {
 }
 async function heartbeat() {
   try {
-    const response = await fetch(new URL("/api/worker/heartbeat", url), { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ workerId, instanceId, version: "0.2.0", capabilities: ["kokoro", "remotion", "fixture-v1"] }), signal: AbortSignal.timeout(10_000) });
+    const response = await fetch(new URL("/api/worker/heartbeat", url), { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ workerId, instanceId, version: "0.3.0", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1"] }), signal: AbortSignal.timeout(10_000) });
     if (response.ok) lastHeartbeat = Date.now();
   } catch { console.error(JSON.stringify({ event: "heartbeat_failed" })); }
 }
@@ -35,11 +35,11 @@ async function poll() {
   let directory: string | undefined;
   let attemptLease: { taskId: string; attempt: number; worker: string } | undefined;
   try {
-    const task = await api<{ taskId: string; attempt: number; fixtureVersion: string } | null>({ op: "claim", worker });
+    const task = await api<{ taskId: string; attempt: number; fixtureVersion: string; projectJson?: string; provenanceJson?: string } | null>({ op: "claim", worker, protocol: 2 });
     if (!task) return;
-    if (task.fixtureVersion !== "plant-energy-v1") throw new Error("Unsupported fixture version");
     const lease = { taskId: task.taskId, attempt: task.attempt, worker };
     attemptLease = lease;
+    if (!["plant-energy-v1", "generated-v1"].includes(task.fixtureVersion)) throw new Error("Unsupported project version");
     const controller = new AbortController();
     active = controller;
     let message = "Preparing the media runtime";
@@ -55,7 +55,10 @@ async function poll() {
     const root = path.resolve("runs");
     directory = path.join(root, `${task.taskId}-${task.attempt}`);
     if (!directory.startsWith(root + path.sep)) throw new Error("Invalid task path");
-    const rendered = await renderFixture(directory, async next => { message = next; await renew(); controller.signal.throwIfAborted(); }, controller.signal);
+    const stage = async (next: string) => { message = next; await renew(); controller.signal.throwIfAborted(); };
+    const rendered = task.fixtureVersion === "generated-v1"
+      ? await renderProject(JSON.parse(task.projectJson || "null"), directory, stage, controller.signal, JSON.parse(task.provenanceJson || "null"))
+      : await renderFixture(directory, stage, controller.signal);
     message = "Uploading the video, captions, and project";
     await renew();
     const files = { video: ["video.mp4", "video/mp4"], project: ["project.json", "application/json"], captions: ["captions.vtt", "text/vtt"], poster: ["poster.png", "image/png"] } as const;
@@ -90,7 +93,7 @@ const server = createServer((request, response) => {
   if (request.url !== "/health") { response.writeHead(404); response.end(); return; }
   const ready = !stopping && lastHeartbeat > Date.now()-45_000;
   response.writeHead(ready ? 200 : 503, { "Content-Type": "application/json" });
-  response.end(JSON.stringify({ ready, phase: "media", capabilities: ["kokoro", "remotion", "fixture-v1"], busy: inFlight }));
+  response.end(JSON.stringify({ ready, phase: "topic-generation", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1"], busy: inFlight }));
 });
 await heartbeat();
 server.listen(Number(process.env.PORT || 3001), "0.0.0.0");

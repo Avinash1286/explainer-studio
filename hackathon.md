@@ -12,17 +12,17 @@ A single-topic explainer-video system for short educational lessons, using sourc
 
 ## Current working functionality
 
-Save a lesson brief, choose duration and audience, revisit it in the same browser, and cancel it. Render a fresh copy of an explicitly labelled, original 24.4-second scripted demo with narration and three illustrated layouts. Convex queues the media task; a deployed Zerops worker synthesizes and renders it, then publishes playable video, captions, poster and project/source JSON. Generating a new script from the user's topic is the next phase.
+Save a lesson brief, choose duration and audience, revisit it in the same browser, and cancel it. Render a fresh copy of an explicitly labelled, original 24.4-second scripted demo with narration and three illustrated layouts. Convex queues the media task; a deployed Zerops worker synthesizes and renders it, then publishes playable video, captions, poster and project/source JSON. The topic-to-video implementation is now present, but live generation stays disabled pending provider credentials and qualification.
 
-Actual dependencies used: Next.js, TypeScript, React, Convex database/functions/scheduler, Convex static hosting and rate limiter, Lucide icons, bundled fonts, Kokoro 82M, 24 OpenMoji assets, Remotion/FFmpeg, and a Node/Python media worker on Zerops. Convex storage and scheduled mutations implement media execution and recovery. Convex Workflow is installed but not yet used for topic generation.
+Actual dependencies used: Next.js, TypeScript, React, Convex database/functions/scheduler, Convex static hosting and rate limiter, Lucide icons, bundled fonts, Kokoro 82M, 24 OpenMoji assets, Remotion/FFmpeg, and a Node/Python media worker on Zerops. Convex storage and scheduled mutations implement media execution and recovery. Convex Workflow now implements the topic pipeline; its live provider acceptance remains pending.
 
 ## Planned model and sponsor roles
 
 | Service | Intended role | Current integration status |
 |---|---|---|
-| Convex | Authoritative state, jobs, realtime UI, storage, workflow, vectors | Database/functions/hosting/rate limiting/storage and media recovery live; topic workflow and vectors pending |
-| NVIDIA NIM | Primary structured text planning | Pending credentials and qualification |
-| Cloudflare Workers AI | Qualified text backup; pinned icon embeddings | Pending credentials and qualification |
+| Convex | Authoritative state, jobs, realtime UI, storage, workflow, vectors | Database/functions/hosting/rate limiting/storage and media recovery live; topic workflow and vector schema implemented; live provider qualification pending |
+| NVIDIA NIM | Primary structured text planning | Adapter implemented; pending credentials and qualification |
+| Cloudflare Workers AI | Qualified text backup; pinned icon embeddings | Adapter implemented; pending credentials and qualification |
 | Firecrawl | Retrieve research evidence | Pending |
 | Kokoro 82M / Zerops | Self-hosted speech and media workers | CPU synthesis/rendering deployed and benchmarked on Zerops |
 | OpenMoji | Licensed illustration assets | 24 pinned, hashed SVG assets bundled with CC BY-SA attribution |
@@ -50,6 +50,12 @@ Deployed the media worker to a dedicated Zerops service (two shared CPUs, 4 GB R
 Validation: 21 backend tests, TypeScript, lint, static export and worker build passed. Frame ordering/determinism and timeline checks passed. A real development worker completed after a simulated worker lost its lease (attempt 2). The production UI played the Zerops result; video, project and captions links returned HTTP 200 with no browser runtime error observed. See `docs/media-phase.md` for reproduction and limitations.
 
 H1 uses a fixed original script. No Firecrawl, NVIDIA, Cloudflare, OpenAI or AgentMail calls are claimed in this phase. A generated sample is available in the app; the separate hackathon demo recording remains pending.
+
+## September 5, 2026 - H2 implementation
+
+Added a durable research/planning/retrieval workflow, common structured-output validation, primary-to-backup rate-limit routing, versioned Convex icon vector search, protocol-2 generated-project rendering and a safe `.env` provider setup command. Production remains gated until real qualification succeeds. The owner will supply credentials after implementation; simulated provider tests must not be represented as sponsor API usage.
+
+See `docs/topic-generation.md` for setup, tests and remaining live acceptance. The generated-project renderer is exercised separately with a scripted validation input. No Firecrawl, NVIDIA or Cloudflare production request is claimed yet.
 
 ## Remaining before submission
 

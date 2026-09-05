@@ -138,3 +138,8 @@ footer { display:flex; justify-content:space-between; margin-top:34px; padding:1
 .artifact-links { display: flex; flex-wrap: wrap; gap: 20px; margin: 16px 0; font-size: 13px; }
 .media-result small { font-size: 11px; line-height: 1.6; }
 .media-result a { text-decoration: underline; text-underline-offset: 3px; }
+
+.source-list { margin-top: 20px; font-size: 14px; line-height: 1.6; }
+.source-list summary { cursor: pointer; font-weight: 600; }
+.source-list li { margin: 8px 0; overflow-wrap: anywhere; }
+.source-list small { color: var(--muted); }
