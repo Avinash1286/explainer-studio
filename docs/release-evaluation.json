@@ -1,40 +1,393 @@
 {
-  "release": "0.5.4",
-  "codeCommit": "a31a963",
-  "startedAt": "2026-09-05T15:43:53.038Z",
-  "protocol": "Five topics registered before generation; frozen code; no operator recovery, no scene-specific templates, one configured automatic repair. Record all outcomes and manual inspection separately. User trials are not performed.",
+  "evaluatedRelease": "0.5.5",
+  "codeCommit": "58e1d0921a07544d612c5c0615dbf4a639eadb10",
+  "mediaVersion": "0.5.4",
+  "completedAt": "2026-09-05T16:20:50.729Z",
+  "protocol": "Five predeclared unseen topics, frozen authoring/review/media code, no operator retries or requested edits, one configured automatic repair. Separate development Windows and production Linux workers. No actual user trials.",
+  "automaticApprovals": 4,
+  "totalTopics": 5,
+  "firstRevisionApprovals": 3,
+  "manualQuality": "All final available scene boards and scripts inspected separately. Word-card labels and limited visual variety prevent treating four automated approvals as four polished examples. Only separately curated solar revision 3 is public.",
   "topics": [
     {
-      "topic": "How does rain form in a cloud?",
+      "topic": "How does a bicycle brake slow the wheel?",
       "duration": 60,
       "status": "failed",
-      "revision": 2
+      "revision": 2,
+      "message": "The video could not finish after three worker attempts",
+      "approved": false,
+      "reviews": [
+        {
+          "revision": 1,
+          "status": "rejected",
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "report": {
+            "scenes": [
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-1",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-2",
+                "visualPass": true
+              },
+              {
+                "factualPass": false,
+                "issues": [
+                  {
+                    "detail": "The narration claims friction amount relies on normal force from the pads and the coefficient of friction of the pad and rim/disc materials (F = μN). This specific relationship is not stated in any of the supplied sources.",
+                    "kind": "factual",
+                    "repair": "Revise the narration to say that friction depends on how hard the pads are pressed and the materials involved, without invoking the normal force and coefficient formula, or add a source that explains this relationship.",
+                    "sceneId": "scene-3"
+                  }
+                ],
+                "sceneId": "scene-3",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-4",
+                "visualPass": true
+              }
+            ],
+            "summary": "Scenes 1, 2, and 4 are supported by the sources; scene 3 introduces the friction formula (normal force × coefficient) which is not present in the supplied texts and needs revision or citation. The video explains bicycle braking through four scenes: rider initiates braking (lever, cable, arms), pads contact surface (arms, pads, rim), friction depends on force and material (friction, amount, normal force), and wheel slows as energy dissipates (kinetic energy, thermal energy, brake interface). All scenes are factually consistent with source text, use correct icons, and show proper directional arrows. No unsupported claims or misleading visuals are present."
+          }
+        }
+      ],
+      "deployment": "https://lovely-dalmatian-395.convex.cloud"
     },
     {
-      "topic": "How do plant roots take up water from soil?",
+      "topic": "How does a loudspeaker turn electricity into sound?",
       "duration": 60,
-      "status": "failed",
-      "revision": 2
+      "status": "completed",
+      "revision": 2,
+      "message": "Lesson passed automated source and rendered-frame review. Ready to watch or email.",
+      "approved": true,
+      "benchmark": {
+        "totalSeconds": 149.42094290000014,
+        "synthesisSeconds": 17.42200000002049,
+        "renderSeconds": 115.30620619999989,
+        "ttsPeakRssMb": null,
+        "ttsCacheHits": 3,
+        "durationSeconds": 60,
+        "frames": 1440,
+        "videoBytes": 1556688,
+        "videoSha256": "74c28a6c729442945b1642382fd3641622b09be1e587963d489167883add8b83",
+        "platform": "win32",
+        "node": "v24.15.0",
+        "remotion": "4.0.520",
+        "concurrency": 2
+      },
+      "reviews": [
+        {
+          "revision": 2,
+          "status": "passed",
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "report": {
+            "scenes": [
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-1",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-2",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-3",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-4",
+                "visualPass": true
+              }
+            ],
+            "summary": "All four scenes accurately describe the loudspeaker's operation: signal to coil, electromagnet formation, coil movement via attraction/repulsion to permanent magnet, and cone vibration producing sound waves. The video explains how a loudspeaker converts electrical signals into sound through a sequence: an audio signal enters a voice coil, creating an electromagnet that moves a coil against a fixed magnet, which then drives a cone to vibrate air molecules and produce sound. Each scene builds on the previous one with clear visual labels and directional arrows, maintaining logical flow and accurate terminology without false causal claims."
+          }
+        },
+        {
+          "revision": 1,
+          "status": "rejected",
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "report": {
+            "scenes": [
+              {
+                "factualPass": false,
+                "issues": [
+                  {
+                    "detail": "Narration calls the voice coil a 'loop of wire', implying a single turn, but sources describe it as a coil (multiple turns) of wire.",
+                    "kind": "factual",
+                    "repair": "Change 'loop of wire' to 'coil of wire' or 'wire coil' to reflect the multi-turn nature of the voice coil.",
+                    "sceneId": "scene-1"
+                  }
+                ],
+                "sceneId": "scene-1",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-2",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-3",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-4",
+                "visualPass": true
+              }
+            ],
+            "summary": "Scenes 2-4 are accurate; scene 1 incorrectly describes the voice coil as a single loop of wire instead of a multi-turn coil. The video explains how a loudspeaker converts electrical signals into sound through a sequence: an audio signal enters a voice coil, creating an electromagnet that moves a coil against a fixed magnet, which then vibrates a cone to produce sound waves in air. The diagram correctly labels components and shows directional relationships without implying incorrect causal links like seedling pollinating a bee. All takeaways are complete and arrows are properly directed. No unsupported claims or misleading visuals are present."
+          }
+        }
+      ],
+      "deployment": "https://lovely-dalmatian-395.convex.cloud"
     },
     {
-      "topic": "Why does a black shirt feel warmer than a white shirt in sunlight?",
+      "topic": "Why does metal feel colder than wood at the same room temperature?",
       "duration": 60,
-      "status": "cancelled",
-      "revision": 1
+      "status": "completed",
+      "revision": 1,
+      "message": "Lesson passed automated source and rendered-frame review. Ready to watch or email.",
+      "approved": true,
+      "benchmark": {
+        "totalSeconds": 147.87854330000002,
+        "synthesisSeconds": 52.04700000002049,
+        "renderSeconds": 85.75430920000002,
+        "ttsPeakRssMb": null,
+        "ttsCacheHits": 0,
+        "durationSeconds": 60,
+        "frames": 1440,
+        "videoBytes": 1574859,
+        "videoSha256": "41d09593555a3cd21faacc1f3ef8f1f52f6b8d4d95a28e14043b7f2039b7563f",
+        "platform": "win32",
+        "node": "v24.15.0",
+        "remotion": "4.0.520",
+        "concurrency": 2
+      },
+      "reviews": [
+        {
+          "revision": 1,
+          "status": "passed",
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "report": {
+            "scenes": [
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-1",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-2",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-3",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-4",
+                "visualPass": true
+              }
+            ],
+            "summary": "All scenes accurately describe that metal feels colder than wood due to its higher thermal conductivity causing faster heat loss from skin, not because of temperature differences. Metal conducts heat quickly, lowering skin temperature fast; wood conducts slowly, so skin loses less heat. Cold sensation depends on heat loss rate, not object temperature."
+          }
+        }
+      ],
+      "deployment": "https://lovely-dalmatian-395.convex.cloud"
     },
     {
-      "topic": "How does a flashlight use a battery to make light?",
+      "topic": "Why does salt dissolve in water?",
       "duration": 60,
-      "status": "cancelled",
-      "revision": 1
+      "status": "completed",
+      "revision": 1,
+      "message": "Lesson passed automated source and rendered-frame review. Ready to watch or email.",
+      "approved": true,
+      "benchmark": {
+        "totalSeconds": 219.450195054,
+        "synthesisSeconds": 73.16514392499812,
+        "renderSeconds": 132.3310284820001,
+        "ttsPeakRssMb": 2521.5234375,
+        "ttsCacheHits": 0,
+        "durationSeconds": 60,
+        "frames": 1440,
+        "videoBytes": 1582412,
+        "videoSha256": "7166f068e2acaab00c4691b578347716b8a629ba729664a5edf8c6f5c77af564",
+        "platform": "linux",
+        "node": "v22.23.1",
+        "remotion": "4.0.520",
+        "concurrency": 2
+      },
+      "reviews": [
+        {
+          "revision": 1,
+          "status": "passed",
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "report": {
+            "scenes": [
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-1",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-2",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-3",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-4",
+                "visualPass": true
+              }
+            ],
+            "summary": "All narration statements accurately reflect the source material regarding salt's ionic lattice, water polarity, hydration shells, solubility limit, and resulting conductive, salty solution. Salt dissolves in water as polar water molecules attract and hydrate sodium and chloride ions, breaking the crystal lattice until solubility limits the amount of ions that can be accommodated, resulting in a salty, conductive aqueous solution."
+          }
+        }
+      ],
+      "deployment": "https://wooden-pheasant-677.convex.cloud"
     },
     {
-      "topic": "Why does a puddle shrink on a warm day?",
+      "topic": "How does a refrigerator move heat out of food?",
       "duration": 60,
-      "status": "cancelled",
-      "revision": 1
+      "status": "completed",
+      "revision": 1,
+      "message": "Lesson passed automated source and rendered-frame review. Ready to watch or email.",
+      "approved": true,
+      "benchmark": {
+        "totalSeconds": 255.80441607500006,
+        "synthesisSeconds": 110.19164356286637,
+        "renderSeconds": 133.0862559150001,
+        "ttsPeakRssMb": 2436.8515625,
+        "ttsCacheHits": 0,
+        "durationSeconds": 60,
+        "frames": 1440,
+        "videoBytes": 1527011,
+        "videoSha256": "d0bfd40fd7a4d4f7ca715388a1eb39e11e36bc1c844c2f7e88cf068e9aabb131",
+        "platform": "linux",
+        "node": "v22.23.1",
+        "remotion": "4.0.520",
+        "concurrency": 2
+      },
+      "reviews": [
+        {
+          "revision": 1,
+          "status": "passed",
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "report": {
+            "scenes": [
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-1",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-2",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-3",
+                "visualPass": true
+              },
+              {
+                "factualPass": true,
+                "issues": [],
+                "sceneId": "scene-4",
+                "visualPass": true
+              }
+            ],
+            "summary": "All narration statements match the supplied sources; no factual errors found. The video explains refrigerator heat transfer: food starts warm, refrigerant evaporates to absorb heat, gas is compressed and condensed to release heat outside, then expands to repeat the cycle."
+          }
+        }
+      ],
+      "deployment": "https://wooden-pheasant-677.convex.cloud"
     }
   ],
-  "abortedAt": "2026-09-05T16:03:20.720Z",
-  "outcome": "Superseded after identified defects; release target not met"
+  "previousAbortedBatch": {
+    "release": "0.5.4",
+    "codeCommit": "a31a963",
+    "startedAt": "2026-09-05T15:43:53.038Z",
+    "protocol": "Five topics registered before generation; frozen code; no operator recovery, no scene-specific templates, one configured automatic repair. Record all outcomes and manual inspection separately. User trials are not performed.",
+    "topics": [
+      {
+        "topic": "How does rain form in a cloud?",
+        "duration": 60,
+        "status": "failed",
+        "revision": 2
+      },
+      {
+        "topic": "How do plant roots take up water from soil?",
+        "duration": 60,
+        "status": "failed",
+        "revision": 2
+      },
+      {
+        "topic": "Why does a black shirt feel warmer than a white shirt in sunlight?",
+        "duration": 60,
+        "status": "cancelled",
+        "revision": 1
+      },
+      {
+        "topic": "How does a flashlight use a battery to make light?",
+        "duration": 60,
+        "status": "cancelled",
+        "revision": 1
+      },
+      {
+        "topic": "Why does a puddle shrink on a warm day?",
+        "duration": 60,
+        "status": "cancelled",
+        "revision": 1
+      }
+    ],
+    "abortedAt": "2026-09-05T16:03:20.720Z",
+    "outcome": "Superseded after identified defects; release target not met"
+  },
+  "postEvaluation": "Release 0.5.6 changes only media timing/layout. Its focused regression is separate; the bicycle failure remains in this denominator."
 }

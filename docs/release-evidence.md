@@ -1,4 +1,4 @@
-# Release 0.5.5 acceptance evidence
+# Release 0.5.6 acceptance evidence
 
 Recorded September 5, 2026. This report separates implementation, automated checks and actual model output. It is not a claim of perfect factual accuracy or confirmed hackathon eligibility.
 
@@ -6,7 +6,7 @@ Recorded September 5, 2026. This report separates implementation, automated chec
 
 All three remaining implementation workstreams are present: robust source-grounded authoring and review; the complete revision/download/share workflow; and deployment, evaluation and recording preparation. AgentMail code is implemented, but live delivery remains externally blocked.
 
-- `npm run check` passed on 0.5.5: 79 tests across 11 files, TypeScript, ESLint, Next static export and Node media bundles.
+- `npm run check` passed on 0.5.6: 80 tests across 11 files, TypeScript, ESLint, Next static export and Node media bundles.
 - Tests cover ownership, quotas, cancellation, stale-worker fencing, provider fallback, exact evidence identity, cue/edge ordering, review coverage, bounded recovery, unchanged scenes, approved-version sharing and revocation.
 - Real NVIDIA reasoning caught the distinction between a 27.3-day lunar orbit and a 29.5-day phase cycle; a non-reasoning review had missed it. The bounded reasoning qualification completed in 17 seconds. This is one calibration example, not proof of general accuracy.
 - Cloudflare's daily free allocation returned 429 during this session. Actual image review fell back to NVIDIA Nemotron Nano Omni using decoded JPEG bytes. No OpenAI API calls or paid quota upgrades were introduced.
@@ -55,11 +55,11 @@ The owner records the under-three-minute demo, gathers real user feedback and po
 
 ## Final activation record
 
-Production generation is enabled; `/api/health` returns `generationEnabled:true`. The exact approved solar revision 3 is published at https://wooden-pheasant-677.convex.site/lesson/index.html?example=solar-cells . All four end boards were inspected. The gallery and player work in a fresh browser at desktop and 390-pixel mobile width without horizontal overflow. A fresh public Generate-button lesson is still being checked.
+Production generation is enabled; `/api/health` returns `generationEnabled:true`. The exact approved solar revision 3 is published at https://wooden-pheasant-677.convex.site/lesson/index.html?example=solar-cells . All four end boards were inspected. The gallery and player work in a fresh browser at desktop and 390-pixel mobile width without horizontal overflow. A fresh public Generate-button lesson completed, with its separate manual limitations recorded below.
 
 Release commit `a31a963` passed a clean-install Vercel build: 76 tests, TypeScript, lint, static export and worker bundles. Deployment: https://explainer-studio-checks-lodya2gls-avinash1286s-projects.vercel.app (Ready). The final five-topic fixed-code evaluation is recorded in `release-evaluation.json`; it is separate from the earlier mixed-code runs.
 
-Solar revision 3: 60 seconds, 1440 frames, 273.60 seconds media processing, 2184 MiB peak Python TTS RSS, SHA-256 `2ea97106020fd1e760962e5db542b3565017084d187dd4d1933ce59bb217a506`. Cache was cold after the worker deployment; no production cache-hit claim is made for this revision. EIA, DOE and Wikipedia source links returned HTTP 200; two other source servers timed out on this host�s HEAD checks. Their research excerpts remain stored, but current reachability is not claimed.
+Solar revision 3: 60 seconds, 1440 frames, 273.60 seconds media processing, 2184 MiB peak Python TTS RSS, SHA-256 `2ea97106020fd1e760962e5db542b3565017084d187dd4d1933ce59bb217a506`. Cache was cold after the worker deployment; no production cache-hit claim is made for this revision. EIA, DOE and Wikipedia source links returned HTTP 200; two other source servers timed out on this host's HEAD checks. Their research excerpts remain stored, but current reachability is not claimed.
 
 
 ## Content-first hardening
@@ -70,4 +70,32 @@ Release 0.5.5 writes the explanation before choosing natural-language visual con
 
 Stopping the superseded batch also exposed a real cancellation bug: the planning workflow can be complete while media remains active. Cancellation now checks workflow status before cancelling it, so a completed planner cannot roll back the media cancellation. A real-workflow regression covers the transition and rejects late worker renewals.
 
-The media runtime remains 0.5.4 because these changes are in backend authoring, repair and cancellation. Final release evaluation follows these corrections.
+For the 0.5.5 evaluation, the media runtime remained 0.5.4 because those changes were in backend authoring, repair and cancellation. The later renderer-only correction is documented below.
+
+## Final five-topic result
+
+The predeclared five-topic test ran against commit `58e1d09` (backend 0.5.5, media 0.5.4). Both lanes finished. There were **4/5 automated approvals**: salt, refrigerator and metal/wood passed revision 1; loudspeaker passed revision 2 after its one automatic repair. Bicycle failed revision 2 because its 39-second synthesized narration exceeded the old allowed silent-hold range for a 60-second target. No operator recovery or requested edit was used in this batch. The earlier aborted 0.5.4 batch is preserved inside `release-evaluation.json`.
+
+All available final scene boards and scripts were inspected separately. These are mostly explanatory word cards; some labels were weak or broke awkwardly across lines, and an older long heading approached the edge. They are not four polished showcase examples or four real user trials. The separately inspected solar revision 3 remains the sole public example.
+
+Media processing for successful results ranged from 147.88 to 255.80 seconds, excluding research/planning/queue/review. The loudspeaker repair reused three unchanged narration scenes. Development used Windows and production used Linux; timings are not a controlled cross-platform comparison.
+
+The public Generate-button ice lesson also completed revision 1 with a 75-second video on production, proving the public entry flow. Manual inspection rejected its older, irrelevant visual concepts; it is not published. The content-first authoring correction followed this result.
+
+## Final renderer correction
+
+Release 0.5.6 keeps the evaluated authoring and review code. It reserves the actual padded width for titles, reduces long-heading type size and uses smaller type for long word-card labels. The real metal/wood output was re-rendered as regression stills: the long title and `Temperature` label now fit. Concise repairs can use up to three seconds per scene to read the finished board while retaining the existing 0.8-1.25 tempo bounds. Excessively short or long narration still fails; no script or scientific claim is invented to fill time.
+
+The bicycle timing regression is a separate replay of the exact failed input, not a change to the five-topic denominator. Its outcome and final deployment verification are recorded below.
+
+## External gates before claiming full hackathon readiness
+
+The read-only AgentMail check returned **HTTP 403 `missing_permission`**. The local configuration has a key but no `AGENTMAIL_INBOX_ID` or `AGENTMAIL_WEBHOOK_SECRET`. A permitted key, matching inbox/webhook configuration and an owner-consented verification/delivery test remain necessary. No email or webhook registration was performed.
+
+The official event names OpenAI in its sponsor-stack criterion. This release respects the owner's NVIDIA/Cloudflare-only inference requirement, so eligibility and sponsor scoring remain unconfirmed. The owner must obtain clarification, record the demo, gather real user feedback and submit/post the actual entry. The core app is available for recording now; this is not a claim that those external requirements are complete.
+
+## Renderer regression outcome
+
+The exact failed bicycle revision 2 rendered locally on 0.5.6 without changing narration: 1440 frames / 60-second timeline, 60.1-second probed MP4 container, 118.23 seconds processing with four cached narration scenes. All scene boundaries and predicted word timings fit. SHA-256: `542129213b5d4f5e9071c90e00eb18500a9cea03747b1f6864757930ab7bee1e`. See `renderer-056-regression.json`. This focused replay was not uploaded as an approved lesson and does not turn the frozen evaluation into 5/5.
+
+Commit `58e1d09` passed Vercel's clean-install checks (79 tests plus full builds) at https://explainer-studio-checks-n85loye45-avinash1286s-projects.vercel.app . Local 0.5.6 checks passed 80 tests and all builds; final Git/Vercel deployment status is verified at handoff.

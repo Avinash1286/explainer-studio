@@ -80,7 +80,7 @@ Provider migration acceptance: the development backend stored a real Cloudflare 
 Implemented bounded NVIDIA/Cloudflare invalid-output fallback, source-ID repair compilation, canonical icon/cue constraints, optional-sentence duration fitting, incomplete-takeaway rejection, one audited operator recovery, and a resumable local repair/render/review CLI. 62 tests and builds pass. A real repaired clip rendered in 150.84 seconds on Windows; Cloudflare frame review returned 429 and manual inspection rejected its incomplete takeaway and diagram semantics. A fresh water-cycle test failed during planning. No new approval, email, H3 acceptance completion or sponsor-eligibility confirmation is claimed. Production generation stays disabled. See docs/repair-acceptance.md.
 
 
-## Final three implementation workstreams � September 5, 2026
+## Final three implementation workstreams - September 5, 2026
 
 Release 0.5.4 adds compact source-ID authoring, literal icons/word cards, explicit directed relationships, independent reasoning-based factual review, real NVIDIA vision fallback, bounded recovery, approved-version sharing and a public example gallery. All inference uses NVIDIA/Cloudflare, with local Kokoro on Zerops. No OpenAI model API or GitHub Actions is used.
 
@@ -89,6 +89,12 @@ The exact local release check passed 76 tests, TypeScript, lint, web export and 
 AgentMail inbox access returns 403 and no consented email test has happened. The owner will record the demo. No user-trial feedback, social post, final submission or sponsor-eligibility confirmation is invented. docs/demo-runbook.md and docs/submission-draft.md provide the recording/submission preparation.
 
 
-## Content and cancellation hardening � release 0.5.5
+## Content and cancellation hardening - release 0.5.5
 
 Live testing found icon-conditioned filler, unnecessary scene rewrites during repair, and a cancellation error after the planner had already completed. The planner now writes content before selecting visuals, repairs receive original scenes and preserve correct text/length, and cancellation checks workflow state before fencing media. 79 tests plus type, lint and builds passed. The tracked topic evaluator stores resumable private workspaces and sanitized public results; no mail or operator recovery is involved. Failed and interrupted earlier batches are retained. The public solar revision 3 is manually inspected and available in the gallery, and public generation is enabled. Final evaluation outcomes remain in docs/release-evidence.md rather than being inferred from passing tests.
+
+## September 5 - final three-workstream acceptance
+
+Release 0.5.6 passes 80 tests and the complete local check. The predeclared five-topic run on 0.5.5 reached 4/5 automatic approvals without operator retries or requested edits; three passed initially and one after automatic repair. The failed bicycle timing case remains in the report. Manual inspection found limited visual variety and label layout issues, so only the separately curated solar example is public. A focused 0.5.6 renderer correction improves long titles/labels and permits bounded reading holds without changing evaluated authoring/review logic.
+
+Implemented: provider failover, source and actual-frame review, bounded repair, durable media jobs, cancellation, scene editing, narration reuse, downloads, approved-version sharing/revocation, public example, deployment checks, evaluation CLI, recording guide and submission draft. AgentMail live acceptance remains blocked by `missing_permission` and absent inbox/webhook configuration. No OpenAI inference, GitHub Actions, emails, social posts or final submission were added. See docs/release-evidence.md for final deployment and regression results.

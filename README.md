@@ -2,7 +2,7 @@
 
 Turn a question into a short illustrated lesson with research, narration, captions, review and targeted revisions.
 
-**Release candidate 0.5.5.** The final three implementation workstreams are present. Live evaluation and production activation are recorded separately in [release evidence](docs/release-evidence.md); a passing build is not a claim of perfect generated content. AgentMail live delivery still needs working inbox credentials and a consented test.
+**Release candidate 0.5.6.** The final three implementation workstreams are present. The five-topic evaluation reached 4/5 automated approvals, with manual visual limitations recorded in [release evidence](docs/release-evidence.md). AgentMail live delivery still needs working inbox credentials and a consented test. Start your recording with the [demo runbook](docs/demo-runbook.md).
 
 - [Public app](https://wooden-pheasant-677.convex.site/)
 - [Phase status](PHASES.md), [architecture and reference study](plan.md), [actual hackathon log](hackathon.md)

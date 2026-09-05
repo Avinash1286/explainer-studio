@@ -1,0 +1,26 @@
+{
+  "release": "0.5.6",
+  "passed": true,
+  "kind": "Focused renderer regression replay of the exact failed bicycle revision 2; not a new approved lesson or a change to the frozen evaluation score.",
+  "speechSeconds": 39,
+  "durationSeconds": 60.1,
+  "frames": 1440,
+  "narrationUnchanged": true,
+  "timing": "Kokoro predicted token durations; not forced alignment; audio and predicted times adjusted by tempo 0.80000; scene holds 2.813s",
+  "benchmark": {
+    "totalSeconds": 118.2285256,
+    "synthesisSeconds": 0.045999999972991645,
+    "renderSeconds": 93.44185309999999,
+    "ttsPeakRssMb": null,
+    "ttsCacheHits": 4,
+    "durationSeconds": 60,
+    "frames": 1440,
+    "videoBytes": 1434995,
+    "videoSha256": "542129213b5d4f5e9071c90e00eb18500a9cea03747b1f6864757930ab7bee1e",
+    "platform": "win32",
+    "node": "v24.15.0",
+    "remotion": "4.0.520",
+    "concurrency": 2
+  },
+  "videoSha256": "542129213b5d4f5e9071c90e00eb18500a9cea03747b1f6864757930ab7bee1e"
+}

@@ -25,4 +25,4 @@
 
 Official event: https://www.convex.dev/hackathons/all-gas. Check the live VibeApps form and deadline before submission. No final entry, social post, or demo video has been submitted by this task.
 
-Official submission deadline checked September 5: September 22, 2026 at 12:00 PM Pacific (September 23 at 00:45 Nepal time). Submit on VibeApps. Registration and participant eligibility remain the owner�s responsibility.
+Official submission deadline checked September 5: September 22, 2026 at 12:00 PM Pacific (September 23 at 00:45 Nepal time). Submit on VibeApps. Registration and participant eligibility remain the owner's responsibility.

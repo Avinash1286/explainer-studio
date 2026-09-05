@@ -21,7 +21,7 @@ Convex owns job state, checkpoints, retries, quotas, ownership, icon vectors, re
 1. `npm ci` followed by `npm run check`. Tests use isolated providers; they do not send mail or prove live model accuracy.
 2. `npx convex dev --once` for the development backend; `npx convex deploy --yes` for production.
 3. `npx @convex-dev/static-hosting deploy --dist out --build-command "npm run build:web" --skip-convex`. This builds against the production Convex URL rather than uploading a dev bundle.
-4. Push the Zerops `mediaworker` setup in `zerops.yaml`. Check service ACTIVE and a fresh `workers` heartbeat. Version 0.5.4 supports protocol 5, named causal edges and text cards. A protocol-4 worker cannot claim a text-card job.
+4. Push the Zerops `mediaworker` setup in `zerops.yaml`. Check service ACTIVE and a fresh `workers` heartbeat. Version 0.5.6 supports protocol 5, named causal edges and text cards. A protocol-4 worker cannot claim a text-card job.
 5. Open `/api/health` on the public site. Check actual generation readiness, not just HTTP 200. The readiness query also requires qualified provider configuration and the complete embedding catalog.
 6. Generate one real production question; inspect the final video, captions, source links, review, revision, public share and revoke behavior. Only publish manually inspected approved examples through `showcase:publish`.
 7. Push GitHub and verify Vercel's `explainer-studio-checks` build for that exact commit. Local success does not imply a passing remote build.
@@ -61,4 +61,4 @@ node scripts/evaluate-topics.mjs --deployment https://YOUR.convex.cloud --out ru
 node scripts/evaluate-topics.mjs --deployment https://YOUR.convex.cloud --out runs/evaluation --resume
 ```
 
-`workspace.json` contains a private creator token and stays under ignored runs/. Share only the sanitized report.json after reviewing it. A stopped CLI does not cancel backend jobs. Use the app�s cancel action if cancellation is intended. `--indices 0,2,4` selects a predeclared subset for separate identical deployments; report the combined denominator and both runtime platforms. Do not count automatic approvals as manual quality passes or change topics after observing failures.
+`workspace.json` contains a private creator token and stays under ignored runs/. Share only the sanitized report.json after reviewing it. A stopped CLI does not cancel backend jobs. Use the app's cancel action if cancellation is intended. `--indices 0,2,4` selects a predeclared subset for separate identical deployments; report the combined denominator and both runtime platforms. Do not count automatic approvals as manual quality passes or change topics after observing failures.
