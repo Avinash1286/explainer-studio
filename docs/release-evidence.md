@@ -99,3 +99,9 @@ The official event names OpenAI in its sponsor-stack criterion. This release res
 The exact failed bicycle revision 2 rendered locally on 0.5.6 without changing narration: 1440 frames / 60-second timeline, 60.1-second probed MP4 container, 118.23 seconds processing with four cached narration scenes. All scene boundaries and predicted word timings fit. SHA-256: `542129213b5d4f5e9071c90e00eb18500a9cea03747b1f6864757930ab7bee1e`. See `renderer-056-regression.json`. This focused replay was not uploaded as an approved lesson and does not turn the frozen evaluation into 5/5.
 
 Commit `58e1d09` passed Vercel's clean-install checks (79 tests plus full builds) at https://explainer-studio-checks-n85loye45-avinash1286s-projects.vercel.app . Local 0.5.6 checks passed 80 tests and all builds; final Git/Vercel deployment status is verified at handoff.
+
+## Verified deployment handoff
+
+Runtime release commit `020712c` is pushed to the public main branch. Its Vercel deployment https://explainer-studio-checks-f0fim0q5k-avinash1286s-projects.vercel.app is Ready after a clean install, 80 tests, TypeScript, lint, static export and worker builds. GitHub Actions is disabled at repository level.
+
+Zerops mediaworker is ACTIVE with an authenticated, fresh 0.5.6 heartbeat and all seven capabilities. Public `/`, `/api/health` and the solar example returned HTTP 200; health reports generation enabled. The frontend and backend retain the already verified generation/edit/share behavior; 0.5.6 changes the renderer, not the evaluated authoring/review code. Evaluation monitors and the temporary local media worker were stopped after completion. No private workspace state is included in the recording package.
