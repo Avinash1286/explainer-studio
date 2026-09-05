@@ -1,20 +1,20 @@
 # H2: topic-to-video pipeline
 
-Implementation is ready for provider qualification. Live NVIDIA, Cloudflare and Firecrawl acceptance is pending the owner's credentials. Production generation stays disabled until qualification passes.
+Development provider qualification passed using the owner's configured credentials. Full topic-to-video acceptance is in progress; production generation remains gated until that test passes.
 
 ## Pipeline
 
 1. The browser saves a session-owned lesson brief and starts generation when the service reports ready. Existing briefs have a separate start button. Start is idempotent; creation quotas are shared with demo jobs and active generation is capped at five jobs.
 2. Convex Workflow runs a Firecrawl v2 search with main-content Markdown. It requires at least two HTTPS sources on different hostnames and stores up to five bounded excerpts.
-3. NVIDIA Llama 3.3 70B plans four to eight scenes. Each scene has a supported layout, bounded labels, ordered narration cues and exact support quotations from retrieved source IDs. Narration length is bounded for the requested duration. At least two sources and two layout families are required.
+3. NVIDIA Nemotron 3 Super 120B A12B plans four, five or six scenes for 60, 75 or 90 seconds. A duration-specific schema requires 27-36 narration words per scene, a supported layout with the correct node count, and concepts from the available icon vocabulary. The model selects short exact quotations from a topic-ranked excerpt catalog. Source/quote pairs are checked against the original research. The compiler aligns cue inflections, label words and sunlight aliases to spoken words, then orders nodes by their cue. Unresolved or repeated cues fail validation. At least two sources and two layout families are required.
 4. Cloudflare BGE base embeds scene concepts in a pinned 768-dimensional, mean-pooled space. Convex vector search retrieves up to three icons per concept from the 24-asset licensed catalog. A text model selects only from those candidates. Missing candidates fail the plan rather than substituting unrelated assets.
 5. The immutable project and provenance enter the existing Convex media queue. A protocol-2 Zerops worker runs Kokoro, adjusts audio tempo within 0.8-1.25 of the original, compiles an exact 60/75/90-second timeline and renders MP4, captions, poster and project metadata.
 
-Completed steps are persisted as research, plan and project checkpoints. A replay reuses those artifacts. Cancellation stops the workflow and prevents late checkpoint writes and publication. Firecrawl and embedding steps get at most two workflow attempts; planning has one validation repair per provider. If a process dies after a provider responds but before checkpoint persistence, that external call may be repeated. Exactly-once billing is not claimed.
+Completed steps are persisted as research, plan and project checkpoints. A replay reuses those artifacts. Cancellation stops the workflow and prevents late checkpoint writes and publication. Firecrawl and embedding steps get at most two workflow attempts; planning has up to two validation repairs per provider. An authenticated operator can resume a failed pre-render plan with `generation:resumePlanning`; it reuses research and refuses jobs that already have a plan/project checkpoint. If a process dies after a provider responds but before checkpoint persistence, that external call may be repeated. Exactly-once billing is not claimed.
 
 ## Text fallback
 
-NVIDIA uses the hosted OpenAI-compatible endpoint with JSON mode. Cloudflare uses Workers AI REST with a JSON schema. Both outputs pass the same local Zod and semantic-structure checks. Primary 429, 408, network failures or 5xx responses switch to Cloudflare. Credential failures stop promptly. Invalid model output gets one repair and then stops; it does not silently weaken the schema.
+NVIDIA uses the hosted OpenAI-compatible endpoint with JSON mode and a guided schema. Cloudflare uses Workers AI REST with a JSON schema. Both outputs pass the same local Zod and semantic-structure checks; provider decoding is not trusted as a substitute for validation. Primary 429, 408, network failures or 5xx responses switch to Cloudflare. Credential failures stop promptly. Invalid model output gets up to two repairs with the preceding candidate and concise validation errors in a separate conversation turn, then stops.
 
 Qualification exercises a real primary request and a real backup request behind an injected primary 429. This proves router behavior without deliberately exhausting the account's rate limit. It does not claim that a naturally occurring upstream 429 was observed. Cross-job circuit-breaker cooldown and calibrated semantic retrieval thresholds remain future tuning work.
 
@@ -55,13 +55,13 @@ The qualification action is internal and accessible through authenticated admini
 
 ## Verification and remaining gate
 
-All 35 tests, TypeScript, lint, static export and worker build passed. The isolated test suite runs real Convex workflow/component logic with simulated provider HTTP responses. It covers primary rate-limit fallback, bounded repair, bad credentials, malformed embeddings, insufficient research, invented citations, cue/layout constraints, checkpoint replay, owner isolation, failure completion, cancellation and protocol-2 media handoff.
+The isolated test suite runs real Convex workflow/component logic with simulated provider HTTP responses. It covers primary rate-limit fallback, bounded repair, bad credentials, malformed embeddings, insufficient research, invented citations, cue/layout constraints, excerpt selection, checkpoint replay, operator recovery, owner isolation, failure completion, cancellation and protocol-2 media handoff. The current suite has 39 passing tests.
 
 A separate real Kokoro/Remotion render produced 1440 frames (60 seconds, 1280 x 720, H.264/AAC) in 120.76 seconds on the local Windows machine, using a manually authored test project. Audio fit and predicted word bounds passed; all four boards were sampled visually. See `topic-render-benchmark.json` and `topic-render-verification.json`. It is labelled scripted renderer validation. It is not evidence of live AI topic generation.
 
-The backend and frontend are deployed. Zerops reports worker version `0.3.0` with `generated-v1` capability and a successful readiness check. Browser save/reload/cancel and the disabled-generation setup state passed on desktop and mobile. GitHub Actions run `33961142979` could not start because of the account billing lock; local checks passed.
+The backend and frontend are deployed. Zerops reports worker version `0.3.0` with `generated-v1` capability and a successful readiness check. Browser save/reload/cancel and the disabled-generation setup state passed on desktop and mobile. GitHub Actions is now disabled and its workflow removed. Vercel Git integration on Hobby runs the complete validation command; its first build passed for commit `347bb57`. See [continuous validation](continuous-validation.md).
 
-The live H2 gate remains: configure credentials, qualify providers, submit an unseen topic through the development UI, verify source relevance and scene choices, play the resulting 60-90-second video, and record provider attempts plus generation timings. Then qualify production. H3 adds semantic/frame review, bounded revision and opt-in delivery.
+Live provider checks passed for NVIDIA text, real Cloudflare fallback behind an injected primary 429, Firecrawl research and 24 Cloudflare icon embeddings. See `provider-qualification-development.json`. The original NVIDIA Llama endpoint returned HTTP 410, prompting the model update. A complete plan passed a saved-research diagnostic; initial browser runs exposed cue and schema reliability issues that led to the compiler and constrained-planning fixes above. The remaining H2 gate is a completed browser topic-to-video run, content/playback inspection and production qualification. H3 adds semantic/frame review, bounded revision and opt-in delivery.
 
 ## Limits
 
@@ -79,4 +79,6 @@ The live H2 gate remains: configure credentials, qualify providers, submit an un
 - Embedding model/dimensions/pooling: https://developers.cloudflare.com/workers-ai/models/bge-base-en-v1.5/
 - Firecrawl search response and Markdown: https://docs.firecrawl.dev/api-reference/endpoint/search
 - NVIDIA hosted APIs: https://docs.api.nvidia.com/nim/reference/llm-apis
+- NVIDIA selected model: https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b
+- NVIDIA structured generation: https://docs.nvidia.com/nim/large-language-models/1.15.0/structured-generation.html
 - Convex Workflow API: installed `@convex-dev/workflow` 0.4.6 README and TypeScript declarations.

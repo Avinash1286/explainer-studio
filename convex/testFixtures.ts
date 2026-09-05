@@ -16,7 +16,7 @@ export const testDraft: Draft = {
   scenes: narration.map((text, i) => ({
     id: `water-${i}`, title: ["Water enters the air", "Vapor and drops", "Water falls as rain", "The cycle continues"][i],
     layout: i === 1 ? "comparison" : i === 2 ? "relationship" : "process", narration: text,
-    nodes: cues[i].map(word => ({ concept: word, label: word, cue: word })),
+    nodes: cues[i].map(word => ({ concept: ({ air: "cloud", drops: "water", rain: "water" } as Record<string, string>)[word] || word, label: word, cue: word })),
     takeaway: "Water moves and changes form.", evidence: [{ sourceId: i % 2 ? "source-2" : "source-1", quote: text.slice(0, 70) }],
   })),
 };

@@ -18,6 +18,20 @@ export const run = workflow.define({ args: { jobId: v.id("jobs") }, returns: v.n
 
 export const availability = query({ args: {}, handler: async ctx => ({ enabled: await generationReady(ctx) }) });
 
+// Operator recovery after a planner fix. Research is reused; no public retry loop.
+export const resumePlanning = internalMutation({ args: { jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, { jobId }) => {
+  const job = await ctx.db.get(jobId);
+  if (!job?.generation || job.status !== "failed") throw new ConvexError("Only failed generation can resume");
+  const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(4);
+  if (!artifacts.some(a => a.stage === "research") || artifacts.some(a => a.stage !== "research")) throw new ConvexError("Only a failed pre-render plan can resume");
+  if (!await generationReady(ctx)) throw new ConvexError("Providers must be qualified");
+  await ctx.db.patch(jobId, { status: "planning", stageMessage: "Retrying the lesson plan using saved research", updatedAt: Date.now() });
+  const workflowId = await start(ctx, internal.generation.run, { jobId }, { onComplete: internal.generation.finished, context: { jobId }, startAsync: true });
+  await ctx.db.patch(jobId, { workflowId });
+  await ctx.db.insert("jobEvents", { jobId, kind: "planning_retry", message: "Operator resumed planning using saved research", createdAt: Date.now() });
+  return null;
+} });
+
 export const generate = mutation({
   args: { token: v.string(), jobId: v.id("jobs") }, returns: v.null(),
   handler: async (ctx, { token, jobId }) => {

@@ -29,11 +29,26 @@ function mockProviders() {
     if (String(url).includes("firecrawl")) return Response.json({ success: true, data: { web: testSources.map(s => ({ title: s.title, url: s.url, markdown: s.text })) } });
     if (String(url).includes("bge-base")) return Response.json({ success: true, result: { data: body.text.map(() => vector) } });
     const prompt = JSON.parse(body.messages[1].content);
-    const content = prompt.candidates ? { icons: prompt.candidates.map((c: { options: { icon: string }[] }) => c.options[0].icon) } : testDraft;
+    const content = prompt.candidates ? { icons: prompt.candidates.map((c: { options: { icon: string }[] }) => c.options[0].icon) }
+      : { ...testDraft, scenes: testDraft.scenes.map(s => ({ ...s, evidence: s.evidence.map(e => ({ ...e, quote: prompt.sources.find((source: { id: string }) => source.id === e.sourceId).quotes[0] })) })) };
     return Response.json({ choices: [{ message: { content: JSON.stringify(content) } }] });
   });
 }
 describe("durable topic generation", () => {
+  it("lets an operator resume a failed plan without repeating research or reopening rendered work", async () => {
+    vi.useFakeTimers();
+    const { t, jobId } = await setup(true); const fetcher = mockProviders(); vi.stubGlobal("fetch", fetcher);
+    await expect(t.mutation(internal.generation.resumePlanning, { jobId })).rejects.toThrow("Only failed");
+    await t.run(ctx => ctx.db.patch(jobId, { generation: true, status: "researching" }));
+    await t.action(internal.planning.researchTopic, { jobId });
+    await t.run(ctx => ctx.db.patch(jobId, { status: "failed" }));
+    await t.mutation(internal.generation.resumePlanning, { jobId });
+    await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("rendering");
+    expect(fetcher.mock.calls.filter(([url]) => String(url).includes("firecrawl"))).toHaveLength(1);
+    await t.run(ctx => ctx.db.patch(jobId, { status: "failed" }));
+    await expect(t.mutation(internal.generation.resumePlanning, { jobId })).rejects.toThrow("pre-render");
+  });
   it("stays disabled without qualified providers and does not spend requests", async () => {
     const { t, jobId } = await setup(); const fetcher = mockProviders(); vi.stubGlobal("fetch", fetcher);
     expect(await t.query(api.generation.availability, {})).toEqual({ enabled: false });

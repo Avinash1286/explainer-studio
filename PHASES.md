@@ -5,9 +5,9 @@ The detailed H0–H6 acceptance gates remain in `plan.md`, section 11. This stat
 | Milestone | Status | Evidence / next gate |
 |---|---|---|
 | H0a: application foundation | Implemented | Public static app; real Convex create/list/cancel; ownership and quotas; worker heartbeat contract; automated checks and browser verification. |
-| H0b: external service and media qualification | Pending | Media runtime qualified on Zerops. NVIDIA, Cloudflare, Firecrawl, OpenAI and AgentMail account qualification, intended inbox and official hackathon log integration remain pending. |
+| H0b: external service and media qualification | Partial | Media runtime qualified on Zerops. NVIDIA, Cloudflare and Firecrawl qualified in development. OpenAI/AgentMail, intended inbox and official hackathon log integration remain pending. |
 | H1: original rendered fixture | Complete | Deployed and verified; see `docs/media-phase.md`. |
-| H2: topic to complete explainer | Implemented; live qualification pending | Durable research/planning, provider fallback, icon vectors and variable-length rendering implemented. Owner will add credentials; see `docs/topic-generation.md`. |
+| H2: topic to complete explainer | Live acceptance in progress | Development providers and icon index qualified. Real planning diagnostics exposed and drove schema/cue repairs; full video acceptance is in progress. See `docs/topic-generation.md`. |
 | H3: review, revision, delivery | Pending | OpenAI frame review, bounded repair, targeted revision, opt-in verified AgentMail delivery. |
 | H4: evaluation | Pending | Five unseen topics, real user trials, failure/recovery and access checks. |
 | H5: release evidence | Pending | Reproducible setup, final licenses, recorded demo, social/submission draft. |
@@ -43,4 +43,4 @@ The detailed H0–H6 acceptance gates remain in `plan.md`, section 11. This stat
 
 ## Next gate
 
-Add the four provider values described in `docs/topic-generation.md`, run development qualification, and verify a new 60-90-second lesson from the browser. Then qualify production. H3 adds frame review, revision and opt-in delivery after H2's live acceptance passes. H0b's OpenAI/AgentMail qualification is still pending.
+Verify a complete new 60-90-second lesson from the browser using the configured providers, then qualify production. Vercel Git integration now supplies automated validation on Hobby; GitHub Actions is disabled. H3 adds frame review, revision and opt-in delivery after H2's live acceptance passes. H0b's OpenAI/AgentMail qualification is still pending.

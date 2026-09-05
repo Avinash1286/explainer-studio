@@ -4,7 +4,7 @@ import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { providerConfig } from "./lib/generationConfig";
 import { embed, research, structured } from "./lib/providers";
-import { draftSchema, EMBEDDING_SPACE, researchSchema, validateDraft, type Draft, type Research } from "../packages/contracts/generation";
+import { alignDraftCues, planningInput, EMBEDDING_SPACE, researchSchema, validateDraft, type Draft, type Research } from "../packages/contracts/generation";
 import { projectSchema } from "../packages/contracts/scene";
 import manifest from "../public/openmoji/manifest.json";
 
@@ -21,9 +21,10 @@ export const planScenes = internalAction({ args: { jobId: v.id("jobs") }, handle
   const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId });
   if (artifacts.some(a => a.stage === "plan")) return null;
   const sources: Research = researchSchema.parse(JSON.parse(artifacts.find(a => a.stage === "research")!.json).sources);
-  const schema = z.toJSONSchema(draftSchema);
-  const prompt = JSON.stringify({ task: `Create a ${job.duration}-second lesson for a ${job.audience}. Write ${Math.ceil(job.duration * 1.8)}-${Math.floor(job.duration * 2.4)} narration words in 4-8 scenes. At least two sources must be cited. Each scene needs one or two EXACT 20-240-character support quotes copied from sources, identified by sourceId. Paraphrase in narration; the evidence quotes are for validation. Comparison has exactly 2 nodes; process and relationship have exactly 3. Every cue is a distinct single word occurring in that scene's narration; node order must follow the first occurrence of its cue word. Titles, labels and takeaways must fit the schema. Use at least two layout families. Only use concepts that these available icons can represent accurately. Clearly explain any symbolism in the takeaway.`, topic: job.topic, iconVocabulary: manifest.entries.map(e => e.name), schema, sources });
-  const result = await structured(providerConfig(), SYSTEM, prompt, schema, value => validateDraft(value, sources, job.duration));
+  const input = planningInput(sources, job.duration, job.topic, manifest.entries.map(e => e.name));
+  const schema = z.toJSONSchema(input.schema);
+  const prompt = JSON.stringify({ task: `Create a ${job.duration}-second lesson for a ${job.audience}. Write ${Math.ceil(job.duration * 1.8)}-${Math.floor(job.duration * 2.4)} narration words in exactly ${Math.round(job.duration / 15)} scenes, about 30-33 words per scene. A sentence of only 10-15 words is too short. At least two sources must be cited. Each scene needs one short EXACT 20-180-character support quote copied from sources, identified by sourceId; select a quote verbatim from the provided source quote lists, preserving its matching sourceId. Paraphrase in narration; the evidence quotes are for validation. Comparison has exactly 2 nodes; process and relationship have exactly 3. Every cue is a distinct single word occurring in that scene's narration; node order must follow the first occurrence of its cue word. Choose concrete content words rather than With, The, or other repeated function words. Example: narration 'Bees visit flowers and carry pollen.' uses node cues [Bees, flowers, pollen], in that exact order. Check ALL scenes for cue order before returning JSON. Titles, labels and takeaways must fit the schema. Use at least two layout families. Every node concept must be an exact iconVocabulary name. Simplify the explanation to whole-object interactions that these icons can show. Never relabel a whole-object icon as an anatomical part or microscopic object. Clearly explain any symbolism in the takeaway.`, topic: job.topic, iconVocabulary: manifest.entries.map(e => e.name), schema, sources: input.excerpts });
+  const result = await structured(providerConfig(), SYSTEM, prompt, schema, value => validateDraft(alignDraftCues(input.schema.parse(value)), sources, job.duration));
   await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: "plan", json: JSON.stringify(result) });
   return null;
 } });
