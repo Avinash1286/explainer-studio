@@ -1,20 +1,18 @@
-> Current release: 0.5.6 implements all three remaining workstreams and passes 80 automated tests plus type, lint and build checks. The frozen five-topic evaluation achieved 4/5 automated approvals, with manual quality limitations and the failed case retained. Production generation/revision/sharing are documented in [release evidence](docs/release-evidence.md). AgentMail live delivery and event eligibility remain external gates. Older status notes below are historical.
+> Current status: release 0.6.0 frontend and backend are deployed on Convex; public health reports generation enabled. Browser checks verified default NVIDIA/Cloudflare selection and an unavailable-OpenAI attempt creating zero jobs; switching to the default route created one job and began planning. The new lesson's final video and final Git/Vercel result remain pending. The earlier frozen evaluation remains 4/5 automated approvals with manual limitations; the separate bicycle replay does not change that denominator. See [release evidence](docs/release-evidence.md).
 
-> Latest phase: H3 repair reliability hardening is implemented and passes 62 tests. A real repaired clip rendered but remains unapproved (Cloudflare review 429 plus manual content rejection); a fresh topic failed planning. Production generation stays disabled. Next: initial-planner reliability and causal diagrams, followed by user revision and consented email acceptance. See `docs/repair-acceptance.md`.
+> Provider update: release 0.6.0 implements an OpenAI Responses route alongside the default NVIDIA NIM + Cloudflare Workers AI route. Planning, factual/frame review and repairs retain the selected provider through revisions. `OPENAI_MODEL` defaults to `gpt-5.4-mini`; production setup uses `npm run openai:setup -- --prod` with `OPENAI_API_KEY`. Its full local check passed 109 tests across 13 files, TypeScript, ESLint, static export and worker build. No local key is available and no live OpenAI inference is claimed. This supersedes the former NVIDIA/Cloudflare-only restriction.
 
-> Current implementation: H3 software is implemented in release 0.4.0. The owner now requires NVIDIA NIM and Cloudflare Workers AI for all hosted model work; local Kokoro remains selected. Cloudflare replaces the previously planned OpenAI reviewer. Production generation stays disabled pending content acceptance. See `docs/review-delivery.md` and `PHASES.md`.
-
-> Implementation note (September 5, 2026): H0a and H1 are implemented. NVIDIA, Cloudflare and Firecrawl are qualified in both deployments. H2 generated a real 60-second draft; its mechanical checks passed, but icon/content review failed, so production generation remains gated for H3. GitHub Actions is disabled; Vercel Git validation is active. See PHASES.md and docs/topic-generation.md for evidence. The original design below is not a completion claim.
+> Completion remains gated on the fresh default-route result, final Git/Vercel verification, OpenAI qualification, consented AgentMail delivery, actual user trials, the owner-recorded demo and final entry. AgentMail inbox access now returns HTTP 200 with matching identity and the production webhook/signing secret are configured; the previous 403 is historical. [Hackathon readiness](docs/hackathon-readiness.md) is the current checklist. Historical phase failures and disabled-generation notes remain in dated evidence reports; the broader pilot design below is not a claim that every proposed feature shipped.
 
 # Plan: a topic-to-explainer app for Convex All Gas, with an agentic video harness
 
-Prepared and hackathon rules checked 2026-09-05. Retains the user's chosen stack: Convex, Next.js/TypeScript, NVIDIA NIM + Cloudflare Workers AI, self-hosted Kokoro-82M, OpenMoji, Firecrawl, and hosted icon embeddings. Adds Convex static hosting, Cloudflare visual review, and AgentMail delivery for the All Gas submission. **Zerops is the selected media-worker host, using the user's available credits.** Reference folder: `F:\cai\target`.
+Prepared and hackathon rules checked 2026-09-05. Current selected stack: Convex, Next.js/TypeScript, NVIDIA NIM + Cloudflare Workers AI by default with an optional OpenAI route, self-hosted Kokoro-82M, OpenMoji, Firecrawl, and hosted icon embeddings. Convex hosts the frontend; qualified frame review controls publication; AgentMail provides requested completion delivery when configured. **Zerops is the selected media-worker host, using the user's available credits.** Reference folder: `F:\cai\target`.
 
 ## 1. Decision and intended result
 
 Build a **narration-led whiteboard animation system** that turns a single topic into a researched explanation, a sequence of illustrated diagrams, synchronized narration, and a finished video. Use agents for research, teaching decisions, visual design, and critique. Use validated data structures and deterministic software for geometry, timing, rendering, recovery, and packaging.
 
-The selected implementation is **Next.js/TypeScript static export on Convex hosting + Convex database/Workflow/file storage/vector search + NVIDIA-hosted NIM APIs with Cloudflare Workers AI as a qualified text fallback + local Kokoro-82M + OpenMoji-first SVG assets + Firecrawl research + Remotion/FFmpeg rendering**. Use **Cloudflare for rendered-scene review** and **AgentMail for requested completion emails**. Use Cloudflare or NVIDIA embeddings to find icons, with one versioned embedding space per index. A registered worker runs Python TTS/alignment and Node rendering; Convex coordinates it. This is an engineering recommendation based on the references and current documentation, not a claim about how the references were produced.
+The selected implementation is **Next.js/TypeScript static export on Convex hosting + Convex database/Workflow/file storage/vector search + a lesson-level choice of NVIDIA/Cloudflare or OpenAI model calls + local Kokoro-82M + OpenMoji-first SVG assets + Firecrawl research + Remotion/FFmpeg rendering**. The default route uses NVIDIA text reasoning and qualified Cloudflare/NVIDIA review; the optional OpenAI route uses the Responses API and an operator-configured model for planning, factual review, decoded-frame review and repairs. Use **AgentMail for requested completion emails**. Both routes share the icon catalog: OpenAI uses exact catalog resolution without NVIDIA/Cloudflare requests; the default route retains compatible, versioned vector embeddings. A registered worker runs Python TTS/alignment and Node rendering; Convex coordinates it.
 
 This stack is a good fit. The essential boundaries are: Convex manages application state and durable coordination; the Zerops worker performs media computation; provider fallback preserves quality contracts; icon retrieval does not replace diagram design. “Local Kokoro” below means inference inside our own worker process, hosted on Zerops for the deployed app and runnable locally during development. The earlier SQLite runner and third-party hosted TTS proposal are superseded by this revision.
 
@@ -22,25 +20,25 @@ The difficult work is the visual teaching system: choosing a useful diagram, obt
 
 **The first milestone should be a convincing 60–90 second biology or everyday-mechanism explainer generated from one topic.** After that works, expand to the longer technical explainers in the folder. Do not begin by training a video model, building a large web application, or implementing several competing renderers.
 
-This document is an implementation plan. No generator, authenticated provider capability test, Kokoro inference benchmark, or production deployment has been built/run as part of this analysis. Model and package candidates below are documented starting points; actual account access and quality must be verified during setup.
+This document began as an implementation plan. The baseline generator, provider qualification, Kokoro benchmark and production deployment now have separate evidence reports. Model candidates and broader contracts below remain design guidance where not listed as implemented. Account access, model quality and each new provider route require their own validation.
 
 ### 1.1 Hackathon eligibility assessment
 
-**The concept can qualify. The previous plan needed hosting, sponsor integration, and submission changes; it was not yet a compliant finished entry.** This revision makes those changes concrete. Final acceptance remains the organizer's decision, and a plan alone is not a submission.
+**The public app is implemented, but final entry readiness remains incomplete.** The owner-authorized OpenAI option addresses the earlier product-stack gap only after real usage is demonstrated. Final eligibility and acceptance remain the participant's and organizer's responsibility; a plan or passing build is not a submission.
 
-Published entry conditions: a new app begun on/after **August 25, 2026, noon PT**; Convex backend; public GitHub repository and working `convex.site`/`chatgpt.site` frontend; root `hackathon.md`; demo below three minutes. Submit through the organizer-linked [VibeApps form](https://vibeapps.dev/judging/convex-all-gas-hackathon-openai/submit) by **September 22, noon PT**. The sponsor criteria expect actual OpenAI, Firecrawl, and AgentMail product functions. They do not separately define a minimum pass/fail threshold per sponsor; the current owner constraint excludes OpenAI product inference, so sponsor-stack qualification/scoring is UNCONFIRMED. Do not assume that using Codex to write code satisfies product integration. Organizer clarification is needed to settle the ambiguity; no message has been sent. [Official rules and judging criteria](https://www.convex.dev/hackathons/all-gas).
+Published entry conditions: a new app begun on/after **August 25, 2026, noon PT**; Convex backend; public GitHub repository and working `convex.site`/`chatgpt.site` frontend; root `hackathon.md`; demo below three minutes. Submit through the organizer-linked [VibeApps form](https://vibeapps.dev/judging/convex-all-gas-hackathon-openai/submit) by **September 22, noon PT**. Sponsor criteria expect actual OpenAI, Firecrawl and AgentMail product functions. The new OpenAI route must produce recorded product usage; AgentMail must deliver a requested lesson to a consented recipient. Until those paths pass, sponsor-stack readiness remains unconfirmed. Codex-assisted coding alone does not establish OpenAI product inference. Obtain organizer clarification for any remaining gap; no organizer message has been sent by this task. [Official rules and judging criteria](https://www.convex.dev/hackathons/all-gas).
 
 Luma additionally specifies solo/team size up to four, one registered teammate, participants aged 18+, affiliation/family and jurisdiction exclusions, and Codex or another agent/IDE with the Convex plugin. Authentication is optional. Participation includes a social post tagging Convex, OpenAI, Firecrawl, and AgentMail. [Organizer's event listing](https://luma.com/convex-allgas-hackathon).
 
 | Assessment | Current evidence | Action |
 |---|---|---|
-| New application | This planning work is dated September 5; earlier development history is unknown. | Record actual start and commit history. An older app cannot become a qualifying new app just by renaming it or adding sponsors. |
-| Convex depth | Architecture uses database, functions, realtime state, Workflow, storage and vector search. | Implement and demonstrate those paths; architecture diagrams alone prove nothing. |
-| Hosting | Previously unspecified. | Export Next.js to Convex static hosting; test the deployed user journey. |
-| Sponsor functions | Firecrawl research and AgentMail delivery remain selected; OpenAI product inference is excluded by the owner. | This diverges from the published sponsor-stack expectation. Record eligibility/scoring uncertainty and seek organizer clarification before claiming compliance. |
-| Practical user value | Previous framing emphasized a harness. | Lead with an educational app: one topic becomes a cited, illustrated lesson. Keep the harness internal. |
+| New application | Root log records first implementation on September 5; repository commits are the evidence. | Participant verifies the start boundary and any prior work against the official rules. |
+| Convex depth | Database, functions, realtime state, Workflow, storage and vectors implemented; live generation/revision/share evidence exists. | Demonstrate the final deployed paths and preserve evidence. |
+| Hosting | Production Next.js export on Convex static hosting is live. | Recheck fresh-browser access after the final deployment. |
+| Sponsor functions | Firecrawl is qualified; OpenAI route implemented without a local key; AgentMail inbox access and production webhook setup now pass. | Supply an OpenAI key and qualify real output; verify consented AgentMail delivery; disclose any remaining gap before claiming compliance. |
+| Practical user value | A topic becomes a cited, illustrated lesson, with editing and sharing. | Complete 3–5 actual user trials and respond to their findings. |
 | Registration and participant eligibility | Age, affiliation, residence, team and registration are unverified. | Participant checks the linked terms and registers; no personal eligibility certification is made here. |
-| Submission readiness | No application repo, live deployment, build log, social post or demo produced in this planning task. | Complete the release gates in Section 11.3. |
+| Submission readiness | Public repo, live app, build log, recording runbook and submission draft exist; actual video/social post/entry receipt remain absent. | Complete Section 11.3 and the current readiness checklist. |
 
 No explicit prohibition on the selected external LLM providers, self-hosted speech/render workers, or licensed open-source assets was found. Keeping them is an interpretation of the published scope, not an organizer-approved exception. Preserve provenance and asset licenses. If substantial app code predates the start boundary, establish eligibility before building the entry around it.
 
@@ -289,9 +287,9 @@ The runner owns scheduling, checkpoints, cancellation, budget, tool permissions,
 | Topic form, job progress, previews, revisions | Next.js App Router + TypeScript static export | Convex static hosting; client subscriptions for live state; provider secrets stay in Convex. |
 | Projects, scenes, claims, jobs, asset metadata, usage | Convex database | Authoritative durable application state; small typed documents and indexed queries. |
 | Job graph and cloud action scheduling | Convex Workflow | Durable steps, bounded parallelism/retries, external completion events; no second workflow engine. |
-| Text reasoning and structured plans | NVIDIA hosted inference primary; Cloudflare Workers AI fallback | Server-side provider adapter invoked from Convex actions; model-specific capabilities and validation. |
+| Text reasoning and structured plans | Default NVIDIA NIM/Cloudflare route or selected OpenAI Responses route | Server-side provider adapter in Convex actions; persist the selected route and validate the same content contracts. |
 | Research discovery and page retrieval | Firecrawl search/scrape | Convex actions persist source evidence and request IDs; the researcher checks claims. |
-| Icon metadata embeddings | Cloudflare Workers AI initially; NVIDIA alternative | Precompute catalog embeddings; keep model/pooling/dimension/version compatible with the query. |
+| Icon resolution | Shared catalog; default route uses Cloudflare embeddings, OpenAI uses exact catalog resolution | Keep the default route's model/pooling/dimension/version compatible with its query. OpenAI does not need a NVIDIA/Cloudflare embedding call. |
 | Icon vector index and keyword metadata | Convex vector/full-text search | Keep search near the icon registry; no separate Vectorize/Pinecone database initially. |
 | Illustrations | OpenMoji SVG first; vetted open-source alternatives | Imported, sanitized, locally cached, grouped for animation, with provenance and credits. |
 | Speech | Self-hosted Kokoro-82M, official Python pipeline | Persistent Python 3.12 process on Zerops; explicit voice, native timing where supported, alignment fallback. |
@@ -299,7 +297,7 @@ The runner owns scheduling, checkpoints, cancellation, budget, tool permissions,
 | Audio assembly and media validation | FFmpeg/ffprobe | Zerops media worker; lossless intermediate audio and final mux verification. |
 | Worker compute hosting | Zerops, funded by the user's existing credits | Ubuntu runtime with Node/Python and required system packages; Convex remains the backend. |
 | Durable media and manifests | Convex File Storage initially | Direct worker upload; store IDs/hashes in database. Keep disposable frames and caches locally. |
-| Visual critique | Cloudflare Workers AI `@cf/meta/llama-4-scout-17b-16e-instruct` | Reviews sampled decoded MP4 frames, narration and source text; validates structured defects and applies deterministic icon guards. |
+| Visual critique | Qualified Cloudflare/NVIDIA reviewer on the default route; configured OpenAI model on the OpenAI route | Reviews actual decoded MP4 images, narration and sources; validates defects, scene coverage and deterministic guards. |
 | Requested completion email | AgentMail inbox + Convex outbox | Send a lesson link and source summary only after user opt-in and a passing published result. |
 | Public frontend hosting | `@convex-dev/static-hosting` | Serve the exported Next.js assets on the submission's `convex.site` origin. |
 
@@ -316,9 +314,10 @@ Next.js static UI on public convex.site
     ↕ subscriptions / authenticated requests
 Convex database + Workflow + File Storage + vector search
     ├─ actions → Firecrawl
-    ├─ actions → NVIDIA text APIs
-    ├─ actions → Cloudflare Workers AI text fallback / embeddings
-    ├─ actions → Cloudflare rendered-frame review
+    ├─ selected model route → NVIDIA/Cloudflare or OpenAI Responses
+    │                          └─ planning / factual review / frame review / repair
+    ├─ icon catalog → exact resolution for OpenAI
+    │                 default route → Cloudflare embeddings / Convex index
     ├─ outbox/action → AgentMail requested result delivery
     └─ leased media tasks ↔ Zerops media worker (outbound HTTPS)
                               ├─ Python: Kokoro and alignment
@@ -353,9 +352,15 @@ H0 measures the actual chosen Zerops CPU/RAM allocation with Kokoro plus a repre
 
 ### 4.4 Model routing and fallback policy
 
+**Current accepted provider contract.** Default new and legacy lessons to `nim` (NVIDIA NIM + Cloudflare Workers AI). A visitor may explicitly choose `openai` when the operator has configured it. Persist the selected route on the job and retain it through recovery, automatic repair and requested revisions. The OpenAI route uses the configured model through the Responses API for structured planning, factual checking, decoded-frame review and repair. Keep Firecrawl, catalog retrieval, Kokoro and Remotion shared. Missing credentials, inaccessible models, refusals, invalid output and quota failures must produce truthful errors; they must not silently switch an OpenAI lesson to the default route. A visitor does not supply API keys.
+
+Qualification must cover both text and actual image inputs, complete scene-review coverage, safe error handling and a real lesson plus revision. Mock transport tests prove routing/validation behavior; they do not prove model availability, sponsor use or generated quality. Exact model settings, check counts and live outcomes belong in the current operations and evidence reports.
+
+The default-route design below retains NVIDIA as primary and Cloudflare as backup; its fallback rules do not authorize a provider change across the user's selected route.
+
 Use NVIDIA as the initial primary and Cloudflare as the backup for **qualified text tasks**, subject to benchmarking on the actual account. Here “NVIDIA NIM” initially means a NVIDIA-hosted API endpoint, not a self-hosted NIM GPU container. Confirm hosted access/quota and production terms; self-hosting is a separate deployment choice and is not appropriate to assume on the inspected 2GB GPU. [NVIDIA API quickstart](https://docs.api.nvidia.com/nim/docs/api-quickstart), [deployment/access FAQ](https://docs.api.nvidia.com/nim/docs/faq).
 
-Persist a capability registry per endpoint/model: role, context/output limits, text/image input, tool support, schema/JSON mode, timeout, quota state, pricing version, and qualification score. A standard chat API shape does not make all models equivalent. A fallback must have enough context and meet the same scene/claim schema and quality gate. Cloudflare owns the qualified visual-review role; NVIDIA/Cloudflare text failover is separate and does not establish vision capability.
+Persist a capability registry per endpoint/model: role, context/output limits, text/image input, tool support, schema/JSON mode, timeout, quota state, pricing version, and qualification score. A standard API shape does not make all models equivalent. A fallback must have enough context and meet the same scene/claim schema and quality gate. The baseline has independently qualified Cloudflare and NVIDIA image-review paths; text failover alone does not establish vision capability.
 
 Concrete candidates to qualify, not guaranteed model rankings or account entitlements:
 
@@ -365,7 +370,7 @@ Concrete candidates to qualify, not guaranteed model rankings or account entitle
 | Cloudflare text fallback | `@cf/meta/llama-3.3-70b-instruct-fp8-fast` | Hosted context is 24k, so bound ordinary stage inputs/output accordingly; qualify actual scene schemas. [Model page](https://developers.cloudflare.com/workers-ai/models/llama-3.3-70b-instruct-fp8-fast/) |
 | Cloudflare stronger/long-context text candidate | `@cf/zai-org/glm-5.3` | Requires paid access; benchmark output quality/cost. It is not the visual-critic fallback. [Model page](https://developers.cloudflare.com/workers-ai/models/glm-5.3/) |
 | Visual-review role | Cloudflare Workers AI Llama 4 Scout | Qualify real images and structured defects independently from text planning; use only the existing Cloudflare credentials. |
-| Additional visual fallback | NVIDIA vision endpoint, only after account and payload qualification | Not enabled: tested NVIDIA candidates were unavailable or timed out. Do not route images to the existing text-only planner as a substitute. |
+| Additional visual fallback | NVIDIA vision endpoint | Later baseline acceptance qualified actual decoded-image review; preserve its exact model/payload evidence. Earlier unavailable candidates remain historical failures. |
 
 Keep ordinary planning inputs below an initial 16k-token budget plus a bounded output allowance, or select an explicitly qualified long-context pair. This is a product budget, not a new provider limit. Store compact evidence/scene inputs rather than repeatedly sending entire scraped pages. Structured stages should initially be non-streaming; Cloudflare documents JSON-mode constraints and possible schema-generation failure. Always validate the result independently. [JSON mode](https://developers.cloudflare.com/workers-ai/features/json-mode/).
 
@@ -383,7 +388,7 @@ Preserve provider-specific error codes as well as HTTP status: daily allocation 
 
 Own retries in one policy layer: workflow scheduling controls delay/budget; provider adapters classify errors and return metadata. Avoid SDK retries × workflow retries × router retries multiplying requests. Record which provider produced each artifact; a fallback can change the result even with the same prompt. Run all schema, content and visual checks after a provider switch.
 
-**Embedding fallback is separate:** never query an index with a different embedding model or pooling mode merely because text generation switched provider. Queue embedding work, use lexical icon search temporarily, or maintain a separately populated compatible index. Section 6.2 describes the indexing contract.
+**Default-route embedding fallback is separate:** never query an index with a different embedding model or pooling mode merely because text generation switched provider. Queue embedding work, use lexical icon search temporarily, or maintain a separately populated compatible index. Section 6.2 describes this indexing contract. The OpenAI route uses exact catalog resolution and does not depend on this embedding path.
 
 ### 4.5 Convex storage and access choices
 
@@ -395,11 +400,13 @@ A Convex direct file URL is a bearer URL: a recipient can reuse/share it. Keep U
 
 ### 4.6 Meaningful sponsor integrations
 
-**Cloudflare visual reviewer.** After deterministic preview checks, send the two decoded JPEG samples per scene, narration, icon identities and original Firecrawl sources to Cloudflare Llama 4 Scout. Validate complete per-scene JSON findings and persist the actual provider, fixed model ID and reported usage. A false model pass cannot override known icon-category guards. Frame sampling does not prove every pixel or audio timing. [Cloudflare model documentation](https://developers.cloudflare.com/workers-ai/models/llama-4-scout-17b-16e-instruct/).
+**OpenAI product route.** A selected OpenAI lesson must use the configured OpenAI model for source-grounded planning, independent factual review, actual decoded-frame review and targeted repairs. Review has the same publication consequences as on the default route. Persist actual model/provider metadata and record qualification output without secrets. A working selector, installed SDK or Codex-assisted commit is not evidence of these calls. Qualify the operator's real account before relying on this option for the demo or sponsor claim.
+
+**Default-route visual reviewer.** After deterministic preview checks, send decoded JPEG samples, narration, icon identities and original Firecrawl evidence to the qualified Cloudflare reviewer, using the independently qualified NVIDIA image route for bounded fallback. Validate complete per-scene JSON findings and persist the actual provider, model ID and reported usage. A model pass cannot override deterministic guards. Frame sampling does not prove every pixel or audio timing. [Cloudflare model documentation](https://developers.cloudflare.com/workers-ai/models/llama-4-scout-17b-16e-instruct/).
 
 The review has a consequence: a valid defect triggers one targeted repair and re-review of the changed scenes, or prevents a failed draft becoming final. A model can request scrutiny of a factual claim but cannot invent replacement evidence. Cache reviews by image hashes, script/claim revision, prompt and model. Cap calls and image tokens before dispatch. Persist request IDs, usage, sampled frame IDs, defects and repair links so the build log can describe real behavior. This is sampled-image review, not proof of continuous audiovisual inspection.
 
-An unavailable Cloudflare reviewer leaves the rendered draft unapproved after at most two requests with 90-second deadlines. NVIDIA/Cloudflare routing remains in place for planning and repair; this vision route has no unqualified substitute. No OpenAI key or API balance is needed by the application. This technical choice does not settle sponsor-stack eligibility.
+An unavailable reviewer leaves the rendered draft unapproved after bounded attempts. Default-route fallback remains within qualified NVIDIA/Cloudflare roles; an OpenAI-selected job must report its OpenAI failure without silently changing route. The OpenAI option requires the operator's API credentials, accessible model and quota. Neither configuration presence nor plan text settles sponsor-stack readiness.
 
 **AgentMail result delivery.** Provide an optional “Email me when ready” control because rendering can outlast a browsing session. Use one provisioned project inbox and send the finished lesson's result-page link, evidence link and transcript/caption links. A user's choice to request email authorizes that product action. Bind the recipient to a verified account, verified email, or an explicitly consented test address; do not expose an unrestricted public mail-sending endpoint. Public viewing and trying the app need not depend on email.
 
@@ -920,12 +927,14 @@ If H2 is not complete by September 12, cut decorative motion, the asset count, o
 
 ### 11.3 Hackathon release and submission gates
 
-**Product gates**—proposed acceptance criteria, not achieved results:
+**Product gates**—acceptance criteria, with actual status in [hackathon readiness](docs/hackathon-readiness.md):
 
 - A fresh visitor can enter a supported topic and obtain a new 60–90s playable explainer from the deployed app; no API keys, invitation, script or icon selection is required from the visitor.
 - At least four of five held-out supported topics pass within one automatic visual repair round. Report every trial, retries and failures. Include process, comparison and relationship cases; use different topics from renderer fixtures.
 - Every accepted result has source-linked claims, complete narration, readable labels, accurate diagram relationships, captions/transcript, asset attribution and editable project data. No unresolved critical factual, clipping, missing-asset or timing defect is accepted.
-- Cloudflare reviews actual frames and its verdict controls approval/repair. Firecrawl retrieves evidence used in narration. Verify a requested AgentMail delivery to a consented inbox. Separately resolve or clearly disclose the absence of OpenAI product integration under the event sponsor criteria.
+- The selected provider reviews actual frames and its verdict controls approval/repair. Firecrawl retrieves evidence used in narration. Demonstrate the real OpenAI planning/review/repair route and a requested AgentMail delivery to a consented inbox. Resolve or clearly disclose any missing sponsor product use.
+- The provider selection defaults to NVIDIA/Cloudflare, is preserved through revisions and recovery, and handles unavailable OpenAI credentials/models/quota clearly without silently switching routes.
+- Complete 3–5 real user trials and implement at least one change based on their feedback. Automatic reviews and developer-run topic batches do not substitute for these trials.
 - A text-provider rate limit, offline worker and duplicate completion each produce the intended bounded recovery behavior. A targeted revision reuses unaffected scene audio/assets. An email failure leaves the finished video accessible.
 - The public host serves frontend, refresh/deep links, video, source links and Convex endpoints correctly. Users cannot revise another visitor's job, impersonate a worker or send arbitrary email. Measured render time, daily spending cap and supported-topic limits are documented.
 
@@ -940,9 +949,9 @@ If H2 is not complete by September 12, cut decorative motion, the asset count, o
 | Social evidence | Useful product clip and concise explanation with the event's sponsor tags; preserve the post URL and real feedback. Do not invent engagement. |
 | Submission record | All required form fields and final URLs, receipt, submitted timestamp and the demonstrated repo commit/deployment. Registration and personal attestations remain the participant's responsibility. |
 
-The organizer's log tool records repository/deployment evidence and dated work in `hackathon.md`. Set it up with the official Convex integration during H0; use its supported invocation (`/hackathon` shorthand where recognized) after sessions. Its generic allowance for private or undeployed work during development does not override this event's final entry conditions. This planning task has not installed the integration or created a fictitious application build log. [Official log tool](https://github.com/get-convex/convex-hackathon-skill).
+The organizer's log tool records repository/deployment evidence and dated work in `hackathon.md`; its supported invocation is `/hackathon` where recognized. The repository contains official Convex agent guidance and a directly maintained log of observed work. Do not claim the separate organizer log integration ran without evidence. Generic allowances for private or undeployed work during development do not override this event's final entry conditions. [Official log tool](https://github.com/get-convex/convex-hackathon-skill).
 
-Suggested demo sequence: **0–15s** educator's problem; **15–40s** enter a topic and show genuine progress; **40–85s** play an illustrative result excerpt and inspect sources; **85–115s** request one revision and show the resulting improvement; **115–140s** show requested email delivery and working links; **140–165s** briefly connect actual backend/model activity to the demonstrated features and state supported scope. If generation takes minutes, clearly identify elapsed-time cuts and distinguish a prepared result from the newly started run. Keep provider diagnostics out of the ordinary product flow; the build log can carry detailed evidence.
+The [owner recording runbook](docs/demo-runbook.md) supplies the current 160-second sequence: a finished lesson, fresh topic/provider selection, real progress, a prepared result with sources, targeted revision, sharing and a brief architecture view. Include a received AgentMail message only after delivery acceptance; a rehearsal without email does not close that sponsor gate. Identify the provider actually used by each clip and disclose cuts that remove generation time. Keep diagnostics out of the ordinary product flow; the build log carries detailed evidence.
 
 ### 11.4 Full-pilot work packages after the event slice
 
@@ -1141,7 +1150,7 @@ Start with the small Next.js topic/progress/preview UI; add a full scene editor 
 | Worker interrupted by deployment or process failure | In-flight tasks can outlive their original process. | Zerops hosts the worker using the user's credits; leased tasks, graceful draining and fenced publication recover interruptions. |
 | Full-pilot scope consumes the event window | Rich illustrations, generalization and editing can exceed the available days. | Follow H0–H6; freeze one style, 60–90s videos and three scene families; defer the larger P-series scope. |
 | Public frontend works but generation does not | Hosted examples can hide a disconnected worker, unavailable API or exhausted budget. | Fresh deployed-run check, capacity limits, health monitoring and a judging-period compute/API reserve. |
-| Sponsor integration is only decorative | SDKs, badges and Codex-assisted development do not establish sponsor product usage. | Firecrawl evidence supports claims; AgentMail sends requested lesson links. OpenAI integration is excluded and sponsor-stack compliance remains unconfirmed. |
+| Sponsor integration is only decorative | SDKs, badges and Codex-assisted development do not establish sponsor product usage. | Record real Firecrawl research, OpenAI planning/review/repair and requested AgentMail delivery. Disclose any remaining unqualified integration. |
 | Dynamic Next.js features assumed on a static host | Server-dependent routes fail after deployment. | Export-compatible routes and client Convex calls; exercise the production build/host early. |
 | Uncertain email send creates duplicates | Retrying external side effects is not globally exactly-once. | Frozen payload, provider idempotency header, durable outbox, bounded retries and reconciliation. |
 
@@ -1194,8 +1203,8 @@ Consulted 2026-09-05. These sources support implementation choices, not claims m
 - [Firecrawl search](https://docs.firecrawl.dev/api-reference/endpoint/search) and [scrape](https://docs.firecrawl.dev/features/scrape): discovery and evidence retrieval.
 
 
-## Release implementation addendum — September 5, 2026
+## Historical release 0.5.4 addendum — September 5, 2026
 
-Version 0.5.4 implements the remaining three engineering workstreams: source-grounded authoring/reliability; review/edit/share workflow; and evaluation/deployment/demo preparation. This addendum and docs/release-evidence.md supersede the earlier proposal where it differs from implemented behavior. The release keeps Next.js/TypeScript, Convex, NVIDIA/Cloudflare-only model inference, Firecrawl, local Kokoro on Zerops and OpenMoji. General diagrams use explicit named causal edges or association boards; abstract concepts use literal animated text cards. Known catalog vectors are reused without repeatedly billing the embedding API. Factual review uses bounded reasoning; visual review uses actual decoded JPEGs with qualified NVIDIA fallback. Both must pass. Owners have one planning retry, one unavailable-review retry, one automatic repair and two requested scene revisions. No GitHub Actions are used.
+Version 0.5.4 implemented the three engineering workstreams: source-grounded authoring/reliability; review/edit/share workflow; and evaluation/deployment/demo preparation. Its model restriction was NVIDIA/Cloudflare-only at the time. That restriction is superseded by the current provider choice at the top of this plan; this paragraph remains historical evidence. General diagrams use explicit named causal edges or association boards; abstract concepts use literal animated text cards. Known catalog vectors are reused without repeatedly calling the embedding API. Factual review uses bounded reasoning; visual review uses actual decoded JPEGs with qualified NVIDIA fallback. Both must pass. Owners have one planning retry, one unavailable-review retry, one automatic repair and two requested scene revisions. No GitHub Actions are used.
 
 See docs/release-operations.md for exact current deployment/recovery procedures, docs/demo-runbook.md for the owner-recorded sub-three-minute video, and docs/submission-draft.md for truthful event materials. Live tests are distinct from unit mocks and successful recovered cases are distinct from first-pass results. AgentMail live acceptance requires valid inbox credentials and consent. Demo creation, real participant trials, sponsor-eligibility confirmation and final submission are not fabricated as engineering outputs.

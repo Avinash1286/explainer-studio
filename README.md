@@ -2,7 +2,7 @@
 
 Turn a question into a short illustrated lesson with research, narration, captions, review and targeted revisions.
 
-**Release candidate 0.5.6.** The final three implementation workstreams are present. The five-topic evaluation reached 4/5 automated approvals, with manual visual limitations recorded in [release evidence](docs/release-evidence.md). AgentMail live delivery still needs working inbox credentials and a consented test. Start your recording with the [demo runbook](docs/demo-runbook.md).
+**Working product; final hackathon acceptance is incomplete.** Release 0.6.0 is deployed on Convex, passes the full local check and adds a verified provider selector. OpenAI live qualification still needs an API key. AgentMail inbox access and the production webhook are configured; consented delivery acceptance, the owner-recorded demo, actual user trials and final event submission remain open. The frozen baseline evaluation remains 4/5 automated approvals with manual visual limitations. See [release evidence](docs/release-evidence.md) and the [readiness checklist](docs/hackathon-readiness.md).
 
 - [Public app](https://wooden-pheasant-677.convex.site/)
 - [Phase status](PHASES.md), [architecture and reference study](plan.md), [actual hackathon log](hackathon.md)
@@ -12,16 +12,24 @@ Turn a question into a short illustrated lesson with research, narration, captio
 
 - Next.js/TypeScript static app on Convex hosting, realtime progress and anonymous browser workspaces.
 - Convex workflows, research checkpoints, immutable versions, quotas, cancellation, authenticated media leases and stale-result fencing.
-- Firecrawl research; NVIDIA NIM reasoning for planning and factual checking, with Cloudflare Workers AI fallback. No OpenAI model API is used.
-- Qualified Cloudflare icon embeddings in Convex vector search. Literal catalog matches reuse the qualified vectors; concepts without faithful icons use animated text cards.
+- Firecrawl research; NVIDIA NIM reasoning for planning and factual checking, with Cloudflare Workers AI fallback in the verified baseline.
+- Shared icon catalog, with qualified Cloudflare embeddings and Convex vector search on the default route. OpenAI uses exact catalog resolution without calling NVIDIA or Cloudflare; concepts without faithful icons use animated text cards.
 - Local Kokoro-82M on Zerops, deterministic Remotion diagrams, explicit directed relationships, MP4, captions, poster and inspectable project outputs.
 - Independent factual and decoded-frame review; one automatic repair, two scene edits, reusable narration cache, bounded planning/review recovery.
 - Approved-version share links with expiry/revocation, operator-published examples, opt-in verified-recipient AgentMail outbox and signed delivery callbacks.
-- 80 automated tests plus TypeScript, lint and builds. Vercel Git integration runs clean-install validation; GitHub Actions is disabled.
+- Release 0.6.0 passed `npm run check`: 109 tests across 13 files, TypeScript, ESLint, static app export and worker build. Isolated tests do not establish live OpenAI inference or email delivery. Vercel Git integration runs clean-install validation; GitHub Actions is disabled.
 
 Workspaces use 256-bit bearer tokens with hashes stored in Convex and seven-day expiry. They are not accounts: clearing browser storage loses access. Source/frame review remains fallible; inspect a lesson before presenting it publicly. Existing reference videos are not redistributed.
 
-**Hackathon eligibility:** The selected NVIDIA/Cloudflare-only model stack is deliberate. The official All Gas sponsor-stack criterion names OpenAI, so qualification/scoring remains unconfirmed until organizers clarify it. A public deployment is not an eligibility decision. The owner records the demo and approves any actual social post or submission.
+## Provider choice
+
+Release 0.6.0 adds a per-lesson choice between **NVIDIA NIM + Cloudflare Workers AI** (the default) and **OpenAI**. The OpenAI route uses the Responses API for planning, factual checks, decoded-frame review and repairs. Its default model is `gpt-5.4-mini`, configurable with `OPENAI_MODEL`. Both routes retain Firecrawl research, the existing icon catalog, local Kokoro-82M speech and Remotion/FFmpeg rendering. The selected route stays attached to the lesson through revisions; OpenAI failures do not silently switch providers.
+
+Provider selection is not proof of live model access. Add `OPENAI_API_KEY` and optionally `OPENAI_MODEL` to the ignored operator configuration, then run `npm run openai:setup -- --prod` for production qualification. No OpenAI key was available during this implementation pass, so no live OpenAI inference is claimed. Visitors do not enter API keys. See [release operations](docs/release-operations.md) for setup and [release evidence](docs/release-evidence.md) for checks actually completed.
+
+Production browser checks confirmed the default NVIDIA/Cloudflare selection and the OpenAI missing-key message. Attempting OpenAI created no job; switching to NVIDIA/Cloudflare created one job and began planning. That new lesson's final video and the final Git/Vercel release checks are tracked separately from this selector verification.
+
+**Hackathon eligibility:** OpenAI, Firecrawl and AgentMail need demonstrated product use under the [official sponsor-stack criterion](https://www.convex.dev/hackathons/all-gas). The OpenAI option supersedes the previous NVIDIA/Cloudflare-only restriction, but neither adapter code nor a selected dropdown establishes sponsor usage. Record a real accepted OpenAI run and a requested AgentMail delivery before claiming those integrations work. Participant eligibility, registration and organizer acceptance remain separate from the technical build.
 
 ## Local development
 

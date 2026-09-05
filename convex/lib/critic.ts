@@ -2,13 +2,14 @@ import { z } from "zod";
 import { REVIEW_MODEL, reviewSchema, validateReview, knownIconIssues } from "../../packages/contracts/review";
 import type { Project } from "../../packages/contracts/scene";
 import type { Research } from "../../packages/contracts/generation";
-import { post, ProviderError, transient, decodingSchema, type ProviderConfig } from "./providers";
+import { post, ProviderError, transient, decodingSchema, openAIResponse, type OpenAIContent, type ProviderConfig, type Provider } from "./providers";
+import { DEFAULT_OPENAI_MODEL } from "../../packages/contracts/provider";
 import manifest from "../../public/openmoji/manifest.json";
 
-// Frame review uses qualified vision models on Cloudflare and NVIDIA, with
-// the same actual frame bytes supplied to both providers.
+// Every route receives the same actual decoded frame bytes. The selected
+// OpenAI route never sends review data to Cloudflare or NVIDIA.
 export async function inspectFrames(config: ProviderConfig, project: Project, sources: Research, frames: { sceneId: string; frame: number; url: string }[], transport: typeof fetch = fetch) {
-  if (!/^[a-f0-9]{32}$/i.test(config.CLOUDFLARE_ACCOUNT_ID || "")) throw new ProviderError("cloudflare", 401);
+  if (config.generationProvider !== "openai" && !/^[a-f0-9]{32}$/i.test(config.CLOUDFLARE_ACCOUNT_ID || "")) throw new ProviderError("cloudflare", 401);
   if (frames.length !== project.scenes.length * 2 || project.scenes.some(s => frames.filter(f => f.sceneId === s.id).length !== 2)) throw new Error("Missing rendered frames");
   const body =
     {
@@ -23,9 +24,21 @@ export async function inspectFrames(config: ProviderConfig, project: Project, so
       response_format: { type: "json_schema", json_schema: decodingSchema(z.toJSONSchema(reviewSchema)) },
     };
   let value: unknown, usage: unknown, responseId: string | undefined;
-  let provider: "cloudflare" | "nvidia" = "cloudflare";
+  let provider: Provider = "cloudflare";
   let model: string = REVIEW_MODEL;
-  try {
+  if (config.generationProvider === "openai") {
+    if (frames.some(frame => !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(frame.url))) throw new Error("Missing decoded frame bytes");
+    const content: OpenAIContent[] = [
+      { type: "input_text", text: JSON.stringify({ project, sources, icons: manifest.entries.map(({ id, name }) => ({ id, name })), samples: frames.map(({ sceneId, frame }) => ({ sceneId, frame })) }) },
+      ...frames.flatMap<OpenAIContent>(frame => [
+        { type: "input_text", text: `Scene ${frame.sceneId}, video frame ${frame.frame} at 24 fps` },
+        { type: "input_image", image_url: frame.url, detail: "high" },
+      ]),
+    ];
+    const result = await openAIResponse(config, body.messages[0].content as string, [{ role: "user", content }], z.toJSONSchema(reviewSchema), transport, true);
+    value = result.value; usage = result.usage; responseId = result.responseId;
+    provider = "openai"; model = result.model || config.OPENAI_MODEL || DEFAULT_OPENAI_MODEL;
+  } else try {
     const raw = await post(`https://api.cloudflare.com/client/v4/accounts/${config.CLOUDFLARE_ACCOUNT_ID}/ai/run/${REVIEW_MODEL}`, config.CLOUDFLARE_API_TOKEN, body, "cloudflare", transport, 90_000);
     const data = z.object({ success: z.literal(true), result: z.object({ response: z.union([z.string(), z.record(z.string(), z.unknown())]), usage: z.unknown().optional() }) }).parse(raw);
     value = data.result.response; usage = data.result.usage;

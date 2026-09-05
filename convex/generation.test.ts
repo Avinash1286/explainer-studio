@@ -43,10 +43,10 @@ describe("durable topic generation", () => {
     const { t, jobId } = await setup();
     await expect(t.mutation(internal.generation.startCanary, { jobId })).rejects.toThrow("qualified");
     const ready = await setup(true); vi.stubEnv("GENERATION_ENABLED", "false");
-    expect(await ready.t.query(api.generation.availability, {})).toEqual({ enabled: false });
+    expect(await ready.t.query(api.generation.availability, {})).toMatchObject({ enabled: false });
     await ready.t.mutation(internal.generation.startCanary, { jobId: ready.jobId });
     expect((await ready.t.run(ctx => ctx.db.get(ready.jobId)))?.generation).toBe(true);
-    expect(await ready.t.query(api.generation.availability, {})).toEqual({ enabled: false });
+    expect(await ready.t.query(api.generation.availability, {})).toMatchObject({ enabled: false });
     await expect(ready.t.mutation(internal.generation.startCanary, { jobId: ready.jobId })).rejects.toThrow("queued");
   });
   it("permits only one owner planning retry and fences text cards from older workers", async () => {
@@ -86,8 +86,8 @@ describe("durable topic generation", () => {
   });
   it("stays disabled without qualified providers and does not spend requests", async () => {
     const { t, jobId } = await setup(); const fetcher = mockProviders(); vi.stubGlobal("fetch", fetcher);
-    expect(await t.query(api.generation.availability, {})).toEqual({ enabled: false });
-    await expect(t.mutation(api.generation.generate, { token, jobId })).rejects.toThrow("provider setup");
+    expect(await t.query(api.generation.availability, {})).toMatchObject({ enabled: false });
+    await expect(t.mutation(api.generation.generate, { token, jobId })).rejects.toThrow("paused");
     expect(fetcher).not.toHaveBeenCalled();
   });
   it("executes real workflow steps with simulated providers and hands a new project to the media queue", async () => {

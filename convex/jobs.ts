@@ -4,11 +4,14 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireSession } from "./lib/session";
 import { DURATION_PRESETS, LIMITS, normalizeTopic } from "../packages/contracts";
-import { jobStatus } from "./schema";
+import { jobStatus, generationProvider } from "./schema";
+import { DEFAULT_GENERATION_PROVIDER } from "../packages/contracts/provider";
 import { limits } from "./lib/limits";
 
 const visibleJob = v.object({
   _id: v.id("jobs"), topic: v.string(), duration: v.number(), audience: v.string(),
+  generationProvider,
+  isSample: v.boolean(),
   status: jobStatus, stageMessage: v.string(), revision: v.number(), createdAt: v.number(), updatedAt: v.number(),
 });
 
@@ -18,13 +21,13 @@ export const list = query({
   handler: async (ctx, { token }) => {
     const session = await requireSession(ctx, token);
     const jobs = await ctx.db.query("jobs").withIndex("by_sessionId_and_createdAt", (q) => q.eq("sessionId", session._id)).order("desc").take(30);
-    return jobs.map(({ _id, topic, duration, audience, status, stageMessage, revision, createdAt, updatedAt }) =>
-      ({ _id, topic, duration, audience, status, stageMessage, revision, createdAt, updatedAt }));
+    return jobs.map(({ _id, topic, duration, audience, status, stageMessage, revision, createdAt, updatedAt, generationProvider, isSample, generation }) =>
+      ({ _id, topic, duration, audience, status, stageMessage, revision, createdAt, updatedAt, generationProvider: generationProvider ?? DEFAULT_GENERATION_PROVIDER, isSample: isSample ?? (!generation && duration === 30) }));
   },
 });
 
 export const create = mutation({
-  args: { token: v.string(), topic: v.string(), duration: v.number(), audience: v.union(v.literal("beginner"), v.literal("student")), requestId: v.string() },
+  args: { token: v.string(), topic: v.string(), duration: v.number(), audience: v.union(v.literal("beginner"), v.literal("student")), requestId: v.string(), generationProvider: v.optional(generationProvider) },
   returns: v.id("jobs"),
   handler: async (ctx, args) => {
     const session = await requireSession(ctx, args.token, Date.now());
@@ -34,7 +37,7 @@ export const create = mutation({
     if (!/^[a-zA-Z0-9-]{16,64}$/.test(args.requestId)) throw new ConvexError("Invalid request ID.");
     const previous = await ctx.db.query("jobs").withIndex("by_sessionId_and_requestId", (q) => q.eq("sessionId", session._id).eq("requestId", args.requestId)).unique();
     if (previous) {
-      if (previous.topic !== topic || previous.duration !== args.duration || previous.audience !== args.audience) throw new ConvexError("Request ID was already used for a different lesson.");
+      if (previous.topic !== topic || previous.duration !== args.duration || previous.audience !== args.audience || (previous.generationProvider ?? DEFAULT_GENERATION_PROVIDER) !== (args.generationProvider ?? DEFAULT_GENERATION_PROVIDER)) throw new ConvexError("Request ID was already used for a different lesson.");
       return previous._id;
     }
     const perSession = await limits.limit(ctx, "sessionJobs", { key: session._id });
@@ -46,6 +49,7 @@ export const create = mutation({
     const now = Date.now();
     const jobId = await ctx.db.insert("jobs", {
       sessionId: session._id, topic, duration: args.duration, audience: args.audience,
+      generationProvider: args.generationProvider ?? DEFAULT_GENERATION_PROVIDER,
       status: "queued", stageMessage: "Brief saved. Start generation when the service is ready.",
       revision: 1, requestId: args.requestId, createdAt: now, updatedAt: now,
     });

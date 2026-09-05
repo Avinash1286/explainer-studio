@@ -1,14 +1,17 @@
 # Implementation phases
 
-Release 0.5.6 groups the remaining build into the three workstreams requested by the owner. See [release evidence](docs/release-evidence.md) for current live outcomes and [demo runbook](docs/demo-runbook.md) for the owner-recorded video.
+Release 0.6.0 frontend and backend are deployed on Convex. The existing media runtime and frozen topic evaluation remain separate baseline evidence. See [release evidence](docs/release-evidence.md) for exact validation/deployment outcomes and [hackathon readiness](docs/hackathon-readiness.md) for remaining acceptance and submission work.
 
 | Workstream | Implementation | Acceptance |
 |---|---|---|
-| 1. Generation quality and reliability | Compact source-ID authoring, literal icons/text cards, explicit edges, reasoning-based factual check, NVIDIA vision fallback, bounded recovery | 80 automated tests pass. Frozen five-topic test: 4/5 automatic approvals, three at revision 1 and one after automatic repair. Manual quality remains a separate check. |
-| 2. Complete lesson workflow | Review findings, one-scene edits, narration cache, artifact links, expiring/revocable shares, public examples, opt-in email outbox | Anonymous share playback and revocation verified. Real revision and production results: see release evidence. AgentMail access returns 403 until credentials are corrected. |
-| 3. Release preparation | Convex frontend/backend deployment, Zerops worker 0.5.6, Vercel Git checks, operational guide, demo runbook, submission draft, asset notices | Public generation and a manually inspected example are live; final quality evaluation is recorded separately. Owner demo, actual user feedback, eligibility clarification and final submission are separate external steps. |
+| 1. Generation quality and reliability | Compact source-ID authoring, literal icons/text cards, explicit edges, reasoning-based factual check, NVIDIA vision fallback, bounded recovery | Baseline 0.5.6 passed 80 tests. Frozen five-topic test: 4/5 automatic approvals, three at revision 1 and one after automatic repair. Manual quality remains a separate check. |
+| 2. Complete lesson workflow | Review findings, one-scene edits, narration cache, artifact links, expiring/revocable shares, public examples, opt-in email outbox | Anonymous share playback and revocation verified. AgentMail configured-inbox lookup returned HTTP 200 with an identity match; production delivery webhook configured. Consented recipient verification/delivery acceptance remains pending. |
+| 3. Release preparation | Convex frontend/backend 0.6.0 deployed, existing Zerops worker 0.5.6, Vercel Git validation setup, operational guide, demo runbook, submission draft, asset notices | Public health returned HTTP 200 with generation enabled. Final Git/Vercel checks and a fresh default-route lesson's final result remain pending. Owner demo, actual user feedback, eligibility checks and final submission are separate steps. |
+| 4. Provider choice update | 0.6.0 implements selected OpenAI Responses planning, factual/frame review and repairs, retaining NVIDIA/Cloudflare as default; `OPENAI_MODEL` defaults to `gpt-5.4-mini` | Full local check passed: 109 tests in 13 files, TypeScript, ESLint, static export and worker build. Production browser verified default selection and a missing-key OpenAI attempt creating zero jobs; switching to the default route created one job and began planning. No live OpenAI inference is claimed. |
 
-The H0–H6 entries below are historical development notes. They do not override the current release-evidence report. No email, social post or submission receipt is claimed without a real event.
+Current exit gates: finish the fresh default-route lesson and final Git/Vercel verification; supply an OpenAI API key and qualify a real lesson/revision; verify a consented AgentMail delivery; complete 3–5 real user trials and address findings; have the owner record the demo; verify participant eligibility/registration and submit the final materials. The frozen 4/5 automatic result is not a manual-quality pass or user-trial result.
+
+The entries below are historical development notes. They do not override the current release-evidence report or imply production is still disabled. No email, social post or submission receipt is claimed without a real event.
 
 ## H0a acceptance evidence
 
@@ -38,7 +41,7 @@ The H0–H6 entries below are historical development notes. They do not override
 - Isolated workflow tests use simulated providers. No live provider quality or general-generation success is claimed before credentials are added.
 - Existing scripted demo remains available while topic generation is disabled.
 
-## Next gate
+## Historical H3 gate
 
 Cloudflare frame review is working with existing credentials. Complete the bounded repair acceptance and configure AgentMail for H3, then verify a consented test email and user edit before enabling production. Vercel Git integration supplies automated validation on Hobby; GitHub Actions is disabled. AgentMail qualification and sponsor-stack eligibility clarification remain pending.
 

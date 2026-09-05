@@ -1,4 +1,20 @@
-# Release 0.5.6 acceptance evidence
+# Release 0.6.0 acceptance evidence
+
+Recorded September 5, 2026. The current release adds an explicit NVIDIA NIM + Cloudflare Workers AI or OpenAI choice. The saved choice follows each lesson through planning, factual review, actual JPEG frame review and scene edits. Both routes retain Firecrawl research, local Kokoro narration and deterministic Remotion rendering. There is no silent fallback between the two choices.
+
+- `npm run check` passed: **109 tests across 13 files**, TypeScript, ESLint, Next.js static export and Node media bundles.
+- Tests cover absent keys, model access errors, authentication and quota errors, independent provider readiness, route persistence, ownership, bounded preflight checks, unavailable review/retry behavior and safe asynchronous failure messages. OpenAI Responses calls use strict structured output and record model/response/usage provenance.
+- The default OpenAI model is `gpt-5.4-mini`, configurable through server-only `OPENAI_MODEL`. `npm run openai:setup -- --prod` validates model access and installs the server settings. No OpenAI key was available during this release; mocked tests do not establish successful live inference or sponsor usage.
+- AgentMail inbox lookup now returns HTTP 200 and matches the configured inbox. A scoped production webhook was registered for sent, delivered and bounced events, and `npm run delivery:setup -- --prod` succeeded. The signing secret is stored only in ignored local configuration and Convex. No email has been sent: a consented recipient verification and receipt of an approved lesson remain acceptance steps.
+- Production backend and static frontend deployments succeeded at https://wooden-pheasant-677.convex.site/. `/api/health` returned HTTP 200 with generation enabled. The media runtime remains 0.5.6 because this release changes provider orchestration and UI, not rendering or its protocol.
+- Live browser checks verified the default NVIDIA/Cloudflare choice and the OpenAI missing-key toast on selection and submission. Submitting unavailable OpenAI created zero lessons. The selector and toast fit a 390-pixel viewport with no horizontal overflow. A new NVIDIA/Cloudflare lesson retained its route after changing the form choice and reloading the page.
+- The public solar example still loads in an independent browser with a 60.053-second 1280×720 video, English captions and five source links.
+
+Full hackathon readiness still requires live OpenAI acceptance, consented email delivery, real user trials, the owner's demo recording, social post, and actual submission receipt. See `hackathon-readiness.md` for the current checklist.
+
+## Historical 0.5.6 acceptance evidence
+
+The remainder preserves the earlier release record. Its old AgentMail configuration failure and NVIDIA/Cloudflare-only restriction describe that release and are superseded by the current 0.6.0 record above.
 
 Recorded September 5, 2026. This report separates implementation, automated checks and actual model output. It is not a claim of perfect factual accuracy or confirmed hackathon eligibility.
 

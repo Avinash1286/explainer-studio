@@ -8,4 +8,6 @@ export const limits = new RateLimiter(components.rateLimiter, {
   sessions: { kind: "fixed window", rate: 100, period: HOUR, start: 0 },
   emailRequests: { kind: "fixed window", rate: 3, period: HOUR, start: 0 },
   allEmailRequests: { kind: "fixed window", rate: 50, period: HOUR, start: 0 },
+  providerChecks: { kind: "fixed window", rate: 20, period: HOUR, start: 0 },
+  allProviderChecks: { kind: "fixed window", rate: 300, period: HOUR, start: 0 },
 });

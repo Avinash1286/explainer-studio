@@ -67,6 +67,27 @@ select { width:100%; border:1px solid #e6e8de; border-radius:6px; background:#ff
 .primary-button>svg:first-child { margin-right:auto; }
 .primary-button:hover:not(:disabled) { background:#35624c; }
 .foundation-note { text-align:center; font-size:9px; line-height:1.7; color:#979e8d; margin:10px 0; }
+.provider-field { margin-top:20px; }
+.provider-options { display:grid; gap:8px; }
+.provider-option { display:flex; align-items:center; gap:10px; padding:12px; border:1px solid #e0e5d8; border-radius:8px; cursor:pointer; background:#fff; }
+.provider-option.selected { border-color:#698770; background:#f2f6ed; }
+.provider-option:focus-within { outline:2px solid #698770; outline-offset:3px; }
+.provider-option input { width:15px; height:15px; margin:0; accent-color:var(--green); flex:none; }
+.provider-option>span { flex:1; min-width:0; }
+.provider-option strong { display:block; font-size:11px; font-weight:550; line-height:1.5; }
+.provider-option small { display:block; font-size:10px; color:#63715d; margin-top:3px; }
+.provider-option>svg { flex:none; color:var(--green); }
+.provider-field>p { margin:9px 0 0; color:#66735e; font-size:10px; line-height:1.6; overflow-wrap:anywhere; }
+.provider-field:disabled .provider-option { cursor:wait; opacity:.65; }
+.selected-brief>.lesson-provider { color:#536a49; font-size:11px; }
+.studio-toast { position:fixed; z-index:100; right:24px; bottom:24px; width:min(440px,calc(100vw - 32px)); display:flex; align-items:flex-start; gap:12px; padding:18px; border:1px solid #d9b79f; border-radius:12px; color:#59351f; background:#fff9f2; box-shadow:0 8px 32px #263e3424; }
+.studio-toast>svg { flex:none; margin-top:1px; color:#99562f; }
+.studio-toast>div { flex:1; min-width:0; }
+.studio-toast strong { display:block; font-size:13px; font-weight:600; line-height:1.5; }
+.studio-toast p { margin:5px 0 0; font-size:12px; line-height:1.6; overflow-wrap:anywhere; }
+.studio-toast button { display:grid; place-items:center; flex:none; width:28px; height:28px; margin:-4px -4px 0 0; border:0; border-radius:5px; background:transparent; color:#775c48; }
+.studio-toast button:hover { background:#f2e5d8; }
+@media(max-width:540px) { .studio-toast { right:16px; bottom:16px; } }
 .connection-line { display:flex; justify-content:center; align-items:center; gap:6px; color:#929789; font-size:8px; line-height:1.5; text-align:center; }
 .connection-line.connected>span { background:#749767; }
 .preview-heading { display:flex; justify-content:space-between; color:#9a9f91; font-size:8px; padding:3px 2px 13px; }

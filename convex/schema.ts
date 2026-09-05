@@ -1,6 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+export const generationProvider = v.union(v.literal("nim"), v.literal("openai"));
+
 export const reviewFrame = v.object({ sceneId: v.string(), frame: v.number(), storageId: v.id("_storage") });
 export const mediaResult = v.object({ video: v.id("_storage"), project: v.id("_storage"), captions: v.id("_storage"), poster: v.id("_storage"), durationSeconds: v.number(), frames: v.optional(v.array(reviewFrame)) });
 
@@ -21,6 +23,8 @@ export default defineSchema({
     status: jobStatus, stageMessage: v.string(), revision: v.number(),
     requestId: v.string(), createdAt: v.number(), updatedAt: v.number(),
     workflowId: v.optional(v.string()), generation: v.optional(v.boolean()),
+    generationProvider: v.optional(generationProvider),
+    isSample: v.optional(v.boolean()),
     automaticRepairs: v.optional(v.number()), userRevisions: v.optional(v.number()),
     planningRetries: v.optional(v.number()),
     reviewRetries: v.optional(v.number()),
@@ -48,7 +52,7 @@ export default defineSchema({
     .index("by_space_and_iconId", ["space", "iconId"])
     .vectorIndex("by_embedding", { vectorField: "embedding", dimensions: 768, filterFields: ["space"] }),
   providerQualification: defineTable({ key: v.string(), passed: v.boolean(), reportJson: v.string(), updatedAt: v.number() }).index("by_key", ["key"]),
-  lessonReviews: defineTable({ jobId: v.id("jobs"), revision: v.number(), status: v.union(v.literal("pending"), v.literal("passed"), v.literal("rejected"), v.literal("unavailable")), reportJson: v.optional(v.string()), provider: v.optional(v.union(v.literal("cloudflare"), v.literal("nvidia"))), model: v.optional(v.string()), responseId: v.optional(v.string()), usageJson: v.optional(v.string()), createdAt: v.number() }).index("by_jobId_and_revision", ["jobId", "revision"]),
+  lessonReviews: defineTable({ jobId: v.id("jobs"), revision: v.number(), status: v.union(v.literal("pending"), v.literal("passed"), v.literal("rejected"), v.literal("unavailable")), reportJson: v.optional(v.string()), provider: v.optional(v.union(v.literal("cloudflare"), v.literal("nvidia"), v.literal("openai"))), model: v.optional(v.string()), responseId: v.optional(v.string()), usageJson: v.optional(v.string()), createdAt: v.number() }).index("by_jobId_and_revision", ["jobId", "revision"]),
   lessonVersions: defineTable({ jobId: v.id("jobs"), revision: v.number(), projectJson: v.string(), provenanceJson: v.string(), result: mediaResult, createdAt: v.number() }).index("by_jobId_and_revision", ["jobId", "revision"]),
   revisionRequests: defineTable({ jobId: v.id("jobs"), fromRevision: v.number(), requestId: v.string(), sceneIds: v.array(v.string()), instruction: v.string(), status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")), automatic: v.boolean(), recoveryAttempted: v.optional(v.boolean()), attemptsJson: v.optional(v.string()) }).index("by_jobId_and_requestId", ["jobId", "requestId"]),
   recipients: defineTable({ jobId: v.id("jobs"), email: v.string(), codeHash: v.string(), expiresAt: v.number(), attempts: v.number(), verifiedAt: v.optional(v.number()) }).index("by_jobId", ["jobId"]),

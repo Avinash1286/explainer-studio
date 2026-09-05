@@ -37,7 +37,7 @@ export const createSample = mutation({
     const queued = await ctx.db.query("mediaTasks").withIndex("by_status_and_leaseUntil", q => q.eq("status", "queued")).take(5);
     if (queued.length >= 5) throw new ConvexError("Demo render queue is full. Try again later.");
     const now = Date.now();
-    const jobId = await ctx.db.insert("jobs", { sessionId: session._id, topic: "Demo: How plants turn light into food", duration: 30, audience: "beginner", status: "rendering", stageMessage: "Demo queued for the media worker", revision: 1, requestId, createdAt: now, updatedAt: now });
+    const jobId = await ctx.db.insert("jobs", { sessionId: session._id, topic: "Demo: How plants turn light into food", isSample: true, duration: 30, audience: "beginner", status: "rendering", stageMessage: "Demo queued for the media worker", revision: 1, requestId, createdAt: now, updatedAt: now });
     await ctx.db.insert("mediaTasks", { jobId, fixtureVersion: "plant-energy-v1", status: "queued", attempt: 0, leaseUntil: 0, createdAt: now });
     return jobId;
   },

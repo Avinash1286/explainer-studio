@@ -8,17 +8,18 @@ import { projectSchema } from "../packages/contracts/scene";
 import { passedReview, validateReview, validateReplacement } from "../packages/contracts/review";
 import schema from "./schema";
 import { reviewReady } from "./lib/generationConfig";
+import { providerFailureMessage, PROVIDER_MESSAGES } from "../packages/contracts/provider";
 
 const versionArgs = { jobId: v.id("jobs"), revision: v.number() };
 const reportValidator = v.object({ summary: v.string(), scenes: v.array(v.object({ sceneId: v.string(), factualPass: v.boolean(), visualPass: v.boolean(), issues: v.array(v.object({ sceneId: v.string(), kind: v.union(v.literal("factual"), v.literal("icon"), v.literal("layout"), v.literal("timing")), detail: v.string(), repair: v.string() })) })) });
 export const run = workflow.define({ args: versionArgs, returns: v.null() }).handler(async (step, args): Promise<null> => {
   try { await step.runAction(internal.reviewActions.inspect, args, { retry: { maxAttempts: 3, initialBackoffMs: 30000, base: 2 } }); }
-  catch { await step.runMutation(internal.reviews.unavailable, args); }
+  catch (error) { const reason = providerFailureMessage(String(error)); await step.runMutation(internal.reviews.unavailable, { ...args, ...(reason ? { reason } : {}) }); }
   return null;
 });
 export const repair = workflow.define({ args: { requestId: v.id("revisionRequests") }, returns: v.null() }).handler(async (step, args): Promise<null> => {
   try { await step.runAction(internal.reviewActions.rewrite, args, { retry: false }); }
-  catch { await step.runMutation(internal.reviews.repairFailed, args); }
+  catch (error) { const reason = providerFailureMessage(String(error)); await step.runMutation(internal.reviews.repairFailed, { ...args, ...(reason ? { reason } : {}) }); }
   return null;
 });
 
@@ -30,15 +31,15 @@ export const context = internalQuery({ args: versionArgs, returns: v.union(v.nul
   if (!job || job.revision !== args.revision || job.status !== "reviewing" || !task?.result || review?.status !== "pending" || !research) return null;
   return { job, task, research: research.json, review };
 } });
-export const unavailable = internalMutation({ args: versionArgs, returns: v.null(), handler: async (ctx, args) => {
+export const unavailable = internalMutation({ args: { ...versionArgs, reason: v.optional(v.string()) }, returns: v.null(), handler: async (ctx, args) => {
   const review = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId).eq("revision", args.revision)).unique();
   const job = await ctx.db.get(args.jobId);
   if (job?.revision !== args.revision || job.status !== "reviewing" || review?.status !== "pending") return null;
   await ctx.db.patch(review._id, { status: "unavailable" });
-  await ctx.db.patch(job._id, { status: "failed", stageMessage: "Review unavailable. Your draft is saved and has not been approved for delivery.", updatedAt: Date.now() });
+  await ctx.db.patch(job._id, { status: "failed", stageMessage: providerFailureMessage(args.reason || "") ?? "Review unavailable. Your draft is saved and has not been approved for delivery.", updatedAt: Date.now() });
   return null;
 } });
-export const commit = internalMutation({ args: { ...versionArgs, reportJson: v.string(), provider: v.union(v.literal("cloudflare"), v.literal("nvidia")), model: v.string(), responseId: v.optional(v.string()), usageJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
+export const commit = internalMutation({ args: { ...versionArgs, reportJson: v.string(), provider: v.union(v.literal("cloudflare"), v.literal("nvidia"), v.literal("openai")), model: v.string(), responseId: v.optional(v.string()), usageJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
   const current = await ctx.runQuery(internal.reviews.context, { jobId: args.jobId, revision: args.revision });
   if (!current) return null;
   if (args.reportJson.length > 40_000 || args.usageJson.length > 4000 || args.model.length > 100 || (args.responseId?.length || 0) > 200) throw new Error("Review too large");
@@ -59,14 +60,14 @@ export const commit = internalMutation({ args: { ...versionArgs, reportJson: v.s
   }
   return null;
 } });
-export const repairContext = internalQuery({ args: { requestId: v.id("revisionRequests") }, returns: v.union(v.null(), v.object({ request: schema.doc("revisionRequests"), task: schema.doc("mediaTasks"), research: v.string() })), handler: async (ctx, { requestId }) => {
+export const repairContext = internalQuery({ args: { requestId: v.id("revisionRequests") }, returns: v.union(v.null(), v.object({ job: schema.doc("jobs"), request: schema.doc("revisionRequests"), task: schema.doc("mediaTasks"), research: v.string() })), handler: async (ctx, { requestId }) => {
   const request = await ctx.db.get(requestId);
   if (!request || request.status !== "pending") return null;
   const job = await ctx.db.get(request.jobId);
   const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", request.jobId)).unique();
   const research = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", request.jobId).eq("stage", "research")).unique();
   if (!job || job.status !== "planning" || job.revision !== request.fromRevision || !task?.projectJson || !research) return null;
-  return { request, task, research: research.json };
+  return { job, request, task, research: research.json };
 } });
 export const replace = internalMutation({ args: { requestId: v.id("revisionRequests"), projectJson: v.string(), evidenceJson: v.string(), attemptsJson: v.optional(v.string()) }, returns: v.null(), handler: async (ctx, args) => {
   const current = await ctx.runQuery(internal.reviews.repairContext, { requestId: args.requestId });
@@ -81,11 +82,11 @@ export const replace = internalMutation({ args: { requestId: v.id("revisionReque
   await ctx.db.patch(args.requestId, { status: "completed", attemptsJson: args.attemptsJson });
   return null;
 } });
-export const repairFailed = internalMutation({ args: { requestId: v.id("revisionRequests") }, returns: v.null(), handler: async (ctx, { requestId }) => {
+export const repairFailed = internalMutation({ args: { requestId: v.id("revisionRequests"), reason: v.optional(v.string()) }, returns: v.null(), handler: async (ctx, { requestId, reason }) => {
   const current = await ctx.runQuery(internal.reviews.repairContext, { requestId });
   if (!current) return null;
   await ctx.db.patch(requestId, { status: "failed" });
-  await ctx.db.patch(current.request.jobId, { status: "failed", stageMessage: "The scene edit could not produce a supported replacement. Previous draft is saved.", updatedAt: Date.now() });
+  await ctx.db.patch(current.request.jobId, { status: "failed", stageMessage: providerFailureMessage(reason || "") ?? "The scene edit could not produce a supported replacement. Previous draft is saved.", updatedAt: Date.now() });
   return null;
 } });
 export const revise = mutation({ args: { token: v.string(), jobId: v.id("jobs"), revision: v.number(), requestId: v.string(), sceneId: v.string(), instruction: v.string() }, returns: v.null(), handler: async (ctx, args) => {
@@ -97,7 +98,7 @@ export const revise = mutation({ args: { token: v.string(), jobId: v.id("jobs"),
     if (previous.instruction !== args.instruction.trim() || previous.sceneIds[0] !== args.sceneId || previous.fromRevision !== args.revision) throw new ConvexError("Request ID already used");
     return null;
   }
-  if (!reviewReady()) throw new ConvexError("Review provider setup is required before editing");
+  if (!reviewReady(job?.generationProvider)) throw new ConvexError(job.generationProvider === "openai" ? PROVIDER_MESSAGES.missingKey : "Review provider setup is required before editing");
   if (!/^[a-zA-Z0-9-]{16,64}$/.test(args.requestId) || args.instruction.trim().length < 5 || args.instruction.length > 500) throw new ConvexError("Enter an edit request of 5–500 characters");
   if (!job.generation || job.revision !== args.revision || !["failed", "completed"].includes(job.status) || (job.userRevisions || 0) >= 2) throw new ConvexError("This version cannot be edited (maximum two user edits)");
   const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", args.jobId)).unique();
@@ -113,7 +114,7 @@ export const details = query({ args: { token: v.string(), jobId: v.id("jobs") },
   if (!job || job.sessionId !== session._id || !job.generation) return null;
   const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", args.jobId)).unique();
   const reviews = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId)).order("desc").take(5);
-  return { revision: job.revision, canRetryReview: job.status === "failed" && (job.reviewRetries || 0) < 1 && reviews.some(r => r.revision === job.revision && r.status === "unavailable"), canRevise: Boolean(reviewReady() && task?.result && ["failed", "completed"].includes(job.status) && (job.userRevisions || 0) < 2), scenes: task?.projectJson ? projectSchema.parse(JSON.parse(task.projectJson)).scenes.map(s => ({ id: s.id, title: s.title })) : [], reviews: reviews.map(r => ({ revision: r.revision, status: r.status, provider: r.provider ?? null, model: r.model ?? null, report: r.reportJson ? validateReview(JSON.parse(r.reportJson), projectSchema.parse(JSON.parse(task!.projectJson!))) : null })) };
+  return { revision: job.revision, canRetryReview: job.status === "failed" && (job.reviewRetries || 0) < 1 && reviews.some(r => r.revision === job.revision && r.status === "unavailable"), canRevise: Boolean(reviewReady(job?.generationProvider) && task?.result && ["failed", "completed"].includes(job.status) && (job.userRevisions || 0) < 2), scenes: task?.projectJson ? projectSchema.parse(JSON.parse(task.projectJson)).scenes.map(s => ({ id: s.id, title: s.title })) : [], reviews: reviews.map(r => ({ revision: r.revision, status: r.status, provider: r.provider ?? null, model: r.model ?? null, report: r.reportJson ? validateReview(JSON.parse(r.reportJson), projectSchema.parse(JSON.parse(task!.projectJson!))) : null })) };
 } });
 
 // Operator migration for a pre-H3 rendered draft. Retain the original version;
@@ -142,6 +143,7 @@ export const retryReview = mutation({ args: { token: v.string(), ...versionArgs 
   const session = await requireSession(ctx, args.token);
   const job = await ctx.db.get(args.jobId);
   if (!job || job.sessionId !== session._id) throw new ConvexError("Lesson not found");
+  if (!reviewReady(job.generationProvider)) throw new ConvexError(job.generationProvider === "openai" ? PROVIDER_MESSAGES.missingKey : "Review provider setup is required before retrying");
   if ((job.reviewRetries || 0) >= 1) throw new ConvexError("Review retry limit reached");
   await ctx.runMutation(internal.reviews.retryUnavailable, { jobId: args.jobId, revision: args.revision });
   await ctx.db.patch(args.jobId, { reviewRetries: 1 });
@@ -151,7 +153,7 @@ export const retryReview = mutation({ args: { token: v.string(), ...versionArgs 
 export const retryUnavailable = internalMutation({ args: versionArgs, returns: v.null(), handler: async (ctx, args) => {
   const job = await ctx.db.get(args.jobId);
   const review = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId).eq("revision", args.revision)).unique();
-  if (!reviewReady() || job?.revision !== args.revision || job.status !== "failed" || review?.status !== "unavailable") throw new Error("Only an unavailable review can resume after setup");
+  if (!reviewReady(job?.generationProvider) || job?.revision !== args.revision || job.status !== "failed" || review?.status !== "unavailable") throw new Error("Only an unavailable review can resume after setup");
   await ctx.db.patch(review._id, { status: "pending" });
   await ctx.db.patch(job._id, { status: "reviewing", stageMessage: "Retrying review of the saved video", updatedAt: Date.now() });
   await start(ctx, internal.reviews.run, args, { startAsync: true });
@@ -164,7 +166,7 @@ export const retryFailedRepair = internalMutation({ args: versionArgs, returns: 
   const job = await ctx.db.get(args.jobId);
   const request = await ctx.db.query("revisionRequests").withIndex("by_jobId_and_requestId", q => q.eq("jobId", args.jobId).eq("requestId", `automatic-${args.revision}`)).unique();
   const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", args.jobId)).unique();
-  if (!reviewReady() || job?.revision !== args.revision || job.status !== "failed" || !task?.result || request?.status !== "failed" || !request.automatic || request.recoveryAttempted) throw new Error("Only a failed automatic repair can recover once for the same rendered version");
+  if (!reviewReady(job?.generationProvider) || job?.revision !== args.revision || job.status !== "failed" || !task?.result || request?.status !== "failed" || !request.automatic || request.recoveryAttempted) throw new Error("Only a failed automatic repair can recover once for the same rendered version");
   await ctx.db.patch(request._id, { status: "pending", recoveryAttempted: true });
   await ctx.db.patch(job._id, { status: "planning", stageMessage: "Retrying the saved scene repair after an implementation fix", updatedAt: Date.now() });
   await ctx.db.insert("jobEvents", { jobId: job._id, kind: "repair_recovery", message: "Operator resumed the failed repair once; automatic repair budget retained", createdAt: Date.now() });

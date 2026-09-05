@@ -42,8 +42,9 @@ export const inspect = internalAction({ args: { jobId: v.id("jobs"), revision: v
     // URLs was rejected in live qualification; never omit the images to retry.
     frames.push({ ...sample, url: `data:image/jpeg;base64,${btoa(binary)}` });
   }
-  const facts = await inspectFacts(providerConfig(), project, sources);
-  const review = await inspectFrames(providerConfig(), project, sources, frames);
+  const config = providerConfig(current.job.generationProvider);
+  const facts = await inspectFacts(config, project, sources);
+  const review = await inspectFrames(config, project, sources, frames);
   const combined = combineReviews(validateReview(JSON.parse(review.reportJson), project), facts.data);
   await ctx.runMutation(internal.reviews.commit, { ...args, ...review, reportJson: JSON.stringify(combined), usageJson: JSON.stringify({ visual: JSON.parse(review.usageJson), factualAttempts: facts.attempts }) });
   return null;
@@ -54,7 +55,7 @@ export const rewrite = internalAction({ args: { requestId: v.id("revisionRequest
   if (!current) return null;
   const previous = projectSchema.parse(JSON.parse(current.task.projectJson!));
   const sources = researchSchema.parse(JSON.parse(current.research).sources);
-  const result = await repairScenes(providerConfig(), previous, sources, current.request.sceneIds, current.request.instruction);
+  const result = await repairScenes(providerConfig(current.job.generationProvider), previous, sources, current.request.sceneIds, current.request.instruction);
   await ctx.runMutation(internal.reviews.replace, { ...args, projectJson: JSON.stringify(result.data.project), evidenceJson: JSON.stringify(result.data.evidence), attemptsJson: JSON.stringify(result.attempts) });
   return null;
 } });

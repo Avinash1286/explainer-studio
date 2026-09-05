@@ -12,23 +12,32 @@ A single-topic explainer-video system for short educational lessons, using sourc
 
 ## Current working functionality
 
-Save a lesson brief, choose duration and audience, revisit it in the same browser, and cancel it. Render a fresh copy of an explicitly labelled, original 24.4-second scripted demo with narration and three illustrated layouts. Convex queues the media task; a deployed Zerops worker synthesizes and renders it, then publishes playable video, captions, poster and project/source JSON. The topic-to-video implementation is now present, but live generation stays disabled pending provider credentials and qualification.
+Release 0.6.0 frontend and backend are deployed on Convex; public health returns HTTP 200 with generation enabled. A visitor can submit a question, choose duration, audience and provider, watch realtime progress, revisit the lesson in the same browser and cancel a run. The established NVIDIA/Cloudflare pipeline uses Firecrawl research and the existing Zerops Kokoro/Remotion/FFmpeg worker. Approved versions expose video, captions, source/project data, targeted scene revisions and revocable share links. The manually inspected solar revision 3 remains available in the gallery.
 
-Actual dependencies used: Next.js, TypeScript, React, Convex database/functions/scheduler, Convex static hosting and rate limiter, Lucide icons, bundled fonts, Kokoro 82M, 24 OpenMoji assets, Remotion/FFmpeg, and a Node/Python media worker on Zerops. Convex storage and scheduled mutations implement media execution and recovery. Convex Workflow now implements the topic pipeline; its live provider acceptance remains pending.
+Baseline validation passed 80 automated tests, TypeScript, lint and builds. The frozen five-topic evaluation achieved 4/5 automated approvals with manual visual limitations; those results are not real user trials. Earlier failures and the separate bicycle timing replay remain in [release evidence](docs/release-evidence.md).
 
-## Planned model and sponsor roles
+Release 0.6.0 implements an OpenAI provider option alongside the default NVIDIA NIM + Cloudflare Workers AI route. It uses the Responses API for planning, factual review, decoded-frame review and repairs, with `gpt-5.4-mini` as the configurable `OPENAI_MODEL` default. Its complete local check passed 109 tests across 13 files, TypeScript, ESLint, static export and worker build. Browser checks confirmed default selection, a missing-key OpenAI attempt creating zero jobs, and a subsequent default-route submission creating one job and starting planning. No local `OPENAI_API_KEY` was available, so no live OpenAI inference or accepted lesson is claimed. This update supersedes the previous restriction on OpenAI inference in historical entries below.
+
+## Current service and sponsor roles
 
 | Service | Intended role | Current integration status |
 |---|---|---|
-| Convex | Authoritative state, jobs, realtime UI, storage, workflow, vectors | Database/functions/hosting/rate limiting/storage and media recovery live; topic workflow and vector schema implemented; live provider qualification pending |
-| NVIDIA NIM | Primary structured text planning | Adapter implemented; pending credentials and qualification |
-| Cloudflare Workers AI | Qualified text backup; pinned icon embeddings | Adapter implemented; pending credentials and qualification |
-| Firecrawl | Retrieve research evidence | Pending |
+| Convex | Authoritative state, jobs, realtime UI, storage, workflow, vectors | Live production generation/revision/sharing and static hosting verified |
+| NVIDIA NIM | Default-route planning, factual review and qualified vision fallback | Real provider and lesson evidence recorded |
+| Cloudflare Workers AI | Default-route text backup, frame review and pinned icon embeddings | Real provider evidence recorded; quota exhaustion and NVIDIA vision fallback documented |
+| OpenAI | Optional selected route for planning, factual/frame review and repairs | Implemented in 0.6.0; missing local API key; live qualification pending |
+| Firecrawl | Retrieve research evidence | Live qualification and source-backed lesson use recorded |
 | Kokoro 82M / Zerops | Self-hosted speech and media workers | CPU synthesis/rendering deployed and benchmarked on Zerops |
 | OpenMoji | Licensed illustration assets | 24 pinned, hashed SVG assets bundled with CC BY-SA attribution |
-| Cloudflare vision | Review real rendered frames and gate repairs/publication | Replaces earlier OpenAI plan at owner request; live acceptance recorded separately |
-| OpenAI product integration | Excluded by owner: hosted inference is NVIDIA/Cloudflare only | Official sponsor-stack qualification/scoring remains unconfirmed |
-| AgentMail | Opt-in completion delivery and delivery status | Pending |
+| AgentMail | Opt-in completion delivery and delivery status | Configured-inbox GET returned HTTP 200 with matching identity; production webhook configured; consented delivery acceptance pending |
+
+## Remaining before final entry
+
+Finish the new default-route lesson and final Git/Vercel verification, add an OpenAI API key and qualify the actual lesson/revision route, verify a consented AgentMail delivery, complete 3–5 real user trials and respond to feedback, record/upload the owner demo, and complete the actual social post and VibeApps submission. Participant eligibility and Luma registration remain unverified. See [hackathon readiness](docs/hackathon-readiness.md), [demo runbook](docs/demo-runbook.md) and [submission draft](docs/submission-draft.md). The official deadline is September 22, 2026 at noon Pacific (September 23, 00:45 Nepal time).
+
+## Historical work log
+
+The dated entries below record what was true during each phase. Earlier references to disabled generation, pending providers, GitHub Actions or the former OpenAI restriction do not override the current summary and release evidence.
 
 ## September 5, 2026 — foundation
 
@@ -58,7 +67,7 @@ Added a durable research/planning/retrieval workflow, common structured-output v
 
 See `docs/topic-generation.md` for setup, tests and remaining live acceptance. The generated-project renderer is exercised separately with a scripted validation input. No Firecrawl, NVIDIA or Cloudflare production request is claimed yet.
 
-## Remaining before submission
+## Historical remaining work after H2
 
 H0 service qualification, Zerops media benchmark, full H1–H4 generation/review/evaluation, sponsor integrations, demo, actual user feedback, participant eligibility/registration checks, social post, and event submission. No test emails, social messages, or submission have been sent. See `PHASES.md` and `plan.md` for gates; an installed package is not evidence of a working sponsor integration.
 
@@ -98,3 +107,19 @@ Live testing found icon-conditioned filler, unnecessary scene rewrites during re
 Release 0.5.6 passes 80 tests and the complete local check. The predeclared five-topic run on 0.5.5 reached 4/5 automatic approvals without operator retries or requested edits; three passed initially and one after automatic repair. The failed bicycle timing case remains in the report. Manual inspection found limited visual variety and label layout issues, so only the separately curated solar example is public. A focused 0.5.6 renderer correction improves long titles/labels and permits bounded reading holds without changing evaluated authoring/review logic.
 
 Implemented: provider failover, source and actual-frame review, bounded repair, durable media jobs, cancellation, scene editing, narration reuse, downloads, approved-version sharing/revocation, public example, deployment checks, evaluation CLI, recording guide and submission draft. AgentMail live acceptance remains blocked by `missing_permission` and absent inbox/webhook configuration. No OpenAI inference, GitHub Actions, emails, social posts or final submission were added. See docs/release-evidence.md for final deployment and regression results.
+
+## Provider choice and readiness preparation — September 5, 2026
+
+The owner authorized an optional OpenAI route alongside the default NVIDIA NIM/Cloudflare route, superseding the earlier restriction. The target is a persistent lesson-level selection with configured-model planning, factual review, decoded-frame review and repairs. Firecrawl, catalog retrieval, local Kokoro and Remotion remain shared. Exact implementation checks and live model evidence will be recorded separately; authorization and adapter code alone do not prove API access or lesson quality.
+
+Refreshed the current README, phase status and plan; retained dated historical outcomes; prepared an updated owner demo runbook, submission working copy and a readiness checklist with a 3–5-person user-trial protocol. Rechecked the official event and Luma deadline: September 22 at noon Pacific. The VibeApps public form requires sign-in, so authenticated fields remain unverified. No participant trial, recording, OpenAI success, email receipt, social post, organizer response or final submission is claimed by this preparation step.
+
+## Provider implementation and AgentMail setup — release 0.6.0
+
+Implemented a persisted lesson-level provider selector: NVIDIA NIM + Cloudflare Workers AI remains the default; selected OpenAI lessons use the Responses API for planning, source review, decoded-frame review and repairs without silently switching providers. The model defaults to `gpt-5.4-mini` and is configurable through `OPENAI_MODEL`; `npm run openai:setup -- --prod` qualifies the production route after an operator supplies `OPENAI_API_KEY`. No local key was present, so there were no live OpenAI inference calls. Final test/build and deployment results remain in the release evidence report.
+
+The final `npm run check` passed on 0.6.0: 109 tests across 13 files, TypeScript, ESLint, static app export and worker build. These checks use isolated provider responses; they do not turn the earlier five-topic result into a new model evaluation or prove live OpenAI inference or email receipt.
+
+AgentMail's configured inbox returned HTTP 200 with a matching identity, resolving the earlier 403 blocker. Organization/inbox webhook lists were empty, so a production-only webhook was created for the intended endpoint/inbox and sent/delivered/bounced events. Its returned signing secret was saved to ignored configuration; `npm run delivery:setup -- --prod` completed successfully. No email was sent. Consented recipient verification, actual delivery, received links and callback acceptance remain pending.
+
+The production 0.6.0 backend and static frontend deployed successfully. Public health returned HTTP 200 with generation enabled. Browser testing verified the NVIDIA/Cloudflare default, selectable OpenAI with a clear missing-key message and zero created jobs, then one default-route job entering live planning. Its topic is “Why does salt dissolve in water?”; final output and final Git/Vercel verification remain pending. Both provider routes share the icon catalog; OpenAI resolves exact catalog entries, while the default route retains vector embeddings. This selector check is not a new completed-topic benchmark.

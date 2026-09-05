@@ -28,4 +28,4 @@ Do not create or run GitHub Actions for this project. The owner has selected Ver
 
 ## Model providers
 
-The owner requires all hosted model inference (text, vision, embeddings and review) to use NVIDIA NIM or Cloudflare Workers AI only. Do not add OpenAI API calls, keys or models. Retain the separately selected local Kokoro-82M TTS. Firecrawl research and AgentMail delivery are non-model services. Document the All Gas sponsor-stack eligibility uncertainty honestly; it does not override this provider restriction.
+The owner now authorizes an explicit per-lesson choice between NVIDIA NIM + Cloudflare Workers AI (the default) and OpenAI. Persist the chosen route and use it for planning, factual/visual review and repairs without silently switching to the other route. Missing credentials or unavailable models must produce clear user-facing errors. Keep credentials server-side. Retain local Kokoro-82M TTS and deterministic Remotion rendering for both routes. Firecrawl research and AgentMail delivery are shared non-model services. Record real sponsor usage and acceptance evidence; an implemented integration alone does not prove live use or event eligibility.
