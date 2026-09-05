@@ -28,12 +28,12 @@ describe("bounded NIM vision reasoning", () => {
   });
 
   it.each([
-    { finish_reason: "length", content: JSON.stringify(report), error: "Truncated frame review" },
-    { finish_reason: "stop", content: `<think>${JSON.stringify(report)}`, error: "Incomplete frame review reasoning" },
-    { finish_reason: "stop", content: "<think>Reasoning only.</think>", error: /JSON|Unexpected/i },
-  ])("rejects incomplete reasoning or output instead of treating it as a verdict ($finish_reason)", async ({ finish_reason, content, error }) => {
-    const transport = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response("", { status: 429 })).mockResolvedValueOnce(Response.json({ choices: [{ finish_reason, message: { content } }] }));
+    { finish_reason: "length", content: JSON.stringify(report), error: "Truncated frame review", calls: 2 },
+    { finish_reason: "stop", content: `<think>${JSON.stringify(report)}`, error: "Incomplete frame review reasoning", calls: 2 },
+    { finish_reason: "stop", content: "<think>Reasoning only.</think>", error: /JSON|Unexpected/i, calls: 3 },
+  ])("rejects incomplete reasoning or output instead of treating it as a verdict ($finish_reason)", async ({ finish_reason, content, error, calls }) => {
+    const transport = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response("", { status: 429 })).mockImplementation(async () => Response.json({ choices: [{ finish_reason, message: { content } }] }));
     await expect(inspectSceneFrames(config, sampleProject, testSources, sceneId, frames, transport)).rejects.toThrow(error);
-    expect(transport).toHaveBeenCalledTimes(2);
+    expect(transport).toHaveBeenCalledTimes(calls);
   });
 });

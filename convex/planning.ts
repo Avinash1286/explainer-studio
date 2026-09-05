@@ -109,10 +109,11 @@ export const directScene = internalAction({ args: { jobId: v.id("jobs"), sceneId
     }
     return scene;
   }) });
-  const evidenceContext = directorEvidenceContext(sources, baseRecord.provenance?.sceneEvidence, sceneId);
+  const evidenceContext = directorEvidenceContext(sources, baseRecord.provenance?.sceneEvidence, sceneId, target.narration);
   const result = await directScenes(providerConfig(job.generationProvider), project, sources, [sceneId], "", fetch, [evidenceContext]);
   const scene = result.project.scenes.find(s => s.id === sceneId)!;
-  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: `visual-${sceneId}`, json: JSON.stringify({ sceneId, visualPlan: scene.visualPlan, attempts: result.attempts[0].attempts }) });
+  const direction = result.attempts[0];
+  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: `visual-${sceneId}`, json: JSON.stringify({ sceneId, visualPlan: scene.visualPlan, attempts: direction.attempts, ...(direction.layoutAdjustment ? { layoutAdjustment: direction.layoutAdjustment } : {}) }) });
   return null;
 } });
 
@@ -128,7 +129,7 @@ export const finalizeProject = internalAction({ args: { jobId: v.id("jobs") }, r
     const saved = artifacts.find(a => a.stage === `visual-${scene.id}`);
     if (!saved) throw new Error("Every generated scene requires a validated visual plan");
     const record = JSON.parse(saved.json);
-    directorAttempts.push({ sceneId: scene.id, attempts: record.attempts });
+    directorAttempts.push({ sceneId: scene.id, attempts: record.attempts, ...(record.layoutAdjustment ? { layoutAdjustment: record.layoutAdjustment } : {}) });
     return { ...scene, visualPlan: validateDirectedPlan(record.visualPlan, scene.narration) };
   }) });
   await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: "project", json: JSON.stringify({ project, provenance: { ...provenance, visualPlanVersion: 1, directorAttempts } }) });

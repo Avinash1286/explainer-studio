@@ -73,6 +73,18 @@ describe("bounded illustrated scene direction", () => {
     expect(() => validateDirectedPlan({ ...long, entities: long.entities.map((e, i) => i === 0 ? { ...e, cue: `${narration} Nonexistent words at the end.` } : e) }, narration)).toThrow();
   });
 
+  it("preserves legacy lattice playback while refusing its unsigned-dot transform in new direction", () => {
+    const original = syntheticVisualPlan(narration);
+    const legacy = { ...original, entities: original.entities.map(entity => entity.id === "water" ? { ...entity, kind: "lattice", variant: "positive" } : entity) };
+    expect(() => validateVisualPlan(legacy, narration)).not.toThrow();
+    expect(() => validateDirectedPlan(legacy, narration)).toThrow("lattice transform draws unsigned dots, not positive holes");
+    const input = directorInput(sampleProject, testSources, sampleProject.scenes[0].id);
+    expect(() => input.validate(legacy)).toThrow("explicit source-supported circle");
+    const direction = JSON.parse(input.prompt).direction.join(" ");
+    expect(direction).toContain("Do not transform a lattice");
+    expect(direction).not.toContain("plus a lattice with variant positive");
+  });
+
   it("provides a valid compact composition example without using its source as lesson evidence", () => {
     const input = JSON.parse(directorInput(sampleProject, testSources, sampleProject.scenes[0].id).prompt);
     const example=validateDirectedPlan(input.styleExample.visualPlan, input.styleExample.source);

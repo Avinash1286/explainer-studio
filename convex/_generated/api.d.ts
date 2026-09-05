@@ -17,6 +17,7 @@ import type * as lib_authoring from "../lib/authoring.js";
 import type * as lib_critic from "../lib/critic.js";
 import type * as lib_director from "../lib/director.js";
 import type * as lib_directorEvidence from "../lib/directorEvidence.js";
+import type * as lib_directorLayout from "../lib/directorLayout.js";
 import type * as lib_factCheck from "../lib/factCheck.js";
 import type * as lib_generationConfig from "../lib/generationConfig.js";
 import type * as lib_limits from "../lib/limits.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   "lib/critic": typeof lib_critic;
   "lib/director": typeof lib_director;
   "lib/directorEvidence": typeof lib_directorEvidence;
+  "lib/directorLayout": typeof lib_directorLayout;
   "lib/factCheck": typeof lib_factCheck;
   "lib/generationConfig": typeof lib_generationConfig;
   "lib/limits": typeof lib_limits;

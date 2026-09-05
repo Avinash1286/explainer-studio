@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { directorEvidenceContext, DIRECTOR_PASSAGE_LIMIT, validateDirectorEvidenceContext } from "./lib/directorEvidence";
+import { directorEvidenceContext, DIRECTOR_PASSAGE_LIMIT, DIRECTOR_SUPPLEMENT_LIMIT, validateDirectorEvidenceContext } from "./lib/directorEvidence";
 import { directorInput, directScenes } from "./lib/director";
 import { testDraft, testSources } from "./testFixtures";
 import { sampleProject } from "../tests/review-helpers";
@@ -107,5 +107,89 @@ describe("scene-specific cited director context", () => {
     expect(after.lesson).toEqual(before.lesson);
     expect(after.direction).toEqual(before.direction);
     expect(after.scene).toEqual(before.scene);
+  });
+
+  it("retains both citations and retrieves the omitted circuit requirement from full research", () => {
+    const first = "Sunlight creates electrical charges inside the cell.", second = "Solar cells generate direct current from sunlight.";
+    const circuit = "Electrical conductors collect the electrons. When the conductors connect in an electrical circuit to an external load, electricity flows through the circuit. The return connection completes the path.";
+    const sources: Research = [
+      { ...testSources[0], text: `${first}\n\n${"Separate background describes manufacturing history. ".repeat(25)}\n\n${circuit}` },
+      { ...testSources[1], text: second },
+    ];
+    const citations = [{ sceneId, evidence: [{ sourceId: sources[0].id, quote: first }, { sourceId: sources[1].id, quote: second }] }];
+    const original = directorEvidenceContext(sources, citations, sceneId);
+    const context = directorEvidenceContext(sources, citations, sceneId, "Electrons flow through an external circuit as direct current, delivering electricity to a load before returning to the cell.");
+    expect(context.sources.slice(0, 2)).toEqual(original.sources);
+    const extra = context.sources.filter(passage => passage.selection === "narration");
+    expect(extra.some(passage => passage.id === sources[0].id && passage.text.includes(circuit))).toBe(true);
+    expect(extra.length).toBeLessThanOrEqual(DIRECTOR_SUPPLEMENT_LIMIT);
+    for (const passage of extra) {
+      const source = sources.find(source => source.id === passage.id)!;
+      expect(source.text.slice(passage.offset, passage.offset + passage.text.length)).toBe(passage.text);
+      expect(passage.text).toContain(passage.quote);
+      expect(passage.text.length).toBeLessThanOrEqual(DIRECTOR_PASSAGE_LIMIT);
+    }
+    expect(validateDirectorEvidenceContext(context, sources, sceneId)).toBe(context);
+    expect(JSON.parse(directorInput(sampleProject, sources, sceneId, "", context).prompt).sources).toEqual(context.sources);
+  });
+
+  it("finds omitted absorption qualifications and electron-hole creation without topic rules", () => {
+    const quote = "Sunlight excites electrons inside the semiconductor.";
+    const qualification = "Photons striking silicon may be reflected, transmitted or absorbed. Only absorbed photons transfer energy to electrons.";
+    const carriers = "The absorption of light generates unbound electron-hole pairs in the semiconductor lattice.";
+    const sources: Research = [
+      { ...testSources[0], text: quote },
+      { ...testSources[1], text: qualification },
+      { ...testSources[0], id: "source-3", url: "https://third.example/pairs", text: carriers },
+    ];
+    const context = directorEvidenceContext(sources, citations(quote), sceneId, "Photons strike silicon and transfer energy to electrons. This creates free electrons and corresponding positive charge holes in the silicon lattice.");
+    expect(context.sources.slice(1).map(passage => passage.id).sort()).toEqual(["source-2", "source-3"]);
+    expect(context.sources.some(passage => passage.text.includes("Only absorbed photons"))).toBe(true);
+    expect(context.sources.some(passage => passage.text.includes("electron-hole pairs"))).toBe(true);
+  });
+
+  it("uses the same retrieval for other subjects and deduplicates repeated source text", () => {
+    const quote = "Plants exchange substances with their environment.";
+    const mechanism = "Water enters the roots and moves through vessels toward the leaves. Evaporation from leaves helps pull water upward.";
+    const sources: Research = [
+      { ...testSources[0], text: quote },
+      { ...testSources[1], text: mechanism },
+      { ...testSources[1], id: "source-3", url: "https://mirror.example/plants", text: mechanism },
+    ];
+    const narration = "Water moves from roots through vessels to leaves, where evaporation helps pull it upward.";
+    const context = directorEvidenceContext(sources, citations(quote), sceneId, narration);
+    expect(context.sources).toHaveLength(2);
+    expect(context.sources[1]).toMatchObject({ id: "source-2", text: mechanism, selection: "narration" });
+    expect(directorEvidenceContext(sources, citations(quote), sceneId, narration)).toEqual(context);
+    expect(directorEvidenceContext(sources, citations(quote), sceneId, "And then it is there.").sources).toHaveLength(1);
+  });
+
+  it("never overlaps supplemental source slices or invents text when a long passage is bounded", () => {
+    const quote = "The initial description identifies the machine.";
+    const mechanism = `Rotation transfers torque through the shaft ${"surrounding context ".repeat(65)}before the turning gear rotates the wheel`;
+    const sources: Research = [{ ...testSources[0], text: `${quote}\n\n${"Unrelated history. ".repeat(60)}\n\n${mechanism}` }];
+    const context = directorEvidenceContext(sources, citations(quote), sceneId, "The rotating shaft transfers torque to a gear, turning the wheel.");
+    const extra = context.sources.filter(passage => passage.selection === "narration");
+    expect(extra.length).toBeGreaterThan(0);
+    expect(extra.some(passage => passage.partial)).toBe(true);
+    for (const passage of context.sources) {
+      expect(passage.text.length).toBeLessThanOrEqual(DIRECTOR_PASSAGE_LIMIT);
+      expect(sources[0].text.slice(passage.offset, passage.offset + passage.text.length)).toBe(passage.text);
+      for (const other of context.sources.filter(other => other !== passage)) expect(passage.offset >= other.offset + other.text.length || other.offset >= passage.offset + passage.text.length).toBe(true);
+    }
+    const tampered = structuredClone(context);
+    tampered.sources[1].offset++;
+    expect(() => validateDirectorEvidenceContext(tampered, sources, sceneId)).toThrow("original cited source");
+    const invented = structuredClone(context);
+    invented.sources[1].text += " Invented conclusion.";
+    expect(() => validateDirectorEvidenceContext(invented, sources, sceneId)).toThrow("original cited source");
+  });
+
+  it("enforces at most two supplements and retains required cited scope", () => {
+    const context = directorEvidenceContext(testSources, evidence, sceneId);
+    const supplemental = { ...context.sources[0], selection: "narration" as const };
+    expect(() => validateDirectorEvidenceContext({ ...context, sources: [...context.sources, supplemental, supplemental, supplemental] }, testSources, sceneId)).toThrow("scope");
+    expect(() => validateDirectorEvidenceContext({ ...context, sources: [supplemental] }, testSources, sceneId)).toThrow("scope");
+    expect(() => directorEvidenceContext(testSources, undefined, sceneId, "A relevant narration cannot replace missing citations.")).toThrow();
   });
 });

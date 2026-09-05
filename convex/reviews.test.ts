@@ -71,7 +71,7 @@ describe("source and rendered-frame review", () => {
     expect(limited).toHaveBeenCalledTimes(1);
     const malformed = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, result: { response: { summary: "Trust me", scenes: [] } } }));
     await expect(inspectFrames(config, sampleProject, testSources, frames, malformed)).rejects.toThrow();
-    expect(malformed).toHaveBeenCalledTimes(1);
+    expect(malformed).toHaveBeenCalledTimes(2);
     const missing = vi.fn<typeof fetch>();
     await expect(inspectFrames(config, sampleProject, testSources, frames.map(f => ({ ...f, sceneId: "wrong" })), missing)).rejects.toThrow("Missing rendered frames");
     expect(missing).not.toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe("source and rendered-frame review", () => {
     });
     vi.stubGlobal("fetch", fetcher);
     await expect(t.action(internal.reviewActions.inspect, { jobId, revision: 1 })).rejects.toThrow();
-    expect(fetcher).toHaveBeenCalledTimes(3); // Full factual gate, first scene, missing second scene.
+    expect(fetcher).toHaveBeenCalledTimes(4); // Facts, first scene, missing second scene and its one correction.
     const review = await t.run(ctx => ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", jobId).eq("revision", 1)).unique());
     expect(review?.status).toBe("pending");
     expect(review?.reportJson).toBeUndefined();

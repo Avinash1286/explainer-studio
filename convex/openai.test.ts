@@ -166,6 +166,8 @@ describe("OpenAI rendered evidence and workflow", () => {
       return completed(mismatch==="scene" ? {...result,sceneId:other} : {...result,visualPass:false,issues:[{sceneId:other,kind:"layout",detail:"The label overlaps the material.",repair:"Move the label outside the material."}]});
     });
     await expect(inspectFrames(config,sampleProject,testSources,frames,transport)).rejects.toThrow(/scene/i);
+    expect(transport).toHaveBeenCalledTimes(2);
+    expect(transport.mock.calls.every(([url])=>String(url).includes("api.openai.com"))).toBe(true);
   });
 
   it("builds literal concept notes without embeddings then directs every scene only on OpenAI", async () => {
