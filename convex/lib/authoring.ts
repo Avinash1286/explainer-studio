@@ -58,7 +58,7 @@ export function authoringInput(sources: Research, duration: number, topic: strin
       const terms = [...new Set([...( `${s.title} ${topic}`).toLowerCase().match(/[a-z]{3,}/g) || [], ...spoken.filter(w => w.length >= 4)])].filter(t => !stop.has(t) && spoken.includes(t));
       const textOptions = terms.map(word => ({ name: `text:${word}`, label: word[0].toUpperCase()+word.slice(1), cues: [word] }));
       const nodes = [...requested, ...iconOptions, ...textOptions].flatMap(icon => {
-        const cue = icon.cues.find(word => spoken.includes(word) && !used.has(word));
+        const cue = icon.cues.filter(word => spoken.includes(word) && !used.has(word)).sort((a,b) => spoken.indexOf(a)-spoken.indexOf(b))[0];
         if (!cue || used.has(cue) || used.has(icon.name)) return [];
         used.add(cue); used.add(icon.name);
         return [{ concept: icon.name, label: icon.label, cue }];

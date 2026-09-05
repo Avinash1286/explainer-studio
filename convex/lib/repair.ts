@@ -13,10 +13,7 @@ export function repairInput(previous: Project, sources: Research, sceneIds: stri
   const unchangedWords = previous.scenes.filter(s => !sceneIds.includes(s.id)).reduce((sum, s) => sum + s.narration.trim().split(/\s+/).length, 0);
   const modern = previous.scenes.every(s => s.connections !== undefined);
   const wordBudget = { min: Math.max(sceneIds.length * 10, Math.ceil(duration * (modern ? 1.6 : 1.8)) - unchangedWords), max: Math.floor(duration * (modern ? 2.8 : 2.4)) - unchangedWords };
-  const nodeSchemas = iconOptions.map(icon => z.object({ icon: z.literal(icon.id), label: z.literal(icon.label), cue: z.enum(icon.cues) }).strict());
-  const textNode = z.object({ icon: z.literal("TEXT"), label: z.string().min(2).max(24), cue: z.string().regex(/^[a-zA-Z]+$/).max(24) }).strict();
-  if (!nodeSchemas[0]) throw new Error("Repair needs a qualified icon catalog");
-  const node = z.discriminatedUnion("icon", [textNode, nodeSchemas[0], ...nodeSchemas.slice(1)]);
+  const node = z.object({ icon: z.enum(["TEXT", ...iconOptions.map(i => i.id)]), label: z.string().min(1).max(24), cue: z.string().regex(/^[a-zA-Z]+$/).max(24) }).strict();
   const perScene = { min: Math.ceil(wordBudget.min / sceneIds.length), max: Math.floor(wordBudget.max / sceneIds.length) };
   const base = sceneSchema.omit({ layout: true, nodes: true }).extend({
     id: z.enum(sceneIds), evidenceIds: z.array(z.enum(evidence.map(e => e.id))).min(1).max(2),
@@ -50,6 +47,7 @@ export function repairInput(previous: Project, sources: Research, sceneIds: stri
     const narrationErrors: string[] = [];
     for (const scene of patch.scenes) {
       if (/[A-Za-z]{25,}|[.!?][A-Za-z]/.test(`${scene.narration} ${scene.optionalNarration}`)) narrationErrors.push(`Scene ${scene.id}: use natural words and spaces between sentences; do not concatenate words to meet the budget.`);
+      for (const node of scene.nodes) if (node.icon !== "TEXT" && node.label !== iconOptions.find(i => i.id === node.icon)?.label) narrationErrors.push(`Scene ${scene.id}: use the icon's canonical label; use a text card for a different concept.`);
     }
     if (narrationErrors.length) throw new Error(narrationErrors.join("\n"));
     // At most 2^8 choices, all using complete model-authored sentences. Never
@@ -61,7 +59,7 @@ export function repairInput(previous: Project, sources: Research, sceneIds: stri
         const used = new Set<string>();
         const ordered = s.nodes.map((node, oldIndex) => {
           const literal = node.icon === "TEXT" ? (node.label.toLowerCase().match(/[a-z]+/g) || []) : iconOptions.find(i => i.id === node.icon)?.cues || [];
-          const cue = [node.cue.toLowerCase(), ...literal].find(word => words.includes(word) && !used.has(word));
+          const cue = literal.filter(word => words.includes(word) && !used.has(word)).sort((a,b) => words.indexOf(a)-words.indexOf(b))[0];
           if (cue) { used.add(cue); return { node: { ...node, cue }, oldIndex, replaced: false }; }
           const word = words.find(w => w.length >= 4 && !used.has(w) && !/^(this|that|these|those|their|they|with|from|into|when|where|which|have|does|will|because|about|through|also|only|each|than|then|some|such|more)$/.test(w));
           if (!word) throw new Error(`Scene ${s.id}: needs distinct spoken visual concepts`);

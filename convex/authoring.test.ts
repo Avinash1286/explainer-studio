@@ -8,6 +8,11 @@ describe("compact lesson compiler", () => {
     title: `Water ${i+1}`, narration: "Water absorbs energy from the sun and changes into vapor in the air. It can later condense into droplets, returning to lakes and rivers as part of a cycle.",
     optionalNarration: "", takeaway: "Water moves around the planet in a cycle.", icons: ["sun", "water"], connections: [{ from: "sun", to: "water", label: "warms" }], evidenceIds: [input.evidence.find(e => e.sourceId === (i%2 ? "source-2" : "source-1"))!.id],
   })) });
+  it("uses the earliest spoken alias rather than delaying an illustration until a later synonym", () => {
+    const draft = value();
+    draft.scenes[0].narration = "Sunlight warms water and changes it into vapor in the air. It can later condense into droplets and return to lakes and rivers. This energy comes from the sun.";
+    expect(input.validate(draft).scenes[0].nodes[0].cue).toBe("sunlight");
+  });
   it("keeps causal direction when narration changes node order and resolves exact source identities", () => {
     const result = input.validate(value());
     expect(result.scenes[0].nodes.map(n => n.concept)).toEqual(["water", "sun"]);

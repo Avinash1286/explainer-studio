@@ -1,0 +1,51 @@
+# Release operations
+
+## Topology
+
+```mermaid
+flowchart LR
+  Browser[Next.js browser app] --> Convex[Convex database, workflows, files and hosting]
+  Convex --> Research[Firecrawl research]
+  Convex --> Text[NVIDIA text and factual reasoning]
+  Text -. transient failure .-> CF[Cloudflare Workers AI]
+  Convex --> Vision[Cloudflare vision with NVIDIA vision fallback]
+  Worker[Zerops: local Kokoro + Remotion + FFmpeg] -->|authenticated leases and artifacts| Convex
+  Convex --> Share[Approved version share links]
+  Convex -. configured and consented .-> Mail[AgentMail outbox and signed webhooks]
+```
+
+Convex owns job state, checkpoints, retries, quotas, ownership, icon vectors, reviews, immutable versions, shares and outbox records. A stopped media worker can be replaced using lease fencing. Inference is restricted to NVIDIA and Cloudflare; Kokoro-82M runs locally on the worker. No GitHub Actions are used.
+
+## Deploy and verify
+
+1. `npm ci` followed by `npm run check`. Tests use isolated providers; they do not send mail or prove live model accuracy.
+2. `npx convex dev --once` for the development backend; `npx convex deploy --yes` for production.
+3. `npx @convex-dev/static-hosting deploy --dist out --build-command "npm run build:web" --skip-convex`. This builds against the production Convex URL rather than uploading a dev bundle.
+4. Push the Zerops `mediaworker` setup in `zerops.yaml`. Check service ACTIVE and a fresh `workers` heartbeat. Version 0.5.4 supports protocol 5, named causal edges and text cards. A protocol-4 worker cannot claim a text-card job.
+5. Open `/health` on the public site. Check actual generation readiness, not just HTTP 200. The readiness query also requires qualified provider configuration and the complete embedding catalog.
+6. Generate one real production question; inspect the final video, captions, source links, review, revision, public share and revoke behavior. Only publish manually inspected approved examples through `showcase:publish`.
+7. Push GitHub and verify Vercel's `explainer-studio-checks` build for that exact commit. Local success does not imply a passing remote build.
+
+## Recovery and limits
+
+- Text generation has at most three validation attempts per provider. Transient NVIDIA failures switch to Cloudflare. Auth errors fail immediately. A Cloudflare daily-allocation exhaustion requires the quota reset or the owner's chosen plan change; no paid upgrade is performed automatically.
+- Owners can retry a failed pre-render plan once; saved research is reused. Owners can retry an unavailable review once using the saved video. These actions cannot reopen a rejected version as approved.
+- Review workflow has three attempts with 30/60-second backoff. The factual pass uses reasoning-enabled NVIDIA with Cloudflare fallback; frame review sends real JPEG bytes to qualified vision models. Both must pass.
+- One automatic repair and two requested scene edits per lesson. The compiler preserves unaffected scenes, chooses complete narration sentences, canonical icons or literal text cards, ordered spoken cues and explicit causal edges. It never turns an absent endpoint into a different causal edge.
+- Operator recovery functions are internal, version-scoped and intended for implementation fixes. Record their use in evaluation results; do not call recovered runs first-pass successes.
+- Share links expire after seven days and can be revoked. Revocation prevents future page resolution; it cannot erase an already downloaded video or a previously copied underlying file URL.
+- Public showcase entries are deliberately published by an operator. Ordinary user lessons do not appear automatically. Keep public examples separate from user workspaces.
+
+## Pause and rollback
+
+Set `GENERATION_ENABLED=false` on production to pause new general generation; the scripted renderer demo remains separately labelled. Cancel active jobs through the app if needed. Restore a known code commit, run checks, redeploy Convex/static hosting, and deploy the matching worker. Do not revert database schema or discard immutable versions as an incidental rollback. Worker protocol fencing must remain compatible with queued jobs.
+
+## Email setup
+
+Put `AGENTMAIL_API_KEY`, `AGENTMAIL_INBOX_ID` and `AGENTMAIL_WEBHOOK_SECRET` in ignored `.env`, then run `npm run delivery:setup` and separately `npm run delivery:setup -- --prod` for the intended deployment. Configure AgentMail's webhook to `https://<deployment>.convex.site/api/webhooks/agentmail` with the subscribed delivery events described in `docs/review-delivery.md`. Use the matching webhook secret.
+
+Setup does not send messages. A person must consent to verification, enter the received code, and separately consent to sending an approved lesson. Record the actual sent/delivered/bounced result. A configured variable or mocked webhook is not proof of email delivery.
+
+## Known product boundaries
+
+This release targets short English science and everyday-mechanism explainers, one visual style, two- and three-node diagrams, 24 pinned OpenMoji assets and animated word cards for concepts without faithful icons. It is not an unrestricted animation editor. Kokoro token timing is predicted, not forced alignment. Two sampled frames per scene do not establish that every frame is perfect. The automated factual editor can still miss errors; manual inspection remains necessary before a public demo.

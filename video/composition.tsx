@@ -36,13 +36,15 @@ function Board({ scene, icons, index, fps, total, origin }: { scene: TimedScene;
       {connections.map((edge, i) => {
         const [x,y] = positions[edge.from], [tx,ty] = positions[edge.to];
         const direction = tx > x ? 1 : -1;
+        const bidirectional = connections.some(other => other.from === edge.to && other.to === edge.from);
+        const lane = bidirectional ? (edge.from < edge.to ? -24 : 24) : 0;
         const crossBase = scene.layout === "relationship" && Math.abs(edge.from-edge.to) === 2;
-        const labelY = (y+ty)/2 + (crossBase ? 31 : -18);
-        return <g key={i} opacity={progress(frame, Math.max(cues[edge.from], cues[edge.to])+25, 12)}><line x1={x+105*direction} y1={y} x2={tx-105*direction} y2={ty} stroke={ink} strokeWidth="3" strokeDasharray="6 8" markerEnd={`url(#arrow-${scene.id})`} /><text x={(x+tx)/2} y={labelY} textAnchor="middle" fontSize="19" fill={ink} stroke="#fbfaf5" strokeWidth="6" paintOrder="stroke">{edge.label}</text></g>;
+        const labelY = (y+ty)/2 + lane + (crossBase ? 31 : bidirectional && edge.from > edge.to ? 22 : -18);
+        return <g key={i} opacity={progress(frame, Math.max(cues[edge.from], cues[edge.to])+25, 12)}><line x1={x+105*direction} y1={y+lane} x2={tx-105*direction} y2={ty+lane} stroke={ink} strokeWidth="3" strokeDasharray="6 8" markerEnd={`url(#arrow-${scene.id})`} /><text x={(x+tx)/2} y={labelY} textAnchor="middle" fontSize="19" fill={ink} stroke="#fbfaf5" strokeWidth="6" paintOrder="stroke">{edge.label}</text></g>;
       })}
     </svg>
     {scene.nodes.map((node, i) => <div key={node.icon + i} style={{ position: "absolute", left: positions[i][0]-110, top: positions[i][1]-90, width: 220, display: "flex", flexDirection: "column", alignItems: "center" }}>
-      {node.icon === "TEXT" ? <div style={{ width:190, minHeight:140, display:"flex", alignItems:"center", justifyContent:"center", textAlign:"center", border:"2px solid #71836b", borderRadius:20, padding:12, boxSizing:"border-box", background:"#f5f6ec", fontSize:28, fontWeight:600, opacity:progress(frame,cues[i],24) }}>{node.label}</div> : <><Icon svg={icons[node.icon]} at={cues[i]} name={`${scene.id}-${i}`} /><div style={{ fontSize: 27, fontWeight: 600, marginTop: 12, opacity: progress(frame, cues[i]+24, 12) }}>{node.label}</div></>}
+      {node.icon === "TEXT" ? <div style={{ width:190, minHeight:140, display:"flex", alignItems:"center", justifyContent:"center", textAlign:"center", border:"2px solid #71836b", borderRadius:20, padding:12, boxSizing:"border-box", background:"#f5f6ec", fontSize:node.label.split(/\s+/).some(word => word.length > 11) ? 20 : 28, overflowWrap:"anywhere", lineHeight:1.2, fontWeight:600, opacity:progress(frame,cues[i],24) }}>{node.label}</div> : <><Icon svg={icons[node.icon]} at={cues[i]} name={`${scene.id}-${i}`} /><div style={{ fontSize: 27, fontWeight: 600, marginTop: 12, opacity: progress(frame, cues[i]+24, 12) }}>{node.label}</div></>}
     </div>)}
     <div style={{ position: "absolute", bottom: 120, left: 100, right: 100, textAlign: "center", fontSize: 24, color: "#576b51", opacity: progress(frame, cues.at(-1)!+35, 12) }}>{scene.takeaway}</div>
     <div style={{ position: "absolute", bottom: 49, left: 90, right: 90, textAlign: "center", fontSize: 24, minHeight: 30 }}>{captionWords.map(w => w.text).join(" ").replace(/\s+([.,!?;:])/g, "$1")}</div>

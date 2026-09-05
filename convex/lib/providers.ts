@@ -44,7 +44,7 @@ export async function chat(config: ProviderConfig, provider: Provider, system: s
   }
   const common = { messages, temperature: 0.2, max_tokens: reasoning ? 10000 : 5000, stream: false };
   const raw = provider === "nvidia"
-    ? await post("https://integrate.api.nvidia.com/v1/chat/completions", config.NVIDIA_API_KEY, { ...common, model: NVIDIA_MODEL, chat_template_kwargs: { enable_thinking: reasoning }, guided_json: decodingSchema(schema), response_format: { type: "json_object" } }, provider, transport, 90_000)
+    ? await post("https://integrate.api.nvidia.com/v1/chat/completions", config.NVIDIA_API_KEY, { ...common, model: NVIDIA_MODEL, chat_template_kwargs: { enable_thinking: reasoning }, ...(reasoning ? { reasoning_budget: 2048 } : {}), guided_json: decodingSchema(schema), response_format: { type: "json_object" } }, provider, transport, reasoning ? 150_000 : 90_000)
     : await post(cfUrl(config, CLOUDFLARE_MODEL), config.CLOUDFLARE_API_TOKEN, { ...common, response_format: { type: "json_schema", json_schema: decodingSchema(schema) } }, provider, transport, 90_000);
   let parsed: unknown;
   if (provider === "nvidia") {

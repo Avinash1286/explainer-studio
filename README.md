@@ -1,25 +1,27 @@
 # Explainer Studio
 
-Turn a question into a short, illustrated lesson. This repository implements a staged agentic explainer-video system.
+Turn a question into a short illustrated lesson with research, narration, captions, review and targeted revisions.
 
-**Current release: H3 repair hardening implemented; content and email acceptance incomplete.** Visitors can save lesson briefs and render a fresh, scripted plant-energy demo with Kokoro narration and three animated layouts. Topic research and generation are implemented behind a provider qualification gate. The static plant sketch is labelled separately from rendered results.
+**Release candidate 0.5.4.** The final three implementation workstreams are present. Live evaluation and production activation are recorded separately in [release evidence](docs/release-evidence.md); a passing build is not a claim of perfect generated content. AgentMail live delivery still needs working inbox credentials and a consented test.
 
-- Live app: https://wooden-pheasant-677.convex.site
-- Build status and next steps: [PHASES.md](PHASES.md)
-- Architecture and reference study: [plan.md](plan.md)
-- Actual hackathon progress: [hackathon.md](hackathon.md)
+- [Public app](https://wooden-pheasant-677.convex.site/)
+- [Phase status](PHASES.md), [architecture and reference study](plan.md), [actual hackathon log](hackathon.md)
+- [Release operations](docs/release-operations.md), [owner demo runbook](docs/demo-runbook.md), [submission working copy](docs/submission-draft.md)
 
 ## Implemented
 
-- Next.js 16 static export with TypeScript, local fonts, responsive UI, and reduced-motion support.
-- Convex database and realtime lesson subscriptions, hosted with the Convex static-hosting component.
-- Anonymous browser workspaces: 256-bit bearer capabilities, server-side token hashes, seven-day expiry, and ownership checks. This is not account sign-in. Clearing browser storage loses access; no cross-device recovery is implemented.
-- Validated brief creation, idempotent retries, cancellation, per-workspace and global creation quotas using the Convex rate-limiter component.
-- Kokoro 82M narration, predicted token timing, three Remotion layouts, 24 OpenMoji assets, and MP4/captions/poster/project outputs.
-- Authenticated media leases with cancellation, fencing, bounded retries, artifact validation, and idempotent publication.
-- 52 automated tests and Vercel Git-based validation. GitHub Actions is disabled at the owner's request. See [continuous validation](docs/continuous-validation.md).
+- Next.js/TypeScript static app on Convex hosting, realtime progress and anonymous browser workspaces.
+- Convex workflows, research checkpoints, immutable versions, quotas, cancellation, authenticated media leases and stale-result fencing.
+- Firecrawl research; NVIDIA NIM reasoning for planning and factual checking, with Cloudflare Workers AI fallback. No OpenAI model API is used.
+- Qualified Cloudflare icon embeddings in Convex vector search. Literal catalog matches reuse the qualified vectors; concepts without faithful icons use animated text cards.
+- Local Kokoro-82M on Zerops, deterministic Remotion diagrams, explicit directed relationships, MP4, captions, poster and inspectable project outputs.
+- Independent factual and decoded-frame review; one automatic repair, two scene edits, reusable narration cache, bounded planning/review recovery.
+- Approved-version share links with expiry/revocation, operator-published examples, opt-in verified-recipient AgentMail outbox and signed delivery callbacks.
+- 76 automated tests plus TypeScript, lint and builds. Vercel Git integration runs clean-install validation; GitHub Actions is disabled.
 
-Convex Workflow coordinates Firecrawl research, NVIDIA planning with Cloudflare fallback, and Cloudflare embeddings in Convex vector search. Both deployments passed provider qualification, and a real topic produced a 60-second draft video. Production generation remains gated because content inspection found inaccurate icon labels. Cloudflare source/frame review, bounded repair, targeted scene edits and opt-in AgentMail are implemented; live review/repair and delivery acceptance are tracked separately. OpenAI is excluded by the owner; All Gas sponsor-stack qualification/scoring remains unconfirmed. See [H3 setup and acceptance](docs/review-delivery.md). See [provider setup and the H2 guide](docs/topic-generation.md). See [the media phase guide](docs/media-phase.md) for renderer setup, measured results, and recovery limits.
+Workspaces use 256-bit bearer tokens with hashes stored in Convex and seven-day expiry. They are not accounts: clearing browser storage loses access. Source/frame review remains fallible; inspect a lesson before presenting it publicly. Existing reference videos are not redistributed.
+
+**Hackathon eligibility:** The selected NVIDIA/Cloudflare-only model stack is deliberate. The official All Gas sponsor-stack criterion names OpenAI, so qualification/scoring remains unconfirmed until organizers clarify it. A public deployment is not an eligibility decision. The owner records the demo and approves any actual social post or submission.
 
 ## Local development
 
@@ -87,4 +89,4 @@ The initial repository uses one package to keep setup small; the plan's `apps/we
 
 Read `AGENTS.md` and the generated Convex guidelines before backend changes. `npx convex ai-files install` refreshes the official Convex agent guidance and installs local skills. Submit only validated changes; update the phase record with evidence and limitations. Provider credentials belong server-side in Convex, except the worker's narrowly scoped credential in Zerops. Public environment variables must never contain secrets.
 
-Repair reliability evidence and remaining gates: [repair acceptance](docs/repair-acceptance.md). Run `npm run repair:verify -- project.json sources.json review.json runs/repair-verification` for the real local repair/render/review regression. No generated draft was approved in this phase.
+Repair reliability evidence and remaining gates: [repair acceptance](docs/repair-acceptance.md). Run `npm run repair:verify -- project.json sources.json review.json runs/repair-verification` for the real local repair/render/review regression. That report is historical; see release evidence for current approved revisions and limitations.

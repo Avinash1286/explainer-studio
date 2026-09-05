@@ -98,9 +98,12 @@ export async function renderProject(value: unknown, directory: string, stage: (m
   const { cancelSignal, cancel } = makeCancelSignal();
   signal?.addEventListener("abort", cancel, { once: true });
   try {
-    await renderMedia({ serveUrl, composition, inputProps, codec: "h264", audioCodec: "aac", outputLocation: path.join(destination, "video.mp4"), concurrency: Number(process.env.RENDER_CONCURRENCY || 2), crf: 22, muted: false, enforceAudioTrack: true, cancelSignal });
+    await renderMedia({ serveUrl, composition, inputProps, codec: "h264", audioCodec: "aac", outputLocation: path.join(destination, "video-unmastered.mp4"), concurrency: Number(process.env.RENDER_CONCURRENCY || 2), crf: 22, muted: false, enforceAudioTrack: true, cancelSignal });
   } finally { signal?.removeEventListener("abort", cancel); }
   signal?.throwIfAborted();
+  // Normalize the complete narration mix while copying the encoded video;
+  // picture timing and captions stay unchanged. Review samples come after this.
+  await command(process.env.FFMPEG_BIN || "ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", path.join(destination, "video-unmastered.mp4"), "-c:v", "copy", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-c:a", "aac", "-b:a", "128k", path.join(destination, "video.mp4")], signal);
   await renderStill({ serveUrl, composition, inputProps, frame: Math.min(scenes[0].durationInFrames - 10, 180), output: path.join(destination, "poster.png") });
   const frames = inputProject.origin === "generated" ? frameSamples(scenes) : [];
   for (const [index, sample] of frames.entries()) {

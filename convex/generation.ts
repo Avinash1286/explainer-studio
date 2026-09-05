@@ -18,6 +18,21 @@ export const run = workflow.define({ args: { jobId: v.id("jobs") }, returns: v.n
 
 export const availability = query({ args: {}, handler: async ctx => ({ enabled: await generationReady(ctx) }) });
 
+// Authenticated operator-only canary: exercise the real deployment before
+// opening public generation. This never bypasses provider or content checks.
+export const startCanary = internalMutation({ args: { jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, { jobId }) => {
+  const job = await ctx.db.get(jobId);
+  if (!job || !["queued", "failed"].includes(job.status)) throw new ConvexError("Canary needs a queued brief or failed pre-render plan");
+  const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(4);
+  if (artifacts.some(a => a.stage !== "research")) throw new ConvexError("Canary cannot replace a rendered project");
+  if (!await generationReady(ctx, true)) throw new ConvexError("Canary providers must be qualified");
+  await ctx.db.patch(jobId, { generation: true, status: "researching", stageMessage: "Finding sources for your question", updatedAt: Date.now() });
+  const workflowId = await start(ctx, internal.generation.run, { jobId }, { onComplete: internal.generation.finished, context: { jobId }, startAsync: true });
+  await ctx.db.patch(jobId, { workflowId });
+  await ctx.db.insert("jobEvents", { jobId, kind: "operator_canary", message: "Operator started release acceptance with public generation still gated", createdAt: Date.now() });
+  return null;
+} });
+
 export const retryPlanning = mutation({ args: { token: v.string(), jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, args) => {
   const session = await requireSession(ctx, args.token, Date.now());
   const job = await ctx.db.get(args.jobId);

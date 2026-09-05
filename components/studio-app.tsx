@@ -78,7 +78,8 @@ function ConnectedStudio() {
     return () => { active = false; };
   }, [start]);
   const jobs = useQuery(api.jobs.list, token ? { token } : "skip");
-  return <><Studio
+  return <Studio
+    gallery={<Showcase />}
     jobs={jobs ?? EMPTY_JOBS} ready={Boolean(token && jobs)}
     connectionMessage={connectionError || (token && jobs ? "Your workspace is connected" : "Connecting your workspace…")}
     save={async (brief) => { if (!token) throw new Error("No session"); return create({ ...brief, token }); }}
@@ -87,7 +88,7 @@ function ConnectedStudio() {
     generationEnabled={availability?.enabled ?? false}
     generate={async jobId => { if (!token) throw new Error("No session"); await generate({ token, jobId }); }}
     resultPanel={(jobId) => token ? <MediaResult token={token} jobId={jobId} /> : null}
-  /><Showcase /></>;
+  />;
 }
 
 function MediaResult({ token, jobId }: { token: string; jobId: Id<"jobs"> }) {
@@ -111,13 +112,14 @@ function MediaResult({ token, jobId }: { token: string; jobId: Id<"jobs"> }) {
   </div>;
 }
 
-function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPanel, generate, generationEnabled = false }: {
+function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPanel, generate, gallery, generationEnabled = false }: {
   jobs: Job[]; ready: boolean; connectionMessage: string; generationEnabled?: boolean;
   generate?: (jobId: Id<"jobs">) => Promise<void>;
   save?: (brief: Brief) => Promise<Id<"jobs">>;
   cancel?: (id: Id<"jobs">) => Promise<void>;
   sample?: (requestId: string) => Promise<Id<"jobs">>;
   resultPanel?: (jobId: Id<"jobs">) => ReactNode;
+  gallery?: ReactNode;
 }) {
   const [topic, setTopic] = useState("");
   const [duration, setDuration] = useState<number>(75);
@@ -178,7 +180,7 @@ function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPa
           <button className="nav-item" onClick={() => setShowInfo((value) => !value)} aria-expanded={showInfo}><CircleHelp size={18} /> How it works</button>
         </nav>
         <div className="sidebar-note"><span className="little-spark">✳</span><h3>Make an idea click.</h3><p>A good explanation starts with a little curiosity.</p><div className="note-line" /></div>
-        <div className="sidebar-bottom"><span className="avatar">Y</span><div>Your personal studio<small>Early access · Media demo</small></div></div>
+        <div className="sidebar-bottom"><span className="avatar">Y</span><div>Your personal studio<small>Early access · Illustrated lessons</small></div></div>
       </aside>
       <div className="main-column">
         <header className="topbar"><div>Workspace <ChevronRight size={14} /><span>Create a lesson</span></div><span className="release-pill"><span /> Source-backed explainers</span></header>
@@ -211,6 +213,7 @@ function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPa
           </div>
           {error ? <p className="error-banner" role="alert">{error}</p> : null}
           {selected ? <section className="selected-brief" aria-live="polite"><div className="selected-top"><span className="eyebrow">YOUR LESSON BRIEF</span><span className={`status-badge ${selected.status}`}>{selected.status === "queued" ? "Brief saved" : selected.status}</span></div><h2>{selected.topic}</h2><p>{selected.stageMessage}</p>{resultPanel?.(selected._id)}{selected.status === "queued" && generationEnabled ? <button className="primary-button" disabled={busy} onClick={generateSelected}>Generate this lesson <ArrowRight size={17} /></button> : null}{["researching", "planning", "rendering", "reviewing"].includes(selected.status) ? <div className="pipeline">{PIPELINE_STAGES.map((stage, index) => <div key={stage.id}><span>{index + 1}</span><strong>{stage.label}</strong><small>{stage.description}</small></div>)}</div> : null}{selected.status !== "cancelled" && selected.status !== "completed" && selected.status !== "failed" ? <button className="text-button" disabled={busy} onClick={cancelSelected}><X size={14} /> Cancel this lesson</button> : null}</section> : null}
+          {gallery}
           <section id="your-lessons" className="library-section"><div className="library-heading"><div><span className="eyebrow">YOUR NEXT EXPLANATION STARTS HERE</span><h2>Your lessons <span>{jobs.length.toString().padStart(2, "0")}</span></h2></div><span className="private-note">Saved to this browser’s workspace</span></div>
             {jobs.length ? <div className="lesson-list">{jobs.map((job) => <button key={job._id} className={`lesson-row ${selectedId === job._id ? "current" : ""}`} onClick={() => select(job._id)}><span className="lesson-icon"><FileText size={20} /></span><span className="lesson-copy"><strong>{job.topic}</strong><small>{job.duration}s · {job.audience === "student" ? "School student" : "Curious beginner"}</small></span><span className={`status-badge ${job.status}`}>{job.status === "queued" ? "Brief saved" : job.status}</span><ArrowRight size={17} /></button>)}</div> : <div className="empty-library"><div><FileText size={23} /></div><h3>A blank page is a good beginning.</h3><p>Your saved lesson briefs will appear here.<br />Start with one question above.</p></div>}
           </section>

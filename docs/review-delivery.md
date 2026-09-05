@@ -1,3 +1,5 @@
+> Historical H3 report. Current provider fallback, retry limits, deployment status and live acceptance are in [release evidence](release-evidence.md) and [release operations](release-operations.md).
+
 # H3: review, revision and delivery
 
 Implementation is present in release 0.4.0. **Cloudflare replaces the earlier OpenAI reviewer at the owner's request. Live repair and real email acceptance remain separate gates.** Production topic generation stays disabled. The four H2 provider keys remain configured. GitHub Actions remains disabled; Vercel Hobby runs `npm run check` on pushes.

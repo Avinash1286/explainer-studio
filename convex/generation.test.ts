@@ -38,6 +38,17 @@ function mockProviders() {
   });
 }
 describe("durable topic generation", () => {
+  it("keeps public generation closed during an operator canary and still requires qualified providers", async () => {
+    vi.useFakeTimers();
+    const { t, jobId } = await setup();
+    await expect(t.mutation(internal.generation.startCanary, { jobId })).rejects.toThrow("qualified");
+    const ready = await setup(true); vi.stubEnv("GENERATION_ENABLED", "false");
+    expect(await ready.t.query(api.generation.availability, {})).toEqual({ enabled: false });
+    await ready.t.mutation(internal.generation.startCanary, { jobId: ready.jobId });
+    expect((await ready.t.run(ctx => ctx.db.get(ready.jobId)))?.generation).toBe(true);
+    expect(await ready.t.query(api.generation.availability, {})).toEqual({ enabled: false });
+    await expect(ready.t.mutation(internal.generation.startCanary, { jobId: ready.jobId })).rejects.toThrow("queued");
+  });
   it("permits only one owner planning retry and fences text cards from older workers", async () => {
     vi.useFakeTimers();
     const { t, jobId } = await setup(true); vi.stubGlobal("fetch", mockProviders());

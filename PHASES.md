@@ -1,17 +1,14 @@
 # Implementation phases
 
-The detailed H0–H6 acceptance gates remain in `plan.md`, section 11. This status file separates completed work from planned capabilities.
+Release 0.5.4 groups the remaining build into the three workstreams requested by the owner. See [release evidence](docs/release-evidence.md) for current live outcomes and [demo runbook](docs/demo-runbook.md) for the owner-recorded video.
 
-| Milestone | Status | Evidence / next gate |
+| Workstream | Implementation | Acceptance |
 |---|---|---|
-| H0a: application foundation | Implemented | Public static app; real Convex create/list/cancel; ownership and quotas; worker heartbeat contract; automated checks and browser verification. |
-| H0b: external service and media qualification | Partial | Media runtime qualified on Zerops. NVIDIA, Cloudflare and Firecrawl qualified in development and production. Cloudflare vision now returned a real stored rejection; AgentMail, intended inbox and official hackathon log integration remain pending. |
-| H1: original rendered fixture | Complete | Deployed and verified; see `docs/media-phase.md`. |
-| H2: topic to complete explainer | Pipeline verified; content gate pending | Real browser topic produced a 60-second draft with captions and sources. Timing/playback passed; incorrect icon labels failed content inspection. Production generation remains disabled. See `docs/topic-generation.md`. |
-| H3: review, revision, delivery | Repair hardening implemented; live acceptance incomplete | Source and decoded-frame review gate, one automatic repair, two targeted user revisions, Kokoro scene cache, verified AgentMail outbox and signed callbacks. See `docs/review-delivery.md`. |
-| H4: evaluation | Pending | Five unseen topics, real user trials, failure/recovery and access checks. |
-| H5: release evidence | Pending | Reproducible setup, final licenses, recorded demo, social/submission draft. |
-| H6: submission | Pending | Owner-authorized social publishing and submission; real receipt recorded. |
+| 1. Generation quality and reliability | Compact source-ID authoring, literal icons/text cards, explicit edges, reasoning-based factual check, NVIDIA vision fallback, bounded recovery | 76 automated tests pass. Live development failures, repairs and holdout outcomes are recorded separately. |
+| 2. Complete lesson workflow | Review findings, one-scene edits, narration cache, artifact links, expiring/revocable shares, public examples, opt-in email outbox | Anonymous share playback and revocation verified. Real revision and production results: see release evidence. AgentMail access returns 403 until credentials are corrected. |
+| 3. Release preparation | Convex frontend/backend deployment, Zerops worker 0.5.4, Vercel Git checks, operational guide, demo runbook, submission draft, asset notices | Public generation remains subject to live acceptance. Owner demo, actual user feedback, eligibility clarification and final submission are separate external steps. |
+
+The H0–H6 entries below are historical development notes. They do not override the current release-evidence report. No email, social post or submission receipt is claimed without a real event.
 
 ## H0a acceptance evidence
 

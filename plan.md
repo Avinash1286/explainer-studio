@@ -1190,3 +1190,10 @@ Consulted 2026-09-05. These sources support implementation choices, not claims m
 - [OpenMoji](https://github.com/hfg-gmuend/openmoji): versioned SVG graphics/metadata.
 - [OpenMoji FAQ](https://github.com/hfg-gmuend/openmoji/blob/master/FAQ.md): attribution guidance.
 - [Firecrawl search](https://docs.firecrawl.dev/api-reference/endpoint/search) and [scrape](https://docs.firecrawl.dev/features/scrape): discovery and evidence retrieval.
+
+
+## Release implementation addendum — September 5, 2026
+
+Version 0.5.4 implements the remaining three engineering workstreams: source-grounded authoring/reliability; review/edit/share workflow; and evaluation/deployment/demo preparation. This addendum and docs/release-evidence.md supersede the earlier proposal where it differs from implemented behavior. The release keeps Next.js/TypeScript, Convex, NVIDIA/Cloudflare-only model inference, Firecrawl, local Kokoro on Zerops and OpenMoji. General diagrams use explicit named causal edges or association boards; abstract concepts use literal animated text cards. Known catalog vectors are reused without repeatedly billing the embedding API. Factual review uses bounded reasoning; visual review uses actual decoded JPEGs with qualified NVIDIA fallback. Both must pass. Owners have one planning retry, one unavailable-review retry, one automatic repair and two requested scene revisions. No GitHub Actions are used.
+
+See docs/release-operations.md for exact current deployment/recovery procedures, docs/demo-runbook.md for the owner-recorded sub-three-minute video, and docs/submission-draft.md for truthful event materials. Live tests are distinct from unit mocks and successful recovered cases are distinct from first-pass results. AgentMail live acceptance requires valid inbox credentials and consent. Demo creation, real participant trials, sponsor-eligibility confirmation and final submission are not fabricated as engineering outputs.

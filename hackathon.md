@@ -78,3 +78,12 @@ Provider migration acceptance: the development backend stored a real Cloudflare 
 ## Repair reliability ? September 5, 2026
 
 Implemented bounded NVIDIA/Cloudflare invalid-output fallback, source-ID repair compilation, canonical icon/cue constraints, optional-sentence duration fitting, incomplete-takeaway rejection, one audited operator recovery, and a resumable local repair/render/review CLI. 62 tests and builds pass. A real repaired clip rendered in 150.84 seconds on Windows; Cloudflare frame review returned 429 and manual inspection rejected its incomplete takeaway and diagram semantics. A fresh water-cycle test failed during planning. No new approval, email, H3 acceptance completion or sponsor-eligibility confirmation is claimed. Production generation stays disabled. See docs/repair-acceptance.md.
+
+
+## Final three implementation workstreams � September 5, 2026
+
+Release 0.5.4 adds compact source-ID authoring, literal icons/word cards, explicit directed relationships, independent reasoning-based factual review, real NVIDIA vision fallback, bounded recovery, approved-version sharing and a public example gallery. All inference uses NVIDIA/Cloudflare, with local Kokoro on Zerops. No OpenAI model API or GitHub Actions is used.
+
+The exact local release check passed 76 tests, TypeScript, lint, web export and media bundles. A real Moon revision preserved four unaffected scenes and reused four narration cache entries. Production solar-cell generation, a scene edit, anonymous share playback with captions and revocation passed. Zerops 0.5.4 has a verified fresh heartbeat. See docs/release-evidence.md for the complete mixed evaluation, provider failures, manual rejections, deployment verification and final activation record. Automated approval is not a guarantee of factual or visual quality.
+
+AgentMail inbox access returns 403 and no consented email test has happened. The owner will record the demo. No user-trial feedback, social post, final submission or sponsor-eligibility confirmation is invented. docs/demo-runbook.md and docs/submission-draft.md provide the recording/submission preparation.

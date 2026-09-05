@@ -4,6 +4,11 @@ import { projectSchema } from "../packages/contracts/scene";
 
 // Only authenticated operators publish manually inspected, approved examples.
 // Normal user lessons never appear here automatically.
+export const unpublish = internalMutation({ args: { slug: v.string() }, returns: v.null(), handler: async (ctx, { slug }) => {
+  const row = await ctx.db.query("showcase").withIndex("by_slug", q => q.eq("slug", slug)).unique();
+  if (row) await ctx.db.delete(row._id);
+  return null;
+} });
 export const publish = internalMutation({ args: { slug: v.string(), jobId: v.id("jobs"), revision: v.number(), description: v.string() }, returns: v.null(), handler: async (ctx, args) => {
   if (!/^[a-z0-9-]{3,60}$/.test(args.slug) || args.description.length > 180) throw new Error("Invalid showcase entry");
   const review = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId).eq("revision", args.revision)).unique();
