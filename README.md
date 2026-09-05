@@ -17,7 +17,7 @@ Turn a question into a short, illustrated lesson. This repository implements a s
 - Validated brief creation, idempotent retries, cancellation, per-workspace and global creation quotas using the Convex rate-limiter component.
 - Kokoro 82M narration, predicted token timing, three Remotion layouts, 24 OpenMoji assets, and MP4/captions/poster/project outputs.
 - Authenticated media leases with cancellation, fencing, bounded retries, artifact validation, and idempotent publication.
-- Thirty-five backend tests and GitHub Actions configuration. Hosted CI remains blocked by an account billing lock.
+- Thirty-five automated tests and Vercel Git-based validation. GitHub Actions is disabled at the owner's request. See [continuous validation](docs/continuous-validation.md).
 
 Convex Workflow now coordinates Firecrawl research, NVIDIA planning with Cloudflare fallback, and Cloudflare embeddings in Convex vector search. These provider integrations await live qualification with account credentials. OpenAI frame review and opt-in AgentMail remain planned. See [provider setup and the H2 guide](docs/topic-generation.md). See [the media phase guide](docs/media-phase.md) for renderer setup, measured results, and recovery limits.
 

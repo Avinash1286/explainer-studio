@@ -21,3 +21,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Project validation
+
+Do not create or run GitHub Actions for this project. The owner has selected Vercel Git integration on the Hobby plan for automated validation. `vercel.json` runs `npm run check` before publishing its static validation preview. Keep the primary hackathon app on Convex hosting. Provider credentials belong only in Convex; Vercel receives the public Convex URL.
