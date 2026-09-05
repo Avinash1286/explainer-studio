@@ -14,6 +14,17 @@ export const PROVIDER_MESSAGES = {
   rateLimit: "OpenAI has reached its usage or rate limit. Try again later, or choose NVIDIA NIM + Cloudflare Workers AI for a new lesson.",
   unavailable: "OpenAI is temporarily unavailable. Try again later. Existing lessons remain saved.",
 } as const;
+export const MODEL_SERVICE_UNAVAILABLE = "The AI model services are temporarily unavailable or rate limited. Your saved work is retained. Try again later.";
+
+// Workflow errors arrive serialized, so recognize only our sanitized provider
+// status marker. The first status is the terminal failure; a fallback's 401
+// must not be retried just because the primary previously returned a 503.
+export function transientProviderFailure(error: string): boolean {
+  const match = error.match(/(?:nvidia|cloudflare|openai) request failed \((\d+)\)/i);
+  if (!match) return false;
+  const status = Number(match[1]);
+  return status === 0 || status === 408 || status === 429 || (status >= 500 && status <= 599);
+}
 
 export function openAIErrorMessage(status: number): string {
   if (status === 401) return PROVIDER_MESSAGES.invalidKey;
@@ -24,6 +35,8 @@ export function openAIErrorMessage(status: number): string {
 
 export function providerFailureMessage(error: string): string | null {
   for (const message of Object.values(PROVIDER_MESSAGES)) if (error.includes(message)) return message;
+  if (error.includes(MODEL_SERVICE_UNAVAILABLE)) return MODEL_SERVICE_UNAVAILABLE;
   const status = error.match(/openai request failed \((\d+)\)/i);
-  return status ? openAIErrorMessage(Number(status[1])) : null;
+  if (status) return openAIErrorMessage(Number(status[1]));
+  return transientProviderFailure(error) ? MODEL_SERVICE_UNAVAILABLE : null;
 }

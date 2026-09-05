@@ -8,7 +8,7 @@ import { projectSchema } from "../packages/contracts/scene";
 import { passedReview, validateReview, validateReplacement } from "../packages/contracts/review";
 import schema from "./schema";
 import { reviewReady } from "./lib/generationConfig";
-import { providerFailureMessage, PROVIDER_MESSAGES } from "../packages/contracts/provider";
+import { providerFailureMessage, PROVIDER_MESSAGES, transientProviderFailure } from "../packages/contracts/provider";
 
 const versionArgs = { jobId: v.id("jobs"), revision: v.number() };
 const reportValidator = v.object({ summary: v.string(), scenes: v.array(v.object({ sceneId: v.string(), factualPass: v.boolean(), visualPass: v.boolean(), issues: v.array(v.object({ sceneId: v.string(), kind: v.union(v.literal("factual"), v.literal("icon"), v.literal("layout"), v.literal("timing")), detail: v.string(), repair: v.string() })) })) });
@@ -18,8 +18,20 @@ export const run = workflow.define({ args: versionArgs, returns: v.null() }).han
   return null;
 });
 export const repair = workflow.define({ args: { requestId: v.id("revisionRequests") }, returns: v.null() }).handler(async (step, args): Promise<null> => {
-  try { await step.runAction(internal.reviewActions.rewrite, args, { retry: false }); }
-  catch (error) { const reason = providerFailureMessage(String(error)); await step.runMutation(internal.reviews.repairFailed, { ...args, ...(reason ? { reason } : {}) }); }
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try { await step.runAction(internal.reviewActions.rewrite, args, { retry: false }); return null; }
+    catch (error) {
+      const failure = String(error);
+      if (attempt < 3 && transientProviderFailure(failure)) {
+        if (!await step.runMutation(internal.reviews.repairWaiting, { ...args, nextAttempt: attempt + 1 })) return null;
+        await step.sleep(30_000 * attempt, { name: `Wait before repair attempt ${attempt + 1}` });
+        continue;
+      }
+      const reason = providerFailureMessage(failure);
+      await step.runMutation(internal.reviews.repairFailed, { ...args, ...(reason ? { reason } : {}) });
+      return null;
+    }
+  }
   return null;
 });
 
@@ -68,6 +80,15 @@ export const repairContext = internalQuery({ args: { requestId: v.id("revisionRe
   const research = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", request.jobId).eq("stage", "research")).unique();
   if (!job || job.status !== "planning" || job.revision !== request.fromRevision || !task?.projectJson || !research) return null;
   return { job, request, task, research: research.json };
+} });
+export const repairWaiting = internalMutation({ args: { requestId: v.id("revisionRequests"), nextAttempt: v.number() }, returns: v.boolean(), handler: async (ctx, args) => {
+  if (args.nextAttempt !== 2 && args.nextAttempt !== 3) throw new Error("Invalid repair retry attempt");
+  const current = await ctx.runQuery(internal.reviews.repairContext, { requestId: args.requestId });
+  if (!current) return false;
+  const message = `The AI service is temporarily unavailable. Your draft is saved; retrying the same scene edit (attempt ${args.nextAttempt} of 3).`;
+  await ctx.db.patch(current.job._id, { stageMessage: message, updatedAt: Date.now() });
+  await ctx.db.insert("jobEvents", { jobId: current.job._id, kind: "repair_retry", message, createdAt: Date.now() });
+  return true;
 } });
 export const replace = internalMutation({ args: { requestId: v.id("revisionRequests"), projectJson: v.string(), evidenceJson: v.string(), attemptsJson: v.optional(v.string()) }, returns: v.null(), handler: async (ctx, args) => {
   const current = await ctx.runQuery(internal.reviews.repairContext, { requestId: args.requestId });
