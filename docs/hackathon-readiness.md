@@ -1,6 +1,6 @@
 # Hackathon readiness
 
-**September 6 visual revision:** 0.7.0 adds a separate scene director, original illustrations, narration-aligned actions and a canvas without fixed overlays. All 163 tests and the complete local check pass. Development is updated and the production worker supports protocol 6; new production backend deployment and full generated-video visual acceptance remain pending. The hand-authored calibration is not a generated demo. [Visual direction](visual-direction-070.md) records the fresh reference review and open checks. The table below preserves the earlier 0.6.0 baseline and is not acceptance evidence for 0.7.0.
+**Visual acceptance remains open.** The illustrated clean-canvas renderer is implemented, and an actual NIM-authored 60-second lesson rendered. Revision 1 was rejected; revision 2's review was unavailable. OpenAI remains intentionally disabled. The [visual acceptance record](visual-acceptance-070.md) owns current versions, checks, rollout and observed results. Hand-authored calibration and historical 0.6.0 evidence do not qualify the new visual workflow.
 
 Checked September 5, 2026. **The app is available; the complete hackathon entry is not yet finished.** This checklist separates the deployed baseline, the provider update, product acceptance and external submission steps. [Release evidence](release-evidence.md) is the source for measured results; [release operations](release-operations.md) contains configuration and recovery procedures.
 
@@ -8,8 +8,9 @@ Checked September 5, 2026. **The app is available; the complete hackathon entry 
 
 | Gate | Status | Evidence needed to close |
 |---|---|---|
-| App and hosting | 0.6.0 deployed, development backend synced, final runtime `04c4635` on public main; Vercel Ready; worker 0.5.6 heartbeat observed three seconds old with seven capabilities | Recheck availability before recording and preserve the demonstrated version |
-| Automated validation | Final `04c4635` passed local and clean-install Vercel checks: 117 tests across 14 files, types, lint, web/worker builds | Complete; repeat for subsequent runtime changes |
+| New visual workflow | Illustrated rendering implemented; actual 60-second NIM revision 1 rejected and revision 2 review unavailable | Complete the central visual acceptance checks, including approved content, manual playback and the owner's reference comparison |
+| App and hosting | Historical 0.6.0 deployment: runtime `04c4635` on public main, Vercel Ready and worker 0.5.6 verified | Use the central visual acceptance record for current rollout; recheck availability before recording and preserve the demonstrated version |
+| Automated validation | Historical `04c4635` passed local and clean-install Vercel checks: 117 tests across 14 files, types, lint, web/worker builds | Current runtime checks are recorded centrally; a historical pass does not validate subsequent changes |
 | Five-topic evaluation | 4/5 automatic approvals on the frozen baseline; manual limitations retained | Do not relabel this 5/5 after the separate bicycle replay, or count it as user testing |
 | Provider selector and persistence | Production browser verified default route, zero-job missing-key OpenAI attempt, one default-route job and its persisted provider after form changes/reload; desktop/390-pixel mobile without overflow | Keep real-model output and revision qualification separate from selector and isolated persistence checks |
 | Real OpenAI product use | Intentionally disabled at the owner's request; implemented option safely reports unavailable; no live inference | Not required to complete this implementation. Disclose missing sponsor usage and clarify event eligibility; qualify real output only if the owner later enables the route |

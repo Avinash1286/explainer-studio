@@ -188,5 +188,15 @@ export function compileVisualTiming(plan: VisualPlan, spoken: { text: string; st
     const start=Math.min(Math.max(0,frames-8),Math.max(atCue(b.cue,b.at),(entities[b.target]??relations[b.target]??0)+8));
     return [b.id,{ start,duration:Math.min(frames-1-start,Math.max(6,Math.round(frames*b.duration))) }];
   }));
+  // Reach the destination before a later spoken absorption or movement cue.
+  // Concurrent emphasis and other entities do not interrupt this trajectory.
+  // Equal cue starts stay concurrent; their semantic ambiguity belongs in review.
+  for (const move of plan.beats.filter(beat=>beat.action==="move")) {
+    const timing=beats[move.id];
+    const nextStart=Math.min(...plan.beats
+      .filter(beat=>beat.target===move.target&&(beat.action==="move"||beat.action==="hide")&&beats[beat.id].start>timing.start)
+      .map(beat=>beats[beat.id].start));
+    timing.duration=Math.min(timing.duration,nextStart-timing.start);
+  }
   return { entities,relations,beats };
 }

@@ -3,6 +3,7 @@ import { internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { authorLesson } from "./lib/authoring";
 import { directScenes, validateDirectedPlan, type DirectorAttempt } from "./lib/director";
+import { directorEvidenceContext } from "./lib/directorEvidence";
 import { providerConfig } from "./lib/generationConfig";
 import { embed, research } from "./lib/providers";
 import { EMBEDDING_SPACE, researchSchema, validateDraft, type Draft, type Research } from "../packages/contracts/generation";
@@ -89,7 +90,8 @@ export const directScene = internalAction({ args: { jobId: v.id("jobs"), sceneId
   const base = artifacts.find(a => a.stage === "base");
   if (!base) throw new Error("Missing compiled lesson");
   const sources = researchSchema.parse(JSON.parse(artifacts.find(a => a.stage === "research")!.json).sources);
-  const compiled = projectSchema.parse(JSON.parse(base.json).project);
+  const baseRecord = JSON.parse(base.json);
+  const compiled = projectSchema.parse(baseRecord.project);
   const target = compiled.scenes.find(scene => scene.id === sceneId);
   if (!target) throw new Error("Unknown scene to direct");
   const previous = artifacts.find(a => a.stage === `visual-${sceneId}`);
@@ -107,7 +109,8 @@ export const directScene = internalAction({ args: { jobId: v.id("jobs"), sceneId
     }
     return scene;
   }) });
-  const result = await directScenes(providerConfig(job.generationProvider), project, sources, [sceneId]);
+  const evidenceContext = directorEvidenceContext(sources, baseRecord.provenance?.sceneEvidence, sceneId);
+  const result = await directScenes(providerConfig(job.generationProvider), project, sources, [sceneId], "", fetch, [evidenceContext]);
   const scene = result.project.scenes.find(s => s.id === sceneId)!;
   await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: `visual-${sceneId}`, json: JSON.stringify({ sceneId, visualPlan: scene.visualPlan, attempts: result.attempts[0].attempts }) });
   return null;

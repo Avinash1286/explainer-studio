@@ -9,6 +9,11 @@ import { passedReview, validateReview, validateReplacement } from "../packages/c
 import schema from "./schema";
 import { reviewReady } from "./lib/generationConfig";
 import { providerFailureMessage, PROVIDER_MESSAGES, transientProviderFailure } from "../packages/contracts/provider";
+import { z } from "zod";
+import type { Doc } from "./_generated/dataModel";
+import { reviewScope, validateFactCheckpoint, validateCheckpointRoute, type ReviewContext } from "./lib/reviewCheckpoint";
+import { assembleFrameReviews, validateSceneFrameReview } from "./lib/critic";
+import { combineReviews } from "./lib/factCheck";
 
 const versionArgs = { jobId: v.id("jobs"), revision: v.number() };
 const reportValidator = v.object({ summary: v.string(), scenes: v.array(v.object({ sceneId: v.string(), factualPass: v.boolean(), visualPass: v.boolean(), issues: v.array(v.object({ sceneId: v.string(), kind: v.union(v.literal("factual"), v.literal("icon"), v.literal("layout"), v.literal("timing")), detail: v.string(), repair: v.string() })) })) });
@@ -34,6 +39,34 @@ export const repair = workflow.define({ args: { requestId: v.id("revisionRequest
   }
   return null;
 });
+// Keep run above unchanged for journals already scheduled against its one-step
+// definition. Every newly scheduled review uses this separately versioned flow.
+export const runDurable = workflow.define({ args: versionArgs, returns: v.null() }).handler(async (step, args): Promise<null> => {
+  try {
+    await step.runAction(internal.reviewActions.prepare, args, { retry: false });
+    const scenes: string[] | null = await step.runQuery(internal.reviews.reviewPlan, args);
+    if (!scenes) return null;
+    for (const sceneId of ["", ...scenes]) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          if (sceneId) await step.runAction(internal.reviewActions.checkScene, { ...args, sceneId }, { retry: false });
+          else await step.runAction(internal.reviewActions.checkFacts, args, { retry: false });
+          break;
+        } catch (error) {
+          const failure = String(error), primary = failure.split("; primary:")[1];
+          if (attempt === 3 || !transientProviderFailure(failure) || (primary && !transientProviderFailure(primary))) throw error;
+          if (!await step.runQuery(internal.reviews.reviewPlan, args)) return null;
+          await step.sleep(30_000 * attempt, { name: `Wait before ${sceneId || "factual"} review retry ${attempt + 1}` });
+        }
+      }
+    }
+    await step.runMutation(internal.reviews.assemble, args);
+  } catch (error) {
+    const reason = providerFailureMessage(String(error));
+    await step.runMutation(internal.reviews.unavailable, { ...args, ...(reason ? { reason } : {}) });
+  }
+  return null;
+});
 
 export const context = internalQuery({ args: versionArgs, returns: v.union(v.null(), v.object({ job: schema.doc("jobs"), task: schema.doc("mediaTasks"), research: v.string(), review: schema.doc("lessonReviews") })), handler: async (ctx, args) => {
   const job = await ctx.db.get(args.jobId);
@@ -43,6 +76,87 @@ export const context = internalQuery({ args: versionArgs, returns: v.union(v.nul
   if (!job || job.revision !== args.revision || job.status !== "reviewing" || !task?.result || review?.status !== "pending" || !research) return null;
   return { job, task, research: research.json, review };
 } });
+
+type CheckpointContext = { current: ReviewContext; evidence: Doc<"reviewCheckpoints"> | null; checkpoints: Doc<"reviewCheckpoints">[] };
+export const checkpointContext = internalQuery({ args: versionArgs, returns: v.union(v.null(), v.object({ current: v.object({ job: schema.doc("jobs"), task: schema.doc("mediaTasks"), research: v.string(), review: schema.doc("lessonReviews") }), evidence: v.union(v.null(), schema.doc("reviewCheckpoints")), checkpoints: v.array(schema.doc("reviewCheckpoints")) })), handler: async (ctx, args): Promise<CheckpointContext | null> => {
+  const current = await ctx.runQuery(internal.reviews.context, args);
+  if (!current) return null;
+  const checkpoints = await ctx.db.query("reviewCheckpoints").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId).eq("revision", args.revision)).take(11);
+  if (checkpoints.length > 10) throw new Error("Too many review checkpoints");
+  const evidence = checkpoints.find(checkpoint => checkpoint.kind === "evidence") || null;
+  if (evidence && (evidence.sceneId !== "" || evidence.scopeJson !== reviewScope(current))) throw new Error("Review checkpoint evidence changed");
+  if (checkpoints.some(checkpoint => checkpoint.kind !== "evidence" && checkpoint.evidenceId !== evidence?._id)) throw new Error("Review checkpoint has foreign evidence");
+  return { current, evidence, checkpoints };
+} });
+
+export const reviewPlan = internalQuery({ args: versionArgs, returns: v.union(v.null(), v.array(v.string())), handler: async (ctx, args): Promise<string[] | null> => {
+  const state = await ctx.runQuery(internal.reviews.checkpointContext, args);
+  if (!state) return null;
+  if (!state.evidence) throw new Error("Missing prepared review evidence");
+  return projectSchema.parse(JSON.parse(state.current.task.projectJson!)).scenes.map(scene => scene.id);
+} });
+
+export const saveEvidence = internalMutation({ args: { ...versionArgs, scopeJson: v.string(), json: v.string() }, returns: v.boolean(), handler: async (ctx, args) => {
+  const state = await ctx.runQuery(internal.reviews.checkpointContext, { jobId: args.jobId, revision: args.revision });
+  if (!state) return false;
+  if (args.scopeJson.length > 220_000 || args.json.length > 12_000 || args.scopeJson !== reviewScope(state.current)) throw new Error("Review evidence scope changed");
+  const value = z.object({ samples: z.array(z.object({ sceneId: z.string(), frame: z.number().int().nonnegative(), storageId: z.string() }).strict()).min(6).max(24), totalImageBytes: z.number().int().nonnegative().max(8_000_000) }).strict().parse(JSON.parse(args.json));
+  const actual = state.current.task.result!.frames || [];
+  if (value.samples.length !== actual.length || new Set(value.samples.map(sample => `${sample.sceneId}:${sample.frame}`)).size !== actual.length || value.samples.some(sample => !actual.some(frame => frame.sceneId === sample.sceneId && frame.frame === sample.frame && frame.storageId === sample.storageId))) throw new Error("Foreign rendered review evidence");
+  const json = JSON.stringify(value);
+  if (state.evidence) {
+    if (state.evidence.json !== json) throw new Error("Review evidence checkpoint is immutable");
+    return true;
+  }
+  await ctx.db.insert("reviewCheckpoints", { jobId: args.jobId, revision: args.revision, kind: "evidence", sceneId: "", scopeJson: args.scopeJson, json, createdAt: Date.now() });
+  return true;
+} });
+
+export const saveCheckpoint = internalMutation({ args: { ...versionArgs, kind: v.union(v.literal("facts"), v.literal("scene")), sceneId: v.string(), evidenceId: v.id("reviewCheckpoints"), json: v.string() }, returns: v.boolean(), handler: async (ctx, args) => {
+  const state = await ctx.runQuery(internal.reviews.checkpointContext, { jobId: args.jobId, revision: args.revision });
+  if (!state) return false;
+  if (!state.evidence || state.evidence._id !== args.evidenceId) throw new Error("Foreign review evidence checkpoint");
+  if (args.json.length > 50_000) throw new Error("Review checkpoint too large");
+  const project = projectSchema.parse(JSON.parse(state.current.task.projectJson!));
+  let value;
+  if (args.kind === "facts") {
+    if (args.sceneId !== "") throw new Error("Factual checkpoint has a foreign scene");
+    value = validateFactCheckpoint(JSON.parse(args.json), project);
+    validateCheckpointRoute(value.attempts.map(attempt => attempt.provider), state.current);
+  } else {
+    if (!project.scenes.some(scene => scene.id === args.sceneId)) throw new Error("Foreign review scene checkpoint");
+    value = validateSceneFrameReview(JSON.parse(args.json), args.sceneId);
+    validateCheckpointRoute([value.inference.provider], state.current);
+  }
+  const json = JSON.stringify(value), previous = state.checkpoints.find(checkpoint => checkpoint.kind === args.kind && checkpoint.sceneId === args.sceneId);
+  if (previous) {
+    if (previous.json !== json) throw new Error("Review checkpoint is immutable");
+    return true;
+  }
+  await ctx.db.insert("reviewCheckpoints", { jobId: args.jobId, revision: args.revision, kind: args.kind, sceneId: args.sceneId, evidenceId: args.evidenceId, json, createdAt: Date.now() });
+  return true;
+} });
+
+export const assemble = internalMutation({ args: versionArgs, returns: v.null(), handler: async (ctx, args): Promise<null> => {
+  const state = await ctx.runQuery(internal.reviews.checkpointContext, args);
+  if (!state) return null;
+  const project = projectSchema.parse(JSON.parse(state.current.task.projectJson!));
+  const factual = state.checkpoints.find(checkpoint => checkpoint.kind === "facts" && checkpoint.sceneId === "");
+  if (!state.evidence || !factual || state.checkpoints.length !== project.scenes.length + 2) throw new Error("Missing complete review checkpoints");
+  const facts = validateFactCheckpoint(JSON.parse(factual.json), project);
+  validateCheckpointRoute(facts.attempts.map(attempt => attempt.provider), state.current);
+  const results = project.scenes.map(scene => {
+    const checkpoint = state.checkpoints.find(checkpoint => checkpoint.kind === "scene" && checkpoint.sceneId === scene.id);
+    if (!checkpoint) throw new Error("Missing scene review checkpoint");
+    const result = validateSceneFrameReview(JSON.parse(checkpoint.json), scene.id);
+    validateCheckpointRoute([result.inference.provider], state.current);
+    return result;
+  });
+  const visual = assembleFrameReviews(project, results);
+  const report = combineReviews(validateReview(JSON.parse(visual.reportJson), project), facts.data);
+  await ctx.runMutation(internal.reviews.commit, { ...args, ...visual, reportJson: JSON.stringify(report), usageJson: JSON.stringify({ visual: JSON.parse(visual.usageJson), factualAttempts: facts.attempts }) });
+  return null;
+} });
 export const unavailable = internalMutation({ args: { ...versionArgs, reason: v.optional(v.string()) }, returns: v.null(), handler: async (ctx, args) => {
   const review = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId).eq("revision", args.revision)).unique();
   const job = await ctx.db.get(args.jobId);
@@ -51,10 +165,10 @@ export const unavailable = internalMutation({ args: { ...versionArgs, reason: v.
   await ctx.db.patch(job._id, { status: "failed", stageMessage: providerFailureMessage(args.reason || "") ?? "Review unavailable. Your draft is saved and has not been approved for delivery.", updatedAt: Date.now() });
   return null;
 } });
-export const commit = internalMutation({ args: { ...versionArgs, reportJson: v.string(), provider: v.union(v.literal("cloudflare"), v.literal("nvidia"), v.literal("openai")), model: v.string(), responseId: v.optional(v.string()), usageJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
+export const commit = internalMutation({ args: { ...versionArgs, reportJson: v.string(), provider: v.union(v.literal("cloudflare"), v.literal("nvidia"), v.literal("openai"), v.literal("mixed")), model: v.string(), responseId: v.optional(v.string()), usageJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
   const current = await ctx.runQuery(internal.reviews.context, { jobId: args.jobId, revision: args.revision });
   if (!current) return null;
-  if (args.reportJson.length > 40_000 || args.usageJson.length > 4000 || args.model.length > 100 || (args.responseId?.length || 0) > 200) throw new Error("Review too large");
+  if (args.reportJson.length > 40_000 || args.usageJson.length > 16_000 || args.model.length > 100 || (args.responseId?.length || 0) > 200) throw new Error("Review too large");
   const project = projectSchema.parse(JSON.parse(current.task.projectJson!));
   const report = validateReview(JSON.parse(args.reportJson), project);
   const passed = passedReview(report);
@@ -156,7 +270,8 @@ export const recheckApproved = internalMutation({ args: versionArgs, returns: v.
   await ctx.db.patch(review._id, { status: "pending" });
   await ctx.db.patch(job._id, { status: "reviewing", stageMessage: "Rechecking the saved video with the updated factual and visual review", updatedAt: Date.now() });
   await ctx.db.insert("jobEvents", { jobId: job._id, kind: "review_recheck", message: "Operator requested fresh review after a critic implementation update", createdAt: Date.now() });
-  await start(ctx, internal.reviews.run, args, { startAsync: true });
+  for (const checkpoint of await ctx.db.query("reviewCheckpoints").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId).eq("revision", args.revision)).take(11)) await ctx.db.delete(checkpoint._id);
+  await start(ctx, internal.reviews.runDurable, args, { startAsync: true });
   return null;
 } });
 
@@ -177,7 +292,7 @@ export const retryUnavailable = internalMutation({ args: versionArgs, returns: v
   if (!reviewReady(job?.generationProvider) || job?.revision !== args.revision || job.status !== "failed" || review?.status !== "unavailable") throw new Error("Only an unavailable review can resume after setup");
   await ctx.db.patch(review._id, { status: "pending" });
   await ctx.db.patch(job._id, { status: "reviewing", stageMessage: "Retrying review of the saved video", updatedAt: Date.now() });
-  await start(ctx, internal.reviews.run, args, { startAsync: true });
+  await start(ctx, internal.reviews.runDurable, args, { startAsync: true });
   return null;
 } });
 

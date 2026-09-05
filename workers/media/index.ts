@@ -24,7 +24,7 @@ async function api<T>(body: Record<string, unknown>): Promise<T> {
 }
 async function heartbeat() {
   try {
-    const response = await fetch(new URL("/api/worker/heartbeat", url), { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ workerId, instanceId, version: "0.7.0", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1", "review-frames-v1", "explicit-connections-v1", "text-cards-v1", "directed-visuals-v1"] }), signal: AbortSignal.timeout(10_000) });
+    const response = await fetch(new URL("/api/worker/heartbeat", url), { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ workerId, instanceId, version: "0.7.1", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1", "review-frames-v1", "explicit-connections-v1", "text-cards-v1", "directed-visuals-v1"] }), signal: AbortSignal.timeout(10_000) });
     if (response.ok) lastHeartbeat = Date.now();
   } catch { console.error(JSON.stringify({ event: "heartbeat_failed" })); }
 }

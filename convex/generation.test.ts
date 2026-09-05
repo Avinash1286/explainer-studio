@@ -246,6 +246,25 @@ describe("durable topic generation", () => {
     await t.run(ctx => ctx.db.patch(jobId, { revision: 2 }));
     await expect(t.mutation(internal.generation.checkpoint, { jobId, stage: "visual-scene-3", json: JSON.stringify({ ...refreshed, sceneId: "scene-3" }) })).rejects.toThrow("pre-render");
   });
+  it.each(["missing", "unmatched"] as const)("rejects %s planning evidence before directing while retaining the full research", async corruption => {
+    const { t, jobId } = await setup(true); const fetcher = mockProviders(); vi.stubGlobal("fetch", fetcher);
+    await t.run(ctx => ctx.db.patch(jobId, { generation: true, status: "researching" }));
+    await t.action(internal.planning.researchTopic, { jobId });
+    await t.action(internal.planning.planScenes, { jobId });
+    await t.action(internal.planning.retrieveIcons, { jobId });
+    const before = (await t.query(internal.generation.context, { jobId })).artifacts;
+    const base = before.find(artifact => artifact.stage === "base")!;
+    const record = JSON.parse(base.json);
+    if (corruption === "missing") delete record.provenance.sceneEvidence;
+    else record.provenance.sceneEvidence[0].evidence[0].quote = "This supposed quotation was never retrieved.";
+    await t.run(ctx => ctx.db.patch(base._id, { json: JSON.stringify(record) }));
+    fetcher.mockClear();
+    await expect(t.action(internal.planning.directScene, { jobId, sceneId: "scene-1" })).rejects.toThrow();
+    expect(fetcher).not.toHaveBeenCalled();
+    const after = (await t.query(internal.generation.context, { jobId })).artifacts;
+    expect(after.find(artifact => artifact.stage === "research")!.json).toBe(before.find(artifact => artifact.stage === "research")!.json);
+    expect(after.some(artifact => artifact.stage === "visual-scene-1")).toBe(false);
+  });
   it("does not expose research or start another browser's lesson", async () => {
     const { t, jobId } = await setup(true);
     const other = "f".repeat(64); await t.mutation(api.sessions.start, { token: other });

@@ -2,7 +2,7 @@
 
 Turn a question into a short illustrated lesson with research, narration, captions, review and targeted revisions.
 
-**0.7.0 visual implementation is under acceptance, not ready for a quality claim.** It adds illustrated scene direction, progressive native-SVG construction and narration-aligned actions on a clean canvas with no fixed header/footer. Currently 163 tests across 17 files pass; the full check, including both builds, has passed. The development backend is staged and the production worker is 0.7.0; the new production backend is not deployed. The live canary's fifth workflow attempt (fourth operator resume) is planning, with no generated MP4 yet. See [visual direction and acceptance](docs/visual-direction-070.md).
+**The illustrated clean-canvas renderer is implemented; visual acceptance remains open.** An actual NIM-authored 60-second lesson rendered: revision 1 was rejected, and revision 2's review was unavailable. Neither is an approved reference-quality example. The [visual acceptance record](docs/visual-acceptance-070.md) owns current versions, checks, deployment state and observed outcomes. OpenAI remains intentionally disabled.
 
 The 0.6.0 deployment and frozen 4/5 automatic evaluation below are historical baseline evidence. OpenAI remains intentionally disabled by the owner. Consented delivery, actual user trials, the owner-recorded demo and final event submission remain open. See [release evidence](docs/release-evidence.md) and the [readiness checklist](docs/hackathon-readiness.md).
 

@@ -1,10 +1,10 @@
 # Implementation phases
 
-**Current 0.7.0 visual work:** the illustrated director, original SVG objects, staged actions, clean canvas and three-frame mechanism review are implemented. There are 163 passing tests across 17 files; the full check, including both builds, has passed. Development is staged and the production worker is 0.7.0, but the new production backend is not deployed. The canary's fifth workflow attempt (fourth operator resume) is planning; no generated MP4 exists yet. Visual acceptance remains open. See [visual direction](docs/visual-direction-070.md).
+**Current visual work:** the illustrated director, original SVG objects, staged actions and clean canvas are implemented. The actual NIM-authored 60-second lesson rendered, but revision 1 was rejected and revision 2's review was unavailable. Visual acceptance remains open; OpenAI remains intentionally disabled. See the [visual acceptance record](docs/visual-acceptance-070.md) for current versions, checks, deployment state and results, and [visual direction](docs/visual-direction-070.md) for reference criteria.
 
 ## Historical 0.5–0.6 milestones
 
-The table records the previous release, not 0.7.0 quality or deployment acceptance. The frozen evaluation and previous public example remain baseline evidence. See [release evidence](docs/release-evidence.md) and [hackathon readiness](docs/hackathon-readiness.md).
+The table records the previous release, not acceptance of the new visual workflow. The frozen evaluation and previous public example remain baseline evidence. See [release evidence](docs/release-evidence.md) and [hackathon readiness](docs/hackathon-readiness.md).
 
 | Workstream | Implementation | Acceptance |
 |---|---|---|
@@ -15,7 +15,7 @@ The table records the previous release, not 0.7.0 quality or deployment acceptan
 
 ## Remaining acceptance
 
-Remaining gates include the 0.7.0 build/deployment, a completed provider-generated lesson, actual playback/review and the owner's reference comparison; then consented AgentMail delivery, 3–5 real user trials, the owner-recorded demo, sponsor/participant eligibility, registration and final submission. The historical salt recovery was not approved. The frozen 4/5 automatic result is not a manual-quality pass or user-trial result.
+Remaining gates include the rollout and visual checks in the central acceptance record, a provider-approved lesson that also passes manual playback and the owner's reference comparison, consented AgentMail delivery, 3–5 real user trials, the owner-recorded demo, sponsor/participant eligibility, registration and final submission. The historical salt recovery was not approved. The frozen 4/5 automatic result is not a manual-quality pass or user-trial result.
 
 The entries below are historical development notes. They do not override the current release-evidence report or imply production is still disabled. No email, social post or submission receipt is claimed without a real event.
 

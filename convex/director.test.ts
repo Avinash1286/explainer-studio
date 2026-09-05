@@ -6,7 +6,7 @@ import { inspectFrames } from "./lib/critic";
 import { decodingSchema, openAISchema, type ProviderConfig } from "./lib/providers";
 import { frameSamples, knownIconIssues } from "../packages/contracts/review";
 import { projectSchema } from "../packages/contracts/scene";
-import { compileVisualTiming } from "../packages/contracts/visual";
+import { compileVisualTiming, renderedGlyphSize, validateVisualPlan } from "../packages/contracts/visual";
 import { renderedReviewSamples } from "./reviewActions";
 import { goodReview, sampleProject } from "../tests/review-helpers";
 import { syntheticVisualPlan } from "../tests/director-helpers";
@@ -75,9 +75,64 @@ describe("bounded illustrated scene direction", () => {
 
   it("provides a valid compact composition example without using its source as lesson evidence", () => {
     const input = JSON.parse(directorInput(sampleProject, testSources, sampleProject.scenes[0].id).prompt);
-    expect(validateDirectedPlan(input.styleExample.visualPlan, input.styleExample.source).entities.some(e => e.w >= 30)).toBe(true);
+    const example=validateDirectedPlan(input.styleExample.visualPlan, input.styleExample.source);
+    expect(example.entities.some(entity=>renderedGlyphSize(entity).width>=358.4)).toBe(true);
     expect(input.styleExample.role).toContain("Fictional teaching example");
     expect(input.sources).toEqual(testSources);
+    expect(input.direction.join(" ")).toContain("min(w*12.8,h*7.2)");
+    expect(input.direction.join(" ")).toContain("cutaways and close-ups");
+  });
+
+  it.each([{w:24,h:22,pixels:158.4},{w:60,h:22,pixels:158.4},{w:24,h:50,pixels:307.2}])("rejects a nominal $w by $h focal viewport that renders only $pixels pixels", dimensions => {
+    const plan=syntheticVisualPlan(narration);
+    plan.entities[0]={...plan.entities[0],x:40,y:55,w:dimensions.w,h:dimensions.h};
+    plan.entities[1]={...plan.entities[1],x:85,y:20,w:12,h:12};
+    plan.beats[1]={...plan.beats[1],x:85,y:28};
+    expect(renderedGlyphSize(plan.entities[0]).width).toBeCloseTo(dimensions.pixels);
+    // Existing scenes and renderer calibrations retain their permissive contract.
+    expect(()=>validateVisualPlan(plan,narration)).not.toThrow();
+    expect(()=>validateDirectedPlan(plan,narration)).toThrow("actual fitted width");
+  });
+
+  it("accepts a useful fitted focal size without stretching or enlarging its context", () => {
+    const plan=syntheticVisualPlan(narration);
+    expect(renderedGlyphSize(plan.entities[0])).toEqual({width:358.4,height:358.4});
+    expect(validateDirectedPlan(plan,narration)).toEqual(plan);
+    expect(renderedGlyphSize(plan.entities[1]).width).toBeLessThan(180);
+  });
+
+  function distributedPlan() {
+    const plan=syntheticVisualPlan(narration);
+    plan.grammar="branch";
+    plan.entities[0]={...plan.entities[0],x:20,y:50,w:26,h:28};
+    plan.entities[1]={...plan.entities[1],x:70,y:23,w:26,h:28};
+    plan.entities.push({...plan.entities[1],id:"cloud",kind:"cloud",label:"Cloud",x:70,y:72});
+    plan.relations.push({...plan.relations[0],id:"water-to-cloud",to:"cloud",label:"continues"});
+    plan.beats[1]={...plan.beats[1],x:70,y:20};
+    return plan;
+  }
+
+  it("accepts a readable distributed branch without forcing one giant object",()=>{
+    const plan=distributedPlan();
+    expect(plan.entities.every(entity=>renderedGlyphSize(entity).width===201.6)).toBe(true);
+    expect(validateDirectedPlan(plan,narration)).toEqual(plan);
+  });
+
+  it("rejects a small horizontal row even when its icons have two relations",()=>{
+    const plan=distributedPlan();
+    plan.entities=plan.entities.map((entity,i)=>({...entity,x:20+i*30,y:50,w:26,h:28}));
+    plan.beats[1]={...plan.beats[1],x:50,y:45};
+    expect(()=>validateVisualPlan(plan,narration)).not.toThrow();
+    expect(()=>validateDirectedPlan(plan,narration)).toThrow("small horizontal row");
+    plan.entities=plan.entities.map(entity=>({...entity,w:24,h:22}));
+    expect(()=>validateDirectedPlan(plan,narration)).toThrow("at least 180px");
+  });
+
+  it("does not count disconnected objects or duplicate links as distributed coverage",()=>{
+    const plan=distributedPlan();
+    plan.relations[1]={...plan.relations[0],id:"duplicate-link"};
+    expect(()=>validateVisualPlan(plan,narration)).not.toThrow();
+    expect(()=>validateDirectedPlan(plan,narration)).toThrow("3 linked");
   });
 
   it("keeps a movement described as within a material inside its actual outer parent", () => {
@@ -91,7 +146,7 @@ describe("bounded illustrated scene direction", () => {
     const plan = {
       version: 1, grammar: "mechanism", objective: "Show an electron gaining energy and moving within silicon.",
       entities: [
-        { id: "silicon", kind: "lattice", label: "Silicon", x: 50, y: 45, w: 30, h: 30, color: "gray", enter: 0, cue: "An electron" },
+        { id: "silicon", kind: "lattice", label: "Silicon", x: 50, y: 45, w: 30, h: 50, color: "gray", enter: 0, cue: "An electron" },
         { id: "electron", kind: "electron", label: "", x: 50, y: 45, w: 6, h: 6, color: "blue", enter: 0, cue: "An electron", parentId: "silicon" },
         { id: "photon", kind: "photon", label: "", x: 20, y: 45, w: 8, h: 8, color: "yellow", enter: 0.1, cue: "It receives energy" },
       ],
@@ -204,16 +259,35 @@ describe("rich scene repair and independent review", () => {
     const project = richProject();
     const timed = project.scenes.map((scene, i) => ({ ...scene, startFrame: i * 360, durationInFrames: 360 }));
     const frames = frameSamples(timed).map(sample => ({ ...sample, url: `data:image/jpeg;base64,${btoa(`actual decoded bytes ${sample.frame}`)}` }));
-    const transport = vi.fn<typeof fetch>().mockImplementation(async () => answer(goodReview()));
+    const transport = vi.fn<typeof fetch>().mockImplementation(async (_,request) => {
+      const content=JSON.parse(String(request?.body)).input[0].content;
+      if(typeof content==="string")return answer(goodReview(),"resp-facts");
+      const prompt=JSON.parse(content[0].text);
+      return answer({summary:goodReview().summary,...goodReview().scenes.find(scene=>scene.sceneId===prompt.targetSceneId)!},`resp-pixels-${prompt.targetSceneId}`);
+    });
     await inspectFacts(config, project, testSources, transport);
-    await inspectFrames(config, project, testSources, frames, transport);
+    const review=await inspectFrames(config, project, testSources, frames, transport);
     const factualInput = JSON.parse(JSON.parse(String(transport.mock.calls[0][1]?.body)).input[0].content);
     expect(factualInput.diagramClaims[0].mechanism.actions[1].meaning).toContain("material moves");
-    const vision = JSON.parse(String(transport.mock.calls[1][1]?.body));
-    expect(vision.input[0].content.filter((part: { type: string }) => part.type === "input_image").map((part: { image_url: string }) => part.image_url)).toEqual(frames.map(f => f.url));
+    expect(transport).toHaveBeenCalledTimes(1+project.scenes.length);
+    for(const [i,call] of transport.mock.calls.slice(1).entries()) {
+      const vision=JSON.parse(String(call[1]?.body)),scene=project.scenes[i];
+      const prompt=JSON.parse(vision.input[0].content[0].text);
+      expect(prompt.targetSceneId).toBe(scene.id);
+      expect(prompt.scene).toMatchObject({id:scene.id,narration:scene.narration,visualPlan:scene.visualPlan});
+      expect(prompt.sources).toEqual(testSources);
+      const images=vision.input[0].content.filter((part:{type:string})=>part.type==="input_image");
+      expect(images).toHaveLength(3);
+      expect(images.map((part:{image_url:string})=>part.image_url)).toEqual(frames.filter(frame=>frame.sceneId===scene.id).map(frame=>frame.url));
+      expect(vision.instructions).toContain("do not require a title");
+    }
     expect(frames).toHaveLength(project.scenes.length * 3);
-    expect(vision.instructions).toContain("do not require a title");
+    expect(JSON.parse(review.reportJson).scenes).toEqual(goodReview().scenes);
+    expect(JSON.parse(review.usageJson).scenes).toEqual(project.scenes.map(scene=>({sceneId:scene.id,provider:"openai",model:"gpt-5.4-mini",responseId:`resp-pixels-${scene.id}`,usage:{input_tokens:100,output_tokens:200}})));
+    expect(JSON.parse(review.usageJson).totals).toEqual({input_tokens:project.scenes.length*100,output_tokens:project.scenes.length*200});
+    transport.mockClear();
     await expect(inspectFrames(config, project, testSources, frames.slice(1), transport)).rejects.toThrow("Missing rendered frames");
+    expect(transport).not.toHaveBeenCalled();
   });
 
   it("rebuilds adaptive samples from checked rendered words and rejects forged timing evidence", () => {

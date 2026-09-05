@@ -19,6 +19,7 @@ const completed = (value: unknown, id = "resp-test") => Response.json({
   usage: { input_tokens: 100, output_tokens: 80, total_tokens: 180 },
 });
 const frames = sampleProject.scenes.flatMap((scene, i) => [0, 1].map(j => ({ sceneId: scene.id, frame: i * 360 + j, url: `data:image/jpeg;base64,${btoa(`decoded pixels ${i}-${j}`)}` })));
+const sceneReview = (sceneId: string) => ({ summary: goodReview().summary, ...goodReview().scenes.find(scene => scene.sceneId === sceneId)! });
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers(); });
 
 describe("OpenAI provider isolation", () => {
@@ -122,18 +123,49 @@ describe("OpenAI provider isolation", () => {
 });
 
 describe("OpenAI rendered evidence and workflow", () => {
-  it("serializes every decoded JPEG into Responses vision input and preserves provenance", async () => {
-    const transport = vi.fn<typeof fetch>().mockResolvedValue(completed(goodReview(), "resp-vision"));
+  it("sends each scene's decoded JPEGs sequentially and preserves per-scene provenance", async () => {
+    let active=0,peak=0;
+    const transport = vi.fn<typeof fetch>().mockImplementation(async (_, request) => {
+      const prompt=JSON.parse(JSON.parse(String(request?.body)).input[0].content[0].text);
+      active++;peak=Math.max(peak,active);
+      await new Promise(resolve=>setTimeout(resolve,1));
+      active--;
+      return completed(sceneReview(prompt.targetSceneId), `resp-vision-${prompt.targetSceneId}`);
+    });
     const review = await inspectFrames({ generationProvider: "openai", OPENAI_API_KEY: "test" }, sampleProject, testSources, frames, transport);
-    const body = JSON.parse(String(transport.mock.calls[0][1]?.body));
-    const images = body.input[0].content.filter((item: { type: string }) => item.type === "input_image");
-    expect(images.map((item: { image_url: string }) => item.image_url)).toEqual(frames.map(frame => frame.url));
-    expect(images.every((item: { detail: string }) => item.detail === "high")).toBe(true);
-    expect(body.input[0].content[0].text).toContain(testSources[0].text);
-    expect(review).toMatchObject({ provider: "openai", responseId: "resp-vision", model: "gpt-5.4-mini-2026-03-17" });
+    expect(peak).toBe(1);
+    expect(transport).toHaveBeenCalledTimes(sampleProject.scenes.length);
+    for(const [i,call] of transport.mock.calls.entries()) {
+      expect(call[0]).toBe("https://api.openai.com/v1/responses");
+      const body=JSON.parse(String(call[1]?.body)),scene=sampleProject.scenes[i];
+      const prompt=JSON.parse(body.input[0].content[0].text);
+      expect(prompt.targetSceneId).toBe(scene.id);
+      expect(prompt.scene).toMatchObject({id:scene.id,narration:scene.narration});
+      expect(prompt.sources).toEqual(testSources);
+      expect(prompt).not.toHaveProperty("project");
+      const images=body.input[0].content.filter((item: {type:string})=>item.type==="input_image");
+      expect(images).toHaveLength(2);
+      expect(images.map((item:{image_url:string})=>item.image_url)).toEqual(frames.filter(frame=>frame.sceneId===scene.id).map(frame=>frame.url));
+      expect(images.every((item:{detail:string})=>item.detail==="high")).toBe(true);
+    }
+    expect(JSON.parse(review.reportJson).scenes).toEqual(goodReview().scenes);
+    expect(review).toMatchObject({provider:"openai",model:"gpt-5.4-mini-2026-03-17"});
+    expect(review).not.toHaveProperty("responseId");
+    expect(JSON.parse(review.usageJson).scenes).toEqual(sampleProject.scenes.map(scene=>({sceneId:scene.id,provider:"openai",model:"gpt-5.4-mini-2026-03-17",responseId:`resp-vision-${scene.id}`,usage:{input_tokens:100,output_tokens:80,total_tokens:180}})));
+    expect(JSON.parse(review.usageJson).totals).toEqual({input_tokens:sampleProject.scenes.length*100,output_tokens:sampleProject.scenes.length*80,total_tokens:sampleProject.scenes.length*180});
     transport.mockClear();
     await expect(inspectFrames(config, sampleProject, testSources, frames.map(frame => ({ ...frame, url: "https://example.org/image.jpg" })), transport)).rejects.toThrow("decoded frame bytes");
     expect(transport).not.toHaveBeenCalled();
+  });
+
+  it.each(["scene", "issue"])("rejects a per-scene critic response with a mismatched %s ID", async mismatch => {
+    const transport=vi.fn<typeof fetch>().mockImplementation(async (_,request)=>{
+      const prompt=JSON.parse(JSON.parse(String(request?.body)).input[0].content[0].text);
+      const other=sampleProject.scenes.find(scene=>scene.id!==prompt.targetSceneId)!.id;
+      const result=sceneReview(prompt.targetSceneId);
+      return completed(mismatch==="scene" ? {...result,sceneId:other} : {...result,visualPass:false,issues:[{sceneId:other,kind:"layout",detail:"The label overlaps the material.",repair:"Move the label outside the material."}]});
+    });
+    await expect(inspectFrames(config,sampleProject,testSources,frames,transport)).rejects.toThrow(/scene/i);
   });
 
   it("builds literal concept notes without embeddings then directs every scene only on OpenAI", async () => {
@@ -174,15 +206,24 @@ describe("OpenAI rendered evidence and workflow", () => {
     const { t, jobId, lease, result } = await reviewSetup();
     await t.run(ctx => ctx.db.patch(jobId, { generationProvider: "openai" }));
     await t.mutation(internal.media.complete, { ...lease, result });
-    const transport = vi.fn<typeof fetch>().mockResolvedValueOnce(completed(goodReview(), "resp-facts")).mockResolvedValueOnce(completed(goodReview(), "resp-pixels"));
+    const transport = vi.fn<typeof fetch>().mockImplementation(async (_,request)=>{
+      const content=JSON.parse(String(request?.body)).input[0].content;
+      if(typeof content==="string")return completed(goodReview(),"resp-facts");
+      const prompt=JSON.parse(content[0].text);
+      return completed(sceneReview(prompt.targetSceneId),`resp-pixels-${prompt.targetSceneId}`);
+    });
     vi.stubGlobal("fetch", transport);
     await t.action(internal.reviewActions.inspect, { jobId, revision: 1 });
-    expect(transport).toHaveBeenCalledTimes(2);
+    expect(transport).toHaveBeenCalledTimes(1+sampleProject.scenes.length);
     expect(transport.mock.calls.every(call => call[0] === "https://api.openai.com/v1/responses")).toBe(true);
     const body = JSON.parse(String(transport.mock.calls[1][1]?.body));
     expect(body.input[0].content.find((item: { type: string }) => item.type === "input_image").image_url).toBe(`data:image/jpeg;base64,${btoa("synthetic frame")}`);
     const review = await t.run(ctx => ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", jobId).eq("revision", 1)).unique());
-    expect(review).toMatchObject({ status: "passed", provider: "openai", responseId: "resp-pixels" });
-    expect(JSON.parse(review!.usageJson!).factualAttempts[0].responseId).toBe("resp-facts");
+    expect(review).toMatchObject({ status: "passed", provider: "openai" });
+    expect(review?.responseId).toBeUndefined();
+    const usage=JSON.parse(review!.usageJson!);
+    expect(usage.factualAttempts[0].responseId).toBe("resp-facts");
+    expect(usage.visual.scenes).toEqual(sampleProject.scenes.map(scene=>({sceneId:scene.id,provider:"openai",model:"gpt-5.4-mini-2026-03-17",responseId:`resp-pixels-${scene.id}`,usage:{input_tokens:100,output_tokens:80,total_tokens:180}})));
+    expect(usage.visual.totals).toEqual({input_tokens:sampleProject.scenes.length*100,output_tokens:sampleProject.scenes.length*80,total_tokens:sampleProject.scenes.length*180});
   });
 });

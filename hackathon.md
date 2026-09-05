@@ -1,6 +1,6 @@
 # Explainer Studio — build log
 
-**Current 0.7.0 visual update — September 6:** illustrated direction, 51 bounded visual kinds, progressive construction, spoken action timing and clean canvases are implemented. There are 163 passing tests across 17 files; the full check, including both builds, has passed. The development backend is staged and the production worker is 0.7.0; the new production backend is not deployed. The live canary is planning on workflow attempt four (the third operator resume), with no generated MP4 or visual acceptance yet. See [fresh reference review and visual direction](docs/visual-direction-070.md). The 0.6.0 evidence below remains historical.
+**Current visual update — September 6:** the illustrated director and clean-canvas renderer are implemented. An actual NIM-authored 60-second lesson rendered: revision 1 was rejected and revision 2's review was unavailable. Visual acceptance remains open; OpenAI remains intentionally disabled. The [visual acceptance record](docs/visual-acceptance-070.md) owns current versions, checks, deployment state and the complete attempt history. The [reference criteria](docs/visual-direction-070.md) and historical 0.6.0 evidence remain separate.
 
 ## Project
 
@@ -29,7 +29,7 @@ The salt regression finished without approval. Its initial source rejection and 
 | Service | Intended role | Current integration status |
 |---|---|---|
 | Convex | Authoritative state, jobs, realtime UI, storage, workflow, vectors | Live production generation/revision/sharing and static hosting verified |
-| NVIDIA NIM | Default-route planning, visual direction, factual review and qualified vision fallback | Historical lesson evidence recorded; new director has partial canary output, without a completed 0.7.0 lesson |
+| NVIDIA NIM | Default-route planning, visual direction, factual review and qualified vision fallback | Actual directed 60-second lesson rendered; revision 1 rejected, revision 2 review unavailable; visual acceptance open |
 | Cloudflare Workers AI | Default-route text backup, frame review and pinned icon embeddings | Real provider evidence recorded; quota exhaustion and NVIDIA vision fallback documented |
 | OpenAI | Optional selected route for planning, visual direction, factual/frame review and repairs | Provider choice introduced in 0.6.0; intentionally disabled at the owner's request; no live sponsor usage |
 | Firecrawl | Retrieve research evidence | Live qualification and source-backed lesson use recorded |
@@ -39,7 +39,7 @@ The salt regression finished without approval. Its initial source rejection and 
 
 ## Remaining before final entry
 
-Finish 0.7.0 build/deployment and verify a real generated lesson through playback, review and the owner's reference comparison. Then verify consented AgentMail delivery, complete 3–5 real user trials and respond to feedback, record/upload the owner demo, clarify sponsor eligibility with OpenAI intentionally disabled, and complete the actual social post and VibeApps submission. Participant eligibility and Luma registration remain unverified. The old build and recovery evidence does not close the new visual acceptance. See [hackathon readiness](docs/hackathon-readiness.md), [demo runbook](docs/demo-runbook.md) and [submission draft](docs/submission-draft.md). The official deadline is September 22, 2026 at noon Pacific (September 23, 00:45 Nepal time).
+Complete the rollout and visual checks in the central acceptance record, including an approved generated lesson that passes manual playback and the owner's reference comparison. Verify consented AgentMail delivery, complete 3–5 real user trials and respond to feedback, record/upload the owner demo, clarify sponsor eligibility with OpenAI intentionally disabled, and complete the actual social post and VibeApps submission. Participant eligibility and Luma registration remain unverified. The old build and recovery evidence does not close the new visual acceptance. See [hackathon readiness](docs/hackathon-readiness.md), [demo runbook](docs/demo-runbook.md) and [submission draft](docs/submission-draft.md). The official deadline is September 22, 2026 at noon Pacific (September 23, 00:45 Nepal time).
 
 ## Historical work log
 

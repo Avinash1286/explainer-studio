@@ -1,12 +1,12 @@
 # Release evidence
 
-## Visual system 0.7.0 — September 6
+## Visual system acceptance — September 6
 
-The clean-canvas renderer and separate scene director are implemented. `npm run check` passed 163 tests across 17 files, TypeScript, ESLint, static export and the worker build. Fresh inspection covered all ten videos currently in `F:\cai\target`, with dense samples of selected actions. See [visual direction](visual-direction-070.md) for coverage and acceptance criteria.
+The illustrated clean-canvas renderer and separate scene director are implemented. An actual NIM-authored 60-second lesson rendered; revision 1 was rejected and revision 2's review was unavailable. Visual acceptance remains open, and OpenAI remains intentionally disabled. The [visual acceptance record](visual-acceptance-070.md) owns current versions, validation, deployment state and the complete attempt history. [Visual direction](visual-direction-070.md) records the ten-reference review and acceptance criteria.
 
 The final hand-authored renderer calibration produced a 51.2917-second MP4 in 91.54 seconds locally, including Kokoro speech, progressive illustrations, charge movement and a complete circuit. Sampled frames show no fixed header/footer, scene counter, credit strip or burned captions. This is renderer evidence, not an AI generation success.
 
-Development has the new director and geometry checks. The production worker is 0.7.0/protocol 6; the new production backend is not yet deployed. The live solar canary is undergoing its fifth workflow attempt after four recorded operator resumes. Earlier invalid output, NVIDIA timeout and Cloudflare 429 failures are retained. A complete new generated MP4, independent review and reference-level visual acceptance remain pending. OpenAI stays disabled at the owner's request.
+Earlier invalid output, provider timeouts, quota failures and separate operator resumes remain part of the visual acceptance record. The rendered revisions and calibration do not establish approval, reference matching or a successful user trial.
 
 ## Historical 0.6.0 acceptance evidence
 

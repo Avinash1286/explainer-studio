@@ -187,7 +187,7 @@ export const complete = internalMutation({
       }
       await ctx.db.insert("lessonVersions", { jobId: job._id, revision: job.revision, projectJson: task.projectJson, provenanceJson: task.provenanceJson || "{}", result: args.result, createdAt: Date.now() });
       await ctx.db.insert("lessonReviews", { jobId: job._id, revision: job.revision, status: "pending", createdAt: Date.now() });
-      await start(ctx, internal.reviews.run, { jobId: job._id, revision: job.revision }, { startAsync: true });
+      await start(ctx, internal.reviews.runDurable, { jobId: job._id, revision: job.revision }, { startAsync: true });
     }
     await ctx.db.patch(task._id, { status: "completed", result: args.result });
     await ctx.db.patch(task.jobId, { status: task.projectJson ? "reviewing" : "completed", duration: args.result.durationSeconds, stageMessage: task.projectJson ? "Draft rendered. Checking source support and actual video frames." : "Original scripted demo rendered with Kokoro narration.", updatedAt: Date.now() });

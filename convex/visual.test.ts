@@ -39,6 +39,7 @@ describe("directed scene contract", () => {
       entities: [
         { id: "material", kind: "lattice", label: "", x: 50, y: 40, w: 30, h: 30, color: "gray", enter: 0, cue: "The lattice" },
         { id: "electron", kind: "electron", label: "", x: 50, y: 40, w: 6, h: 6, color: "blue", enter: 0.1, cue: "an electron", parentId: "material" },
+        { id: "detail", kind: "magnifier", label: "", x: 83, y: 60, w: 28, h: 50, color: "gray", enter: 0, cue: "The lattice" },
       ],
       relations: [],
       beats: [
@@ -188,5 +189,77 @@ describe("directed scene contract", () => {
     const saved=await t.run(ctx=>ctx.db.get(task.taskId));
     expect(saved?.status).toBe("completed");
     expect(saved?.result?.frames).toHaveLength(24);
+  });
+});
+
+describe("spoken movement boundaries", () => {
+  function movementPlan(): VisualPlan {
+    return {
+      version: 1, grammar: "process", objective: "A photon travels to a cell and is then absorbed.",
+      entities: [
+        { id: "cell", kind: "solar-panel", label: "Cell", x: 70, y: 50, w: 30, h: 20, color: "blue", enter: 0, cue: "Sunlight" },
+        { id: "photon", kind: "photon", label: "", x: 20, y: 50, w: 4, h: 4, color: "yellow", enter: 0, cue: "Sunlight" },
+      ],
+      relations: [],
+      beats: [
+        { id: "travel", target: "photon", action: "move", x: 70, y: 50, at: .2, duration: .4, cue: "These photons travel", meaning: "The photon travels toward the solar cell." },
+        { id: "absorb", target: "photon", action: "hide", at: .65, duration: .1, cue: "The cell absorbs", meaning: "The solar cell absorbs the arriving photon." },
+      ],
+    };
+  }
+
+  it("finishes photon travel at the spoken absorption cue without postponing disappearance", () => {
+    const plan=movementPlan();
+    const spoken=[{text:"Sunlight",start:0,end:.4},{text:"These photons travel",start:4.75,end:6},{text:"The cell absorbs",start:9.125,end:10}];
+    const timing=compileVisualTiming(plan,spoken,358,24);
+    expect(timing.beats.travel.start).toBe(110);
+    expect(timing.beats.absorb).toEqual({start:215,duration:36});
+    expect(timing.beats.travel.start+timing.beats.travel.duration).toBe(timing.beats.absorb.start);
+    expect(compileVisualTiming(plan,spoken,358,24)).toEqual(timing);
+    expect(plan.beats[0].duration).toBe(.4);
+  });
+
+  it("finishes each successive move before the next while preserving concurrent emphasis", () => {
+    const plan=movementPlan();
+    plan.beats=[
+      {...plan.beats[0],at:.1,duration:.6,cue:"",x:45},
+      {...plan.beats[0],id:"continue",at:.5,duration:.2,cue:""},
+      {id:"pulse",target:"photon",action:"pulse",at:.2,duration:.6,cue:"",meaning:"Emphasize the traveling photon while it moves."},
+      {id:"focus",target:"photon",action:"focus",at:.3,duration:.6,cue:"",meaning:"Keep attention on the traveling photon."},
+      {...plan.beats[1],target:"cell",at:.25,cue:""},
+    ];
+    const timing=compileVisualTiming(plan,[],240,24);
+    expect(timing.beats.travel).toEqual({start:24,duration:96});
+    expect(timing.beats.continue).toEqual({start:120,duration:48});
+    expect(timing.beats.pulse).toEqual({start:48,duration:144});
+    expect(timing.beats.focus).toEqual({start:72,duration:144});
+    expect(timing.beats.absorb.start).toBe(60);
+  });
+
+  it("keeps simultaneous cues concurrent rather than inventing a zero-length movement", () => {
+    const plan=movementPlan();
+    plan.beats[1].cue=plan.beats[0].cue;
+    const timing=compileVisualTiming(plan,[{text:"These photons travel",start:2,end:3}],240,24);
+    expect(timing.beats.travel).toEqual({start:44,duration:96});
+    expect(timing.beats.absorb).toEqual({start:44,duration:24});
+    for(const beat of Object.values(timing.beats)) {
+      expect(beat.start).toBeGreaterThanOrEqual(0);
+      expect(beat.duration).toBeGreaterThan(0);
+      expect(beat.start+beat.duration).toBeLessThan(240);
+    }
+  });
+
+  it("keeps late or very short timelines inside their final frame", () => {
+    const plan=movementPlan();
+    plan.beats.forEach(beat=>{beat.cue="Late cue";beat.at=.88;beat.duration=.6;});
+    for(const frames of [2,8,24,240]) {
+      const timing=compileVisualTiming(plan,[{text:"Late cue",start:100,end:101}],frames,24);
+      for(const beat of Object.values(timing.beats)) {
+        expect(Number.isFinite(beat.duration)).toBe(true);
+        expect(beat.start).toBeGreaterThanOrEqual(0);
+        expect(beat.duration).toBeGreaterThan(0);
+        expect(beat.start+beat.duration).toBeLessThan(frames);
+      }
+    }
   });
 });

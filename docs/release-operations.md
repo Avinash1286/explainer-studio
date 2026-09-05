@@ -1,6 +1,6 @@
 # Release operations
 
-**Current 0.7.0 rollout:** 163 tests across 17 files pass; the full check, including both builds, has passed. The visual backend is staged in development, and the production media worker is already 0.7.0. The new production backend is not yet deployed. The canary's fifth workflow attempt (fourth operator resume) is planning, with no generated MP4 yet. This mixed deployment state is not release acceptance. See [visual direction](visual-direction-070.md); the 0.6.0 validation and topic results remain historical evidence.
+**Current visual rollout:** the illustrated clean-canvas renderer is implemented, but visual acceptance remains open. The actual NIM-authored 60-second lesson rendered; revision 1 was rejected and revision 2's review was unavailable. OpenAI remains intentionally disabled. Consult the [visual acceptance record](visual-acceptance-070.md) for exact versions, checks, deployment state and attempt history before operating the release. The 0.6.0 results remain historical evidence.
 
 ## Topology
 
@@ -25,7 +25,7 @@ Convex owns job state, checkpoints, retries, quotas, ownership, icon vectors, re
 1. `npm ci` followed by `npm run check`. Tests use isolated providers; they do not send mail or prove live model accuracy.
 2. `npx convex dev --once` for the development backend; `npx convex deploy --yes` for production.
 3. `npx @convex-dev/static-hosting deploy --dist out --build-command "npm run build:web" --skip-convex`. This builds against the production Convex URL rather than uploading a dev bundle.
-4. Push the Zerops `mediaworker` setup in `zerops.yaml`. Check service ACTIVE and a fresh `workers` heartbeat with version 0.7.0 and `directed-visuals-v1`. Directed scenes require protocol 6; older workers cannot claim them. The 0.7.0 worker retains legacy scene support. Historical worker 0.5.6/protocol-5 checks do not verify the new renderer.
+4. Push the Zerops `mediaworker` setup in `zerops.yaml`. Check service ACTIVE and a fresh `workers` heartbeat matching the version recorded in visual acceptance, with `directed-visuals-v1`. Directed scenes require protocol 6; older workers cannot claim them. The directed worker retains legacy scene support. Historical worker 0.5.6/protocol-5 checks do not verify the new renderer.
 5. Open `/api/health` on the public site. Check actual generation readiness, not just HTTP 200. NIM readiness requires qualified providers and the complete embedding catalog. OpenAI readiness uses its own server key and model plus shared Firecrawl; the model is checked before starting work.
 6. Generate one real production question; inspect the final video, captions, source links, review, revision, public share and revoke behavior. Only publish manually inspected approved examples through `showcase:publish`.
 7. Push GitHub and verify Vercel's `explainer-studio-checks` build for that exact commit. Local success does not imply a passing remote build.
@@ -65,7 +65,7 @@ The AgentMail API key needs `inbox_read` for setup qualification and `message_se
 
 ## Known product boundaries
 
-The 0.7.0 source targets short English explainers with 2–12 illustrated entities per scene, a bounded relationship/action vocabulary and 51 visual kinds, including 35 original everyday illustrations. New lessons use native SVG on a clean canvas without fixed headers, footers or burned captions. The legacy renderer remains for saved projects; existing MP4s are unchanged. Model-authored SVG/code and remote artwork are not accepted. Counts, charges, material bounds, motion direction and visible state changes must match the explanation. Kokoro timing is predicted, not forced alignment. Three sampled frames do not prove every instant is correct, and a hand-authored calibration is not a generated lesson. Manual comparison with the target references remains required before claiming visual quality.
+The directed renderer targets short English explainers with 2–12 illustrated entities per scene, a bounded relationship/action vocabulary and 51 visual kinds, including 35 original everyday illustrations. New lessons use native SVG on a clean canvas without fixed headers, footers or burned captions. The legacy renderer remains for saved projects; existing MP4s are unchanged. Model-authored SVG/code and remote artwork are not accepted. Counts, charges, material bounds, motion direction and visible state changes must match the explanation. Kokoro timing is predicted, not forced alignment. Three sampled frames do not prove every instant is correct, and a hand-authored calibration is not a generated lesson. Manual comparison with the target references remains required before claiming visual quality.
 
 
 ## Repeat a topic evaluation

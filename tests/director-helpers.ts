@@ -7,7 +7,7 @@ export function syntheticVisualPlan(narration: string): VisualPlan {
   return {
     version: 1, grammar: "mechanism", objective: "Show a synthetic supported change across two narrated stages.",
     entities: [
-      { id: "water", kind: "beaker", label: "Water", x: 26, y: 55, w: 28, h: 30, color: "blue", enter: 0, cue: early },
+      { id: "water", kind: "beaker", label: "Water", x: 26, y: 55, w: 28, h: 50, color: "blue", enter: 0, cue: early },
       { id: "vapor", kind: "molecule", label: "Vapor", x: 68, y: 35, w: 22, h: 24, color: "blue", enter: 0.35, cue: later },
     ],
     relations: [{ id: "water-to-vapor", from: "water", to: "vapor", label: "changes", type: "flow", color: "blue", curve: 0.2, enter: 0.15, cue: early }],

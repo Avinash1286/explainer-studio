@@ -72,4 +72,35 @@ describe("directed whiteboard rendering", () => {
     expect(restored).toContain("LIGHT ENERGY");
     expect(restored).not.toContain('d="M-12 0 L-7 -5 L-2 5');
   });
+  it("keeps a white-authored connection visible on the white canvas", () => {
+    const source=plan();
+    source.relations[0].color="white";
+    const markup=renderToStaticMarkup(VisualBoardFrame({plan:source,durationInFrames:480,frame:420}));
+    expect(markup).toMatch(/pathLength="1" stroke-dasharray="1" stroke-dashoffset="0" fill="none" stroke="#171717"/);
+  });
+  it("keeps an internal path and its particles above opaque parents regardless of declaration order", () => {
+    const source=plan();
+    const entity=source.entities[0];
+    source.entities=[
+      {...entity,id:"a",kind:"electron",label:"",x:40,y:50,w:5,h:5,parentId:"inside"},
+      {...entity,id:"b",kind:"electron",label:"",x:60,y:50,w:5,h:5,parentId:"inside"},
+      {...entity,id:"inside",kind:"box",label:"",x:50,y:50,w:40,h:50,parentId:"outside"},
+      {...entity,id:"outside",kind:"box",label:"",x:50,y:50,w:60,h:70},
+    ];
+    source.relations=[{...source.relations[0],id:"internal",from:"a",to:"b",enter:0}]; source.beats=[];
+    const markup=renderToStaticMarkup(VisualBoardFrame({plan:source,durationInFrames:480,frame:420}));
+    const at=(id:string)=>markup.indexOf(`data-visual-entity="${id}"`), edge=markup.indexOf('data-visual-relation="internal"');
+    expect(at("outside")).toBeLessThan(at("inside"));
+    expect(at("inside")).toBeLessThan(edge);
+    expect(edge).toBeLessThan(at("a")); expect(edge).toBeLessThan(at("b"));
+    source.entities[1].parentId="outside";
+    const cross=renderToStaticMarkup(VisualBoardFrame({plan:source,durationInFrames:480,frame:420}));
+    expect(cross.indexOf('data-visual-entity="inside"')).toBeLessThan(cross.indexOf('data-visual-relation="internal"'));
+  });
+  it("preserves the original relation-then-entity order for boards without containment", () => {
+    const source=plan();
+    const markup=renderToStaticMarkup(VisualBoardFrame({plan:source,durationInFrames:480,frame:420}));
+    const order=[...markup.matchAll(/data-visual-(?:relation|entity)="([^"]+)"/g)].map(match=>match[1]);
+    expect(order).toEqual([...source.relations.map(relation=>relation.id),...source.entities.map(entity=>entity.id)]);
+  });
 });

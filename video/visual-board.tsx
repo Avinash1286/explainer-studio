@@ -150,7 +150,9 @@ function Relation({relation,from,to,frame,durationInFrames,timing,beats}:{relati
   let draw=progress(frame,start,24),opacity=Math.min(from.opacity,to.opacity),emphasis=0;
   for(const beat of relevant){if(frame<beat.start)continue;const p=progress(frame,beat.start,beat.frames);if(beat.action==="hide")opacity*=1-ease(p);if(beat.action==="draw"){draw=p;opacity=Math.min(from.opacity,to.opacity)*progress(frame,beat.start,5);}if(["highlight","pulse","focus"].includes(beat.action)&&p<1)emphasis=Math.max(emphasis,Math.sin(p*Math.PI));}
   if(draw<=0||opacity<=0)return null;
-  const geometry=relationGeometry(relation,from,to),color=BOARD_PALETTE[relation.color];
+  // White is useful as an object fill, but a white connection disappears on
+  // this canvas. Keep its outline visible just like white-filled glyphs.
+  const geometry=relationGeometry(relation,from,to),color=relation.color==="white"?INK:BOARD_PALETTE[relation.color];
   const arrow=relation.type==="arrow"||relation.type==="flow";
   const middle=quadratic(geometry.start,geometry.control,geometry.end,.5);
   const angle=tangent(geometry.start,geometry.control,geometry.end,1);
@@ -160,7 +162,7 @@ function Relation({relation,from,to,frame,durationInFrames,timing,beats}:{relati
   const flowStart=flow?.start??start+24,flowFrames=flow?.frames??Math.max(48,durationInFrames-start-24);
   const isPhoton=relation.particle==="photon";
   const isElectron=relation.particle==="electron";
-  return <g opacity={opacity}>
+  return <g opacity={opacity} data-visual-relation={relation.id}>
     {emphasis>0?<path d={geometry.path} fill="none" stroke={color===INK?BOARD_PALETTE.yellow:color} strokeWidth={10+emphasis*5} opacity={emphasis*.35} />:null}
     <path d={geometry.path} pathLength="1" strokeDasharray="1" strokeDashoffset={1-draw} fill="none" stroke={color} strokeWidth={relation.type==="line"?2.8:3.6} strokeLinecap="round" />
     {arrow&&draw>.93?<g transform={`translate(${geometry.end.x} ${geometry.end.y}) rotate(${angle})`} opacity={clamp((draw-.93)/.07)}><path d="M-14 -7 L0 0 L-14 7" fill="none" stroke={color} strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" /></g>:null}
@@ -175,7 +177,7 @@ function Entity({state,sceneId,frame,dim}:{state:EntityFrameState;sceneId:string
   const identifier=`visual-${sceneId}-${entity.id}`;
   const fill=progress(state.draw, .58, .42);
   const radius=boxRadius(state);
-  return <g opacity={state.opacity*dim}>
+  return <g opacity={state.opacity*dim} data-visual-entity={entity.id}>
     {state.emphasis>0||state.focus>0?<ellipse cx={state.x} cy={state.y} rx={radius.x+17} ry={radius.y+13} fill="none" stroke={color===INK?BOARD_PALETTE.yellow:color} strokeWidth="10" opacity={Math.max(state.emphasis,state.focus)*.55} />:null}
     {entity.kind==="label"?<g opacity={state.draw}><Label text={entity.label} x={state.x} y={state.y} width={width} fontSize={Math.min(40,height*.65)} color={color} center /></g>:<>
       <g transform={`translate(${state.x} ${state.y}) rotate(${state.rotation}) scale(${state.scale}) translate(${-width/2} ${-height/2})`}>
@@ -209,10 +211,22 @@ export function VisualBoardFrame({plan,timing,durationInFrames,frame,sceneId="bo
   const states=evaluateVisualFrame(plan,timing,durationInFrames,frame),byId=new Map(states.map(state=>[state.entity.id,state]));
   const beats=timedBeats(plan,timing,durationInFrames);
   const focus=Math.max(0,...states.map(state=>state.focus));
+  const parentIds=new Set(plan.entities.flatMap(entity=>entity.parentId?[entity.parentId]:[]));
+  const depth=(state:EntityFrameState)=>{let value=0,parent=state.entity.parentId;while(parent&&value<states.length){value++;parent=byId.get(parent)?.entity.parentId;}return value;};
+  const surfaces=states.filter(state=>parentIds.has(state.entity.id)).sort((a,b)=>depth(a)-depth(b));
+  const subjects=states.filter(state=>!parentIds.has(state.entity.id));
+  const contained=(relation:VisualRelation)=>Boolean(byId.get(relation.from)?.entity.parentId||byId.get(relation.to)?.entity.parentId);
+  const drawRelation=(relation:VisualRelation)=>{const from=byId.get(relation.from),to=byId.get(relation.to);return from&&to?<Relation key={relation.id} relation={relation} from={from} to={to} frame={frame} durationInFrames={durationInFrames} timing={timing} beats={beats} />:null;};
+  const drawEntity=(state:EntityFrameState)=><Entity key={state.entity.id} state={state} sceneId={sceneId} frame={frame} dim={state.focus>0?1:1-focus*.28} />;
   return <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" height="100%" style={{display:"block",background:"#ffffff",fontFamily:"Kalam, cursive"}} aria-label={plan.objective}>
     <rect width={WIDTH} height={HEIGHT} fill="#ffffff" />
-    {plan.relations.map(relation=>{const from=byId.get(relation.from),to=byId.get(relation.to);return from&&to?<Relation key={relation.id} relation={relation} from={from} to={to} frame={frame} durationInFrames={durationInFrames} timing={timing} beats={beats} />:null;})}
-    {states.map(state=><Entity key={state.entity.id} state={state} sceneId={sceneId} frame={frame} dim={state.focus>0?1:1-focus*.28} />)}
+    {plan.relations.filter(relation=>!contained(relation)).map(drawRelation)}
+    {/* Filled containment surfaces precede internal/entering paths and their
+        subjects, even if the model listed a child before its parent. Drawing
+        all surfaces first also supports paths between two separate parents. */}
+    {surfaces.map(drawEntity)}
+    {plan.relations.filter(contained).map(drawRelation)}
+    {subjects.map(drawEntity)}
   </svg>;
 }
 
