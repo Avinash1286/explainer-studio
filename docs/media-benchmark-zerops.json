@@ -1,0 +1,25 @@
+{
+  "measuredAt": "2026-09-05",
+  "host": "Zerops",
+  "service": "mediaworker",
+  "cpu": "2 shared CPUs",
+  "memoryGb": 4,
+  "runtime": "Ubuntu 22.04, Node 22.23.1, Python 3.12.11",
+  "taskId": "jn78j714hbva1sahq17kgfcwk98dvr9e",
+  "attempt": 1,
+  "benchmark": {
+    "totalSeconds": 143.62390993300002,
+    "synthesisSeconds": 61.912653784966096,
+    "renderSeconds": 69.41218168500002,
+    "ttsPeakRssMb": 1726.64453125,
+    "durationSeconds": 24.375,
+    "frames": 585,
+    "videoBytes": 1438926,
+    "videoSha256": "3f11eb8119fae39ff624ab99e1104d8ce00e9e2d1486ac8d30160db58d5756b3",
+    "platform": "linux",
+    "node": "v22.23.1",
+    "remotion": "4.0.520",
+    "concurrency": 2
+  },
+  "limits": "One production run after model warmup; total excludes initial deployment, queue wait and artifact upload. TTS RSS is the Python process peak, not whole-service memory."
+}

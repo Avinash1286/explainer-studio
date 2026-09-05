@@ -1,0 +1,17 @@
+# Provision into a dedicated project. Supply WORKER_AUTH_TOKEN separately as a
+# secret matching the chosen Convex deployment; never commit the populated copy.
+services:
+  - hostname: mediaworker
+    type: ubuntu@24.04
+    mode: NON_HA
+    enableSubdomainAccess: true
+    verticalAutoscaling:
+      minCpu: 2
+      maxCpu: 2
+      cpuMode: SHARED
+      minRam: 4
+      maxRam: 4
+      minDisk: 10
+      maxDisk: 10
+    minContainers: 1
+    maxContainers: 1

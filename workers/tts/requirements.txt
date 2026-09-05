@@ -1,0 +1,4 @@
+kokoro==0.9.4
+soundfile==0.13.1
+numpy==2.2.6
+# Install CPU torch==2.8.0 separately from https://download.pytorch.org/whl/cpu.

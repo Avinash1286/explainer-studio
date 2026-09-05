@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "jobId": "j97ecgapc5g2ksnnzj99ky37458dvdn6",
+  "taskId": "jn79gb46jm9q0e56dk8n6wxapx8dvd7d",
+  "originalAttempt": 1,
+  "recovery": "A claimed worker stopped renewing; scheduled expiry requeued the job and a real worker published it"
+}

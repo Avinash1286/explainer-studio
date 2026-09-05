@@ -62,6 +62,8 @@ export const cancel = mutation({
     if (job.status === "cancelled") return null;
     if (job.status === "completed" || job.status === "failed") throw new ConvexError("This lesson has already finished.");
     await ctx.db.patch(jobId, { status: "cancelled", stageMessage: "Lesson cancelled", updatedAt: Date.now() });
+    const media = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).unique();
+    if (media) await ctx.db.patch(media._id, { status: "cancelled" });
     await ctx.db.insert("jobEvents", { jobId, kind: "cancelled", message: "Cancelled by owner", createdAt: Date.now() });
     return null;
   },

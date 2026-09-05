@@ -12,6 +12,7 @@ import type * as http from "../http.js";
 import type * as jobs from "../jobs.js";
 import type * as lib_limits from "../lib/limits.js";
 import type * as lib_session from "../lib/session.js";
+import type * as media from "../media.js";
 import type * as sessions from "../sessions.js";
 import type * as workers from "../workers.js";
 
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   jobs: typeof jobs;
   "lib/limits": typeof lib_limits;
   "lib/session": typeof lib_session;
+  media: typeof media;
   sessions: typeof sessions;
   workers: typeof workers;
 }>;

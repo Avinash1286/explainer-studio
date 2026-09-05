@@ -1,6 +1,6 @@
 {
   "name": "explainer-studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,14 +11,15 @@
     "dev:backend": "convex dev",
     "build": "npm run build:web && npm run build:worker",
     "build:web": "node scripts/build-web.mjs",
-    "build:worker": "esbuild workers/media/index.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/worker.mjs",
-    "worker": "node --env-file-if-exists=.env.local dist/worker.mjs",
+    "build:worker": "esbuild workers/media/index.ts scripts/render-fixture.ts --bundle --packages=external --platform=node --target=node22 --format=esm --outdir=dist",
+    "worker": "node --env-file-if-exists=.env.worker dist/workers/media/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
     "deploy": "npx @convex-dev/static-hosting deploy --dist out --build-command \"npm run build:web\"",
-    "preflight": "node --env-file-if-exists=.env.local scripts/preflight.mjs"
+    "preflight": "node --env-file-if-exists=.env.local scripts/preflight.mjs",
+    "render:fixture": "node dist/scripts/render-fixture.js"
   },
   "dependencies": {
     "@convex-dev/rate-limiter": "0.3.2",
@@ -26,11 +27,15 @@
     "@convex-dev/workflow": "0.4.6",
     "@fontsource-variable/dm-sans": "5.3.0",
     "@fontsource/instrument-serif": "5.3.0",
+    "@remotion/bundler": "4.0.520",
+    "@remotion/renderer": "4.0.520",
     "convex": "1.45.0",
     "lucide-react": "1.41.0",
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "remotion": "4.0.520",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@edge-runtime/vm": "5.0.0",

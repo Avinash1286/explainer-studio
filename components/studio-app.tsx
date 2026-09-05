@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { ConvexProvider, ConvexReactClient, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
@@ -52,6 +52,7 @@ function ConnectedStudio() {
   const start = useMutation(api.sessions.start);
   const create = useMutation(api.jobs.create);
   const cancel = useMutation(api.jobs.cancel);
+  const createSample = useMutation(api.media.createSample);
   const [token, setToken] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState("");
   useEffect(() => {
@@ -78,13 +79,30 @@ function ConnectedStudio() {
     connectionMessage={connectionError || (token && jobs ? "Your workspace is connected" : "Connecting your workspace…")}
     save={async (brief) => { if (!token) throw new Error("No session"); return create({ ...brief, token }); }}
     cancel={async (jobId) => { if (!token) throw new Error("No session"); await cancel({ token, jobId }); }}
+    sample={async (requestId) => { if (!token) throw new Error("No session"); return createSample({ token, requestId }); }}
+    resultPanel={(jobId) => token ? <MediaResult token={token} jobId={jobId} /> : null}
   />;
 }
 
-function Studio({ jobs, ready, connectionMessage, save, cancel }: {
+function MediaResult({ token, jobId }: { token: string; jobId: Id<"jobs"> }) {
+  const result = useQuery(api.media.result, { token, jobId });
+  if (!result?.video) return null;
+  return <div className="media-result">
+    <video controls preload="metadata" poster={result.poster || undefined} src={result.video} crossOrigin="anonymous" aria-label="Rendered plant energy demo">
+      {result.captions ? <track kind="captions" src={result.captions} srcLang="en" label="English" /> : null}
+    </video>
+    <p>Original scripted demo · {result.durationSeconds.toFixed(1)} seconds · Kokoro voice</p>
+    <div className="artifact-links"><a href={result.video} target="_blank" rel="noreferrer">Open video</a>{result.project ? <a href={result.project} target="_blank" rel="noreferrer">Project, transcript & sources</a> : null}{result.captions ? <a href={result.captions} target="_blank" rel="noreferrer">Captions</a> : null}</div>
+    <small>Illustrations by <a href="https://openmoji.org/">OpenMoji</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Stroke and fill animation adaptations. The candy icon represents sugar molecules.</small>
+  </div>;
+}
+
+function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPanel }: {
   jobs: Job[]; ready: boolean; connectionMessage: string;
   save?: (brief: Brief) => Promise<Id<"jobs">>;
   cancel?: (id: Id<"jobs">) => Promise<void>;
+  sample?: (requestId: string) => Promise<Id<"jobs">>;
+  resultPanel?: (jobId: Id<"jobs">) => ReactNode;
 }) {
   const [topic, setTopic] = useState("");
   const [duration, setDuration] = useState<number>(75);
@@ -94,6 +112,7 @@ function Studio({ jobs, ready, connectionMessage, save, cancel }: {
   const [error, setError] = useState("");
   const [pendingBrief, setPendingBrief] = useState<Brief | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [sampleRequest, setSampleRequest] = useState<string | null>(null);
   const selected = jobs.find((job) => job._id === selectedId);
   function select(id: string | null) {
     const url = new URL(window.location.href);
@@ -118,6 +137,15 @@ function Studio({ jobs, ready, connectionMessage, save, cancel }: {
     try { await cancel(selected._id); } catch (err) { setError(friendlyError(err)); }
     finally { setBusy(false); }
   }
+  async function renderSample() {
+    if (!sample || !ready || busy) return;
+    setBusy(true); setError("");
+    const requestId = sampleRequest || crypto.randomUUID();
+    setSampleRequest(requestId);
+    try { select(await sample(requestId)); setSampleRequest(null); }
+    catch (err) { setError(friendlyError(err)); }
+    finally { setBusy(false); }
+  }
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -129,13 +157,13 @@ function Studio({ jobs, ready, connectionMessage, save, cancel }: {
           <button className="nav-item" onClick={() => setShowInfo((value) => !value)} aria-expanded={showInfo}><CircleHelp size={18} /> How it works</button>
         </nav>
         <div className="sidebar-note"><span className="little-spark">✳</span><h3>Make an idea click.</h3><p>A good explanation starts with a little curiosity.</p><div className="note-line" /></div>
-        <div className="sidebar-bottom"><span className="avatar">Y</span><div>Your personal studio<small>Early access · Foundation</small></div></div>
+        <div className="sidebar-bottom"><span className="avatar">Y</span><div>Your personal studio<small>Early access · Media demo</small></div></div>
       </aside>
       <div className="main-column">
         <header className="topbar"><div>Workspace <ChevronRight size={14} /><span>Create a lesson</span></div><span className="release-pill"><span /> In the making</span></header>
         <main>
           <div className="intro"><div className="eyebrow"><span /> A LITTLE CURIOSITY GOES A LONG WAY</div><h1>Big ideas.<br /><em>Clearly explained.</em></h1><p>Start with a question. Shape it into a short, illustrated lesson<br className="desktop-break" /> that makes the complicated feel simple.</p></div>
-          {showInfo ? <section className="info-banner"><button onClick={() => setShowInfo(false)} aria-label="Close explanation"><X size={17} /></button><strong>From a question to a visual lesson</strong><p>The finished app will research your topic, plan the diagrams, narrate and animate the explanation, then check the result. This foundation release saves and manages your lesson briefs. Video generation comes in the next phases.</p></section> : null}
+          {showInfo ? <section className="info-banner"><button onClick={() => setShowInfo(false)} aria-label="Close explanation"><X size={17} /></button><strong>From a question to a visual lesson</strong><p>The finished app will research your topic, plan the diagrams, narrate and animate the explanation, then check the result. You can save your own topic as a brief and render our scripted animation demo now. Automatic research and topic generation come next.</p></section> : null}
           <div className="creation-grid">
             <section className="brief-card" aria-labelledby="brief-heading">
               <div className="section-heading"><span className="step-number">01</span><h2 id="brief-heading">What are we explaining?</h2><PencilLine size={18} /></div>
@@ -148,7 +176,7 @@ function Studio({ jobs, ready, connectionMessage, save, cancel }: {
                 <div className="form-divider" />
                 <div className="settings-row"><fieldset><legend><Clock3 size={14} /> Lesson length</legend><div className="segments">{DURATION_PRESETS.map((value) => <button key={value} type="button" aria-pressed={duration === value} className={duration === value ? "selected" : ""} onClick={() => setDuration(value)}>{value}s</button>)}</div></fieldset><div className="audience-field"><label htmlFor="audience"><BookOpen size={14} /> Explain it for</label><select id="audience" value={audience} onChange={(event) => setAudience(event.target.value as "beginner" | "student")}><option value="beginner">A curious beginner</option><option value="student">A school student</option></select></div></div>
                 <button className="primary-button" type="submit" disabled={!ready || busy}>{busy ? <Loader2 size={17} className="spin" /> : <Plus size={17} />} Save lesson brief <ArrowRight size={17} /></button>
-                <p className="foundation-note">Foundation release: briefs are saved now.<br />Research, narration, and video rendering are coming next.</p>
+                <p className="foundation-note">Your topic is saved as a brief.<br />Try the animation demo while topic generation is being built.</p>
                 <div className={`connection-line ${ready ? "connected" : ""}`} role="status"><span />{connectionMessage}</div>
               </form>
             </section>
@@ -157,10 +185,11 @@ function Studio({ jobs, ready, connectionMessage, save, cancel }: {
               <StyleStudy />
               <div className="preview-note"><span className="small-check"><Check size={13} /></span><p>Illustrations that explain. A voice that guides.<br /><strong>Room for the idea to breathe.</strong></p></div>
               <div className="style-disclaimer">Original layout sketch · not a generated video</div>
+              <div className="sample-card"><strong>See the animation come to life</strong><p>Render a fresh copy of our scripted plant-energy demo with a real voice and three animated scenes.</p><button className="primary-button" type="button" disabled={!ready || busy} onClick={renderSample}><Layers3 size={17} /> Render demo lesson <ArrowRight size={17} /></button><small>This uses a fixed demo script. Generating from your own topic comes next.</small></div>
             </section>
           </div>
           {error ? <p className="error-banner" role="alert">{error}</p> : null}
-          {selected ? <section className="selected-brief" aria-live="polite"><div className="selected-top"><span className="eyebrow">YOUR LESSON BRIEF</span><span className={`status-badge ${selected.status}`}>{selected.status === "queued" ? "Brief saved" : selected.status}</span></div><h2>{selected.topic}</h2><p>{selected.stageMessage}</p><div className="pipeline">{PIPELINE_STAGES.map((stage, index) => <div key={stage.id}><span>{index + 1}</span><strong>{stage.label}</strong><small>{stage.description}</small></div>)}</div>{selected.status !== "cancelled" && selected.status !== "completed" && selected.status !== "failed" ? <button className="text-button" disabled={busy} onClick={cancelSelected}><X size={14} /> Cancel this brief</button> : null}</section> : null}
+          {selected ? <section className="selected-brief" aria-live="polite"><div className="selected-top"><span className="eyebrow">YOUR LESSON BRIEF</span><span className={`status-badge ${selected.status}`}>{selected.status === "queued" ? "Brief saved" : selected.status}</span></div><h2>{selected.topic}</h2><p>{selected.stageMessage}</p>{resultPanel?.(selected._id)}{selected.status === "queued" ? <div className="pipeline">{PIPELINE_STAGES.map((stage, index) => <div key={stage.id}><span>{index + 1}</span><strong>{stage.label}</strong><small>{stage.description}</small></div>)}</div> : null}{selected.status !== "cancelled" && selected.status !== "completed" && selected.status !== "failed" ? <button className="text-button" disabled={busy} onClick={cancelSelected}><X size={14} /> Cancel this lesson</button> : null}</section> : null}
           <section id="your-lessons" className="library-section"><div className="library-heading"><div><span className="eyebrow">YOUR NEXT EXPLANATION STARTS HERE</span><h2>Your lessons <span>{jobs.length.toString().padStart(2, "0")}</span></h2></div><span className="private-note">Saved to this browser’s workspace</span></div>
             {jobs.length ? <div className="lesson-list">{jobs.map((job) => <button key={job._id} className={`lesson-row ${selectedId === job._id ? "current" : ""}`} onClick={() => select(job._id)}><span className="lesson-icon"><FileText size={20} /></span><span className="lesson-copy"><strong>{job.topic}</strong><small>{job.duration}s · {job.audience === "student" ? "School student" : "Curious beginner"}</small></span><span className={`status-badge ${job.status}`}>{job.status === "queued" ? "Brief saved" : job.status}</span><ArrowRight size={17} /></button>)}</div> : <div className="empty-library"><div><FileText size={23} /></div><h3>A blank page is a good beginning.</h3><p>Your saved lesson briefs will appear here.<br />Start with one question above.</p></div>}
           </section>

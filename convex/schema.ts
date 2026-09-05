@@ -26,4 +26,11 @@ export default defineSchema({
     workerId: v.string(), instanceId: v.string(), lastHeartbeat: v.number(),
     capabilities: v.array(v.string()), version: v.string(),
   }).index("by_workerId", ["workerId"]),
+  mediaTasks: defineTable({
+    jobId: v.id("jobs"), fixtureVersion: v.string(),
+    status: v.union(v.literal("queued"), v.literal("running"), v.literal("completed"), v.literal("failed"), v.literal("cancelled")),
+    attempt: v.number(), worker: v.optional(v.string()), leaseUntil: v.number(), createdAt: v.number(),
+    result: v.optional(v.object({ video: v.id("_storage"), project: v.id("_storage"), captions: v.id("_storage"), poster: v.id("_storage"), durationSeconds: v.number() })),
+  }).index("by_jobId", ["jobId"]).index("by_status_and_leaseUntil", ["status", "leaseUntil"]),
+  mediaUploads: defineTable({ taskId: v.id("mediaTasks"), attempt: v.number(), storageId: v.id("_storage"), createdAt: v.number(), committed: v.boolean() }).index("by_taskId_and_attempt", ["taskId", "attempt"]),
 });

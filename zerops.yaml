@@ -6,15 +6,38 @@ zerops:
       buildCommands:
         - npm ci
         - npm run build:worker
+        - node scripts/ensure-browser.mjs
       deployFiles:
-        - dist/worker.mjs
+        - dist
+        - node_modules
+        - package.json
+        - video
+        - packages
+        - workers/tts
+        - public/openmoji
+      addToRunPrepare:
+        - workers/tts
     run:
       os: ubuntu
       base: nodejs@22
+      prepareCommands:
+        - sudo apt-get update
+        - sudo apt-get install -y --no-install-recommends python3-pip espeak-ng ffmpeg fonts-dejavu-core libnss3 libdbus-1-3 libatk1.0-0 libasound2 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libgbm-dev libcups2 libcairo2 libpango-1.0-0 libatk-bridge2.0-0
+        - python3 -m pip install --user uv==0.8.22
+        - /home/zerops/.local/bin/uv venv --python 3.12 --seed /home/zerops/tts
+        - /home/zerops/tts/bin/pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+        - /home/zerops/tts/bin/pip install -r workers/tts/requirements.txt
+        - /home/zerops/tts/bin/python workers/tts/warmup.py
+      envVariables:
+        PYTHON_BIN: /home/zerops/tts/bin/python
+        TTS_THREADS: "2"
+        RENDER_CONCURRENCY: "2"
+        WORKER_ID: mediaworker
+        PORT: "3001"
       ports:
         - port: 3001
           httpSupport: true
-      start: node dist/worker.mjs
+      start: node dist/workers/media/index.js
     deploy:
       readinessCheck:
         httpGet:

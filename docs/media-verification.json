@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "scenes": 3,
+  "durationSeconds": 24.375,
+  "framesChecked": [
+    260,
+    18,
+    468,
+    260
+  ],
+  "identicalRepeatedFrame": true,
+  "timingMethod": "Kokoro predicted token durations; not forced alignment"
+}

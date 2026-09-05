@@ -1,4 +1,4 @@
-> Implementation note (September 5, 2026): H0a foundation is implemented. See PHASES.md and hackathon.md for current evidence; the document below is the original design plan, and proposed integrations or targets are not completion claims.
+> Implementation note (September 5, 2026): H0a foundation and H1 media fixture are implemented; H2 topic generation is next. H0b external-provider qualification remains pending. See PHASES.md and hackathon.md for current evidence; the document below is the original design plan, and proposed integrations or targets are not completion claims.
 
 # Plan: a topic-to-explainer app for Convex All Gas, with an agentic video harness
 

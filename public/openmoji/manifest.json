@@ -1,0 +1,246 @@
+{
+  "version": 1,
+  "revision": "aeb8bb3a59e2de39c754ac79180c8131c906acea",
+  "entries": [
+    {
+      "id": "2600",
+      "name": "sun",
+      "file": "openmoji/2600.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/2600.svg",
+      "sha256": "cf039475b1c737bd355572478013138e602814dae141928f7d50d819080ac4ab",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "2601",
+      "name": "cloud",
+      "file": "openmoji/2601.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/2601.svg",
+      "sha256": "576cae585d83517d1f8b72dd0cb2d4294d092d1c0096c80d5fdb591ba4da5396",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "2699",
+      "name": "gear",
+      "file": "openmoji/2699.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/2699.svg",
+      "sha256": "4d3cebb814816b75ca093010d17564b4f7a350edce40625c22067a8cf5d562df",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F343",
+      "name": "leaf",
+      "file": "openmoji/1F343.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F343.svg",
+      "sha256": "64911728d7fcb10e205db760f0f82c1ceae3153878d369dc10cf8ec2c50f03bb",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F331",
+      "name": "seedling",
+      "file": "openmoji/1F331.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F331.svg",
+      "sha256": "5f7b280dd0435ea429e6086f18f11a4e02ce46b2497c2231a115feca40634513",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F36C",
+      "name": "candy",
+      "file": "openmoji/1F36C.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F36C.svg",
+      "sha256": "abca571f338bc11c28f6e1b334d0bf0693da5f6d944abf2fc4679e3f7417b45f",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F4A7",
+      "name": "water",
+      "file": "openmoji/1F4A7.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F4A7.svg",
+      "sha256": "ec3895fbd78797679bad1be852d05e659977a010764a7b049822ef7c687ae18c",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F30D",
+      "name": "earth",
+      "file": "openmoji/1F30D.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F30D.svg",
+      "sha256": "0a68747c6c59b68024885df41a1dd46fef36f4d7db014c27c9713558a56a40ac",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F9EC",
+      "name": "dna",
+      "file": "openmoji/1F9EC.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F9EC.svg",
+      "sha256": "8e3477942b21917f570fea904885a9d03d5446a5569e36330c183ac52ed0d930",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F9E0",
+      "name": "brain",
+      "file": "openmoji/1F9E0.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F9E0.svg",
+      "sha256": "c8fa6dea0788e42b8446f648d95dfe7af875dada28d8361f48be294fc36836e8",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F50B",
+      "name": "battery",
+      "file": "openmoji/1F50B.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F50B.svg",
+      "sha256": "cb8b67eb9c3126c0749353cf41a1355d728a15505dc7fab4de2dd62ce852d317",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F4A1",
+      "name": "light bulb",
+      "file": "openmoji/1F4A1.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F4A1.svg",
+      "sha256": "fb98f3985e05ab294e1ca1beee18d5c557d1572b316756a9abd00d8901807b43",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F9EA",
+      "name": "test tube",
+      "file": "openmoji/1F9EA.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F9EA.svg",
+      "sha256": "cf27600483398de5568ec12795c8251b372e03b64557e9ef72eeb770bf94e28b",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F321",
+      "name": "thermometer",
+      "file": "openmoji/1F321.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F321.svg",
+      "sha256": "40bb327287f4a2ab0a0349e0ab0d1009d3953d8ed73932b1d1295fcce05311de",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F52C",
+      "name": "microscope",
+      "file": "openmoji/1F52C.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F52C.svg",
+      "sha256": "006f825e45e753688d298f1ad75d11ee0dc5774b53df93373409ec26261ed8bc",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F4DA",
+      "name": "books",
+      "file": "openmoji/1F4DA.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F4DA.svg",
+      "sha256": "19e62bc161f15bfa985536ae256eaa41106f39d26c495cac0fd935b08eabeaef",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F31E",
+      "name": "sun face",
+      "file": "openmoji/1F31E.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F31E.svg",
+      "sha256": "7cdb40a65af3822b60218925392ca807b9a4951263db74b68814121f528301e8",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F319",
+      "name": "moon",
+      "file": "openmoji/1F319.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F319.svg",
+      "sha256": "54cde751c97683286b15a7402f722e4c9fe5487e56b78738bd3e85da2534bd84",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F332",
+      "name": "tree",
+      "file": "openmoji/1F332.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F332.svg",
+      "sha256": "0d03d0ea7819bf9fd22614a0623b7594d4175a986a18b386adfc6490844c48eb",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F33B",
+      "name": "sunflower",
+      "file": "openmoji/1F33B.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F33B.svg",
+      "sha256": "8ec898c7225016a95cc1c71c1634ac2e1966f5c97b7d9ee209ebe35a003fa08b",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F41D",
+      "name": "bee",
+      "file": "openmoji/1F41D.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F41D.svg",
+      "sha256": "d37d39f309a3c79b01227a0b81fb8073679842f546fdd745a506b8d9cae026a4",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F98B",
+      "name": "butterfly",
+      "file": "openmoji/1F98B.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F98B.svg",
+      "sha256": "47b4971766ec7d4d913142eac844bb33c526b72839209c8acb531483a2f4072d",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F3E0",
+      "name": "house",
+      "file": "openmoji/1F3E0.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F3E0.svg",
+      "sha256": "edfb5e77a7d324526f76295c0b3eb913006fd0424a0ee3dd0f12b0824225568f",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    },
+    {
+      "id": "1F697",
+      "name": "car",
+      "file": "openmoji/1F697.svg",
+      "source": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/aeb8bb3a59e2de39c754ac79180c8131c906acea/color/svg/1F697.svg",
+      "sha256": "f2bc314639afba633ef21e802c022fa64b6a3fe0e3d3739e5826a816f1895286",
+      "license": "CC-BY-SA-4.0",
+      "author": "OpenMoji contributors",
+      "modified": false
+    }
+  ]
+}

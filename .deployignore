@@ -1,0 +1,9 @@
+/.env*
+/.git/
+/.venv/
+/.agents/
+/.claude/
+/.convex/
+/.next/
+/runs/
+/out/
