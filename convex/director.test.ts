@@ -207,6 +207,9 @@ describe("bounded illustrated scene direction", () => {
     const transport = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ id: "nim-response-1", model: "nim-returned-model", choices: [{ message: { content: JSON.stringify(plan) } }], usage: { prompt_tokens: 90, completion_tokens: 30, total_tokens: 120, diagnostic: "private text" } }));
     const result = await directScenes({ ...config, generationProvider: "nim" }, sampleProject, testSources, [sampleProject.scenes[0].id], "", transport);
     expect(result.attempts[0].attempts[0]).toMatchObject({ model: "nim-returned-model", responseId: "nim-response-1", usage: { input_tokens: 90, output_tokens: 30, total_tokens: 120 } });
+    const request = JSON.parse(String(transport.mock.calls[0][1]?.body));
+    expect(request).toMatchObject({ model: "moonshotai/kimi-k3", reasoning_effort: "low" });
+    expect(request).not.toHaveProperty("chat_template_kwargs");
     expect(JSON.stringify(result.attempts)).not.toContain("private text");
   });
 

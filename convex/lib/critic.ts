@@ -2,7 +2,7 @@ import { z } from "zod";
 import { REVIEW_MODEL, validateReview, knownIconIssues } from "../../packages/contracts/review";
 import type { Project } from "../../packages/contracts/scene";
 import type { Research } from "../../packages/contracts/generation";
-import { post, ModelOutputError, ProviderError, transient, decodingSchema, openAIResponse, type OpenAIContent, type ProviderConfig, type Provider } from "./providers";
+import { post, KIMI_MODEL, ModelOutputError, ProviderError, transient, decodingSchema, openAIResponse, type OpenAIContent, type ProviderConfig, type Provider } from "./providers";
 import { DEFAULT_OPENAI_MODEL } from "../../packages/contracts/provider";
 import manifest from "../../public/openmoji/manifest.json";
 import { compactSceneReview, sceneReviewSchema, validateProseCompaction, type ProseCompaction } from "./reviewProse";
@@ -12,7 +12,6 @@ type TokenUsage = { input_tokens?: number; output_tokens?: number; total_tokens?
 type SceneInference = { sceneId: string; provider: Provider; model: string; responseId?: string; usage: TokenUsage };
 type ValidationAttempt = SceneInference & { outcome: "invalid-output" | "valid"; validationError?: string };
 export type SceneFrameReview = { report: z.infer<ReturnType<typeof sceneReviewSchema>>; inference: SceneInference; proseCompaction?: ProseCompaction; validationAttempts?: ValidationAttempt[] };
-const FALLBACK_MODEL = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
 const tokenUsageSchema = z.object({ prompt_tokens: z.number().nonnegative().optional(), completion_tokens: z.number().nonnegative().optional(), input_tokens: z.number().nonnegative().optional(), output_tokens: z.number().nonnegative().optional(), total_tokens: z.number().nonnegative().optional() });
 function tokenUsage(value: unknown): TokenUsage {
   const parsed = tokenUsageSchema.safeParse(value);
@@ -65,7 +64,7 @@ export async function inspectSceneFrames(config: ProviderConfig, project: Projec
   };
   const request = async (provider: Provider, correction?: string): Promise<{ value: unknown; inference: SceneInference }> => {
     let value: unknown, usage: unknown, responseId: string | undefined;
-    let model: string = provider === "openai" ? config.OPENAI_MODEL || DEFAULT_OPENAI_MODEL : provider === "nvidia" ? FALLBACK_MODEL : REVIEW_MODEL;
+    let model: string = provider === "openai" ? config.OPENAI_MODEL || DEFAULT_OPENAI_MODEL : provider === "nvidia" ? KIMI_MODEL : REVIEW_MODEL;
     if (provider === "openai") {
       const content: OpenAIContent[] = [
         { type: "input_text", text: prompt },
@@ -91,9 +90,10 @@ export async function inspectSceneFrames(config: ProviderConfig, project: Projec
         const data = z.object({ success: z.literal(true), result: z.object({ response: z.union([z.string(), z.record(z.string(), z.unknown())]), usage: z.unknown().optional() }) }).parse(raw);
         value = data.result.response; usage = data.result.usage;
       } else {
-        // The hosted API documents reasoning_budget; reserve additional output
-        // space for the final JSON while keeping the existing request deadline.
-        const raw = await post("https://integrate.api.nvidia.com/v1/chat/completions", config.NVIDIA_API_KEY, { ...payload, model, temperature: 0.6, top_p: 0.95, max_tokens: 6144, reasoning_budget: 2048, chat_template_kwargs: { enable_thinking: true }, guided_json: decodingSchema(jsonSchema), response_format: { type: "json_object" } }, provider, transport, 90_000);
+        // Kimi's hosted API fixes top_p and does not expose Nemotron decoder
+        // extensions. The prompt carries the schema; local validation remains
+        // authoritative. CF plus two bounded NIM calls stays below 600 seconds.
+        const raw = await post("https://integrate.api.nvidia.com/v1/chat/completions", config.NVIDIA_API_KEY, { messages: payload.messages, model, temperature: 1, max_tokens: 16384, reasoning_effort: "low", stream: false }, provider, transport, 150_000);
         const data = z.object({ id: z.string().max(200).optional(), model: z.string().max(100).optional(), choices: z.array(z.object({ finish_reason: z.string().nullable().optional(), message: z.object({ content: z.string() }) })).min(1), usage: z.unknown().optional() }).parse(raw);
         if (data.choices[0].finish_reason === "length") throw new Error("Truncated frame review");
         let content = data.choices[0].message.content;

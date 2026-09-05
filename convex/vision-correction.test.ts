@@ -26,6 +26,12 @@ describe("one bounded scene review correction", () => {
     expect(result.report.visualPass).toBe(false);
     expect(transport.mock.calls.map(([url]) => String(url).includes("cloudflare") ? "cloudflare" : "nvidia")).toEqual(["cloudflare", "nvidia", "nvidia"]);
     const first = JSON.parse(String(transport.mock.calls[1][1]?.body)), corrected = JSON.parse(String(transport.mock.calls[2][1]?.body));
+    expect(first.model).toBe("moonshotai/kimi-k3");
+    expect(corrected).toMatchObject({ model: "moonshotai/kimi-k3", temperature: 1, max_tokens: 16384, reasoning_effort: "low" });
+    expect(corrected).not.toHaveProperty("response_format");
+    expect(corrected).not.toHaveProperty("guided_json");
+    expect(corrected).not.toHaveProperty("chat_template_kwargs");
+    expect(corrected).not.toHaveProperty("top_p");
     expect(corrected.messages[0]).toEqual(first.messages[0]);
     expect(corrected.messages[1].content.slice(0, -1)).toEqual(first.messages[1].content);
     expect(JSON.parse(corrected.messages[1].content[0].text).sources).toEqual(testSources);

@@ -12,6 +12,11 @@ import { retryableDirectorFailure } from "./generation";
 const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
 const token = "e".repeat(64);
 const vector = Array.from({ length: 768 }, (_, i) => i === 0 ? 1 : 0);
+function requestPrompt(body: { messages?: { content: string }[] }) {
+  if (!body.messages) return null;
+  const packet = JSON.parse(body.messages[1].content);
+  return packet.originalRequest ? JSON.parse(packet.originalRequest) : packet;
+}
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 async function setup(ready = false) {
   const t = convexTest(schema, modules); rateLimiter.register(t); workflow.register(t);
@@ -30,7 +35,7 @@ function mockProviders() {
     const body = JSON.parse(String(init?.body));
     if (String(url).includes("firecrawl")) return Response.json({ success: true, data: { web: testSources.map(s => ({ title: s.title, url: s.url, markdown: s.text })) } });
     if (String(url).includes("bge-base")) return Response.json({ success: true, result: { data: body.text.map(() => vector) } });
-    const prompt = JSON.parse(body.messages[1].content);
+    const prompt = requestPrompt(body);
     if (prompt.scene?.narration) return Response.json({ choices: [{ message: { content: JSON.stringify(syntheticVisualPlan(prompt.scene.narration)) } }] });
     const content = { title: testDraft.title, scenes: testDraft.scenes.map((scene, i) => ({
       title: scene.title, narration: "The sun warms water in lakes and rivers, helping liquid water change into an invisible gas that rises into air. This process moves water around the planet every day.",
@@ -54,7 +59,7 @@ describe("durable topic generation", () => {
     let targetCalls = 0;
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url, request) => {
       const body = JSON.parse(String(request?.body));
-      const prompt = body.messages ? JSON.parse(body.messages[1].content) : null;
+      const prompt = requestPrompt(body);
       if (prompt?.scene) {
         sceneCalls.push(prompt.scene.id);
         if (prompt.scene.id === "scene-2" && ++targetCalls <= 2) return new Response("temporary", { status: targetCalls === 1 ? 503 : 429 });
@@ -75,7 +80,7 @@ describe("durable topic generation", () => {
     const { t, jobId } = await setup(true); const base = mockProviders(); let directorCalls = 0;
     vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockImplementation(async (url, request) => {
       const body = JSON.parse(String(request?.body));
-      const prompt = body.messages ? JSON.parse(body.messages[1].content) : null;
+      const prompt = requestPrompt(body);
       if (prompt?.scene) {
         directorCalls++;
         if (failure === "auth") return new Response("unauthorized", { status: 401 });

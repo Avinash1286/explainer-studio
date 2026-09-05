@@ -87,7 +87,8 @@ describe("source and rendered-frame review", () => {
       expect(prompt).not.toHaveProperty("project");
       const images = body.messages[1].content.filter((part: { type: string }) => part.type === "image_url");
       expect(images.map((part: { image_url: { url: string } }) => part.image_url.url)).toEqual(frames.filter(frame => frame.sceneId === report.sceneId).map(frame => frame.url));
-      expect(body.response_format.type).toBe(String(url).includes("cloudflare") ? "json_schema" : "json_object");
+      if (String(url).includes("cloudflare")) expect(body.response_format.type).toBe("json_schema");
+      else expect(body).not.toHaveProperty("response_format");
       if (String(url).includes("cloudflare")) {
         if (report.sceneId === sampleProject.scenes[1].id) return new Response("", { status: 429 });
         return Response.json({ success: true, result: { response: report, usage: { prompt_tokens: 100, completion_tokens: 40, unrelated: "excluded" } } });
