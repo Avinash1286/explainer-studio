@@ -50,3 +50,5 @@ Cloudflare frame review is working with existing credentials. Complete the bound
 - Release 0.4.0 adds version-bound review, repair and delivery workflows.
 - 53 automated tests cover source/frame gate, false-positive icon regression, scope and revision fencing, mailbox verification, idempotent delivery, raw-body signatures and expiry.
 - Live provider acceptance is using existing Cloudflare credentials; AgentMail delivery still needs its separate credentials. No live review approval or sent email is claimed.
+
+Provider migration acceptance: the development backend stored a real Cloudflare rejection from eight decoded frames. One automatic repair failed to produce a supported replacement; the original draft remains unapproved. The reviewer migration is verified, but successful content repair and email acceptance are not complete. Production backend and frontend were deployed, HTTP 200 was verified, and generation remains disabled. Next: improve repair reliability and validate a fresh topic, then complete the separate consented AgentMail delivery test.

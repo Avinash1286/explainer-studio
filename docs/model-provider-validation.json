@@ -17,12 +17,12 @@
     "outcome": "Schema valid; known icon guard rejected the model's initial false-positive pass."
   },
   "deployedReview": {
-    "checkedAt": "2026-09-05T12:54:58.610Z",
+    "checkedAt": "2026-09-05T12:57:11.901Z",
     "jobs": [
       {
         "revision": 2,
-        "status": "planning",
-        "stageMessage": "Review found issues. Repairing the affected scenes once.",
+        "status": "failed",
+        "stageMessage": "The scene edit could not produce a supported replacement. Previous draft is saved.",
         "automaticRepairs": 1
       }
     ],
@@ -108,5 +108,13 @@
     "NVIDIA Llama 4 Scout and Kimi endpoints returned HTTP 404; Llama 3.2 90B probe timed out. No NVIDIA vision fallback is configured.",
     "Real review can miss visual defects; deterministic guards remain required.",
     "No OpenAI inference was used. No email was sent."
-  ]
+  ],
+  "repairOutcome": "One automatic repair was attempted and failed replacement validation. The original draft remains saved and unapproved.",
+  "production": {
+    "frontendStatus": 200,
+    "backendStatus": 200,
+    "generationEnabled": false,
+    "cloudflareLabelVerified": true,
+    "openaiLabelPresent": false
+  }
 }

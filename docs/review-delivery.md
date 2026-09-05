@@ -57,3 +57,5 @@ Before enabling production: run real review on the known flawed draft; observe r
 ## Hackathon impact
 
 The [official All Gas qualification and judging page](https://www.convex.dev/hackathons/all-gas) expects OpenAI, Firecrawl and AgentMail to do real product work. It does not clearly separate per-sponsor disqualification from scoring. The current owner-selected stack excludes OpenAI; eligibility and scoring are therefore unconfirmed. Using Codex for development is not documented as a substitute for OpenAI product integration. Do not claim full sponsor compliance. No organizer message has been sent.
+
+Provider migration acceptance: the development backend stored a real Cloudflare rejection from eight decoded frames. One automatic repair failed to produce a supported replacement; the original draft remains unapproved. The reviewer migration is verified, but successful content repair and email acceptance are not complete. Production backend and frontend were deployed, HTTP 200 was verified, and generation remains disabled. Next: improve repair reliability and validate a fresh topic, then complete the separate consented AgentMail delivery test.
