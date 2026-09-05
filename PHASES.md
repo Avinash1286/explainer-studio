@@ -8,7 +8,7 @@ The detailed H0–H6 acceptance gates remain in `plan.md`, section 11. This stat
 | H0b: external service and media qualification | Partial | Media runtime qualified on Zerops. NVIDIA, Cloudflare and Firecrawl qualified in development and production. Cloudflare vision now returned a real stored rejection; AgentMail, intended inbox and official hackathon log integration remain pending. |
 | H1: original rendered fixture | Complete | Deployed and verified; see `docs/media-phase.md`. |
 | H2: topic to complete explainer | Pipeline verified; content gate pending | Real browser topic produced a 60-second draft with captions and sources. Timing/playback passed; incorrect icon labels failed content inspection. Production generation remains disabled. See `docs/topic-generation.md`. |
-| H3: review, revision, delivery | Implemented; live provider acceptance pending | Source and decoded-frame review gate, one automatic repair, two targeted user revisions, Kokoro scene cache, verified AgentMail outbox and signed callbacks. See `docs/review-delivery.md`. |
+| H3: review, revision, delivery | Repair hardening implemented; live acceptance incomplete | Source and decoded-frame review gate, one automatic repair, two targeted user revisions, Kokoro scene cache, verified AgentMail outbox and signed callbacks. See `docs/review-delivery.md`. |
 | H4: evaluation | Pending | Five unseen topics, real user trials, failure/recovery and access checks. |
 | H5: release evidence | Pending | Reproducible setup, final licenses, recorded demo, social/submission draft. |
 | H6: submission | Pending | Owner-authorized social publishing and submission; real receipt recorded. |
@@ -52,3 +52,7 @@ Cloudflare frame review is working with existing credentials. Complete the bound
 - Live provider acceptance is using existing Cloudflare credentials; AgentMail delivery still needs its separate credentials. No live review approval or sent email is claimed.
 
 Provider migration acceptance: the development backend stored a real Cloudflare rejection from eight decoded frames. One automatic repair failed to produce a supported replacement; the original draft remains unapproved. The reviewer migration is verified, but successful content repair and email acceptance are not complete. Production backend and frontend were deployed, HTTP 200 was verified, and generation remains disabled. Next: improve repair reliability and validate a fresh topic, then complete the separate consented AgentMail delivery test.
+
+## Repair reliability phase
+
+62 tests and full builds pass. Catalog-constrained replacements, bounded invalid-output failover, whole-sentence narration fitting, audited one-time repair recovery and a resumable local verification CLI are implemented. A real 60-second repaired draft rendered, but frame review hit Cloudflare 429 and manual inspection rejected incomplete text and unclear diagram logic. The final compiler rejects the incomplete takeaway. A fresh water-cycle job failed planning on a Cloudflare transport/deadline error. Neither result counts as approved content. See `docs/repair-acceptance.md` and `.json`. Next: fresh-planner reliability and causal diagrams, then user revision and consented email acceptance before H4.

@@ -8,6 +8,22 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers(); });
 const response = (report = goodReview()) => Response.json({ success: true, result: { response: report, usage: { prompt_tokens: 100, completion_tokens: 100 } } });
 describe("source and rendered-frame review", () => {
+  it("recovers one failed automatic repair without resetting budgets or accepting stale retries", async () => {
+    const { t, jobId, lease, result } = await reviewSetup();
+    vi.stubEnv("CLOUDFLARE_API_TOKEN", "test"); vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    await t.mutation(internal.media.complete, { ...lease, result });
+    const report = goodReview(); report.scenes[0].visualPass = false;
+    report.scenes[0].issues = [{ sceneId: "water-0", kind: "layout", detail: "Long title", repair: "Shorten title" }];
+    await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(report), provider: "cloudflare", model: "test", usageJson: "{}" });
+    const request = (await t.run(ctx => ctx.db.query("revisionRequests").withIndex("by_jobId_and_requestId", q => q.eq("jobId", jobId)).take(1)))[0];
+    await t.mutation(internal.reviews.repairFailed, { requestId: request._id });
+    await expect(t.mutation(internal.reviews.retryFailedRepair, { jobId, revision: 2 })).rejects.toThrow("same rendered version");
+    await t.mutation(internal.reviews.retryFailedRepair, { jobId, revision: 1 });
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.automaticRepairs).toBe(1);
+    expect((await t.run(ctx => ctx.db.get(request._id)))?.recoveryAttempted).toBe(true);
+    await t.mutation(internal.reviews.repairFailed, { requestId: request._id });
+    await expect(t.mutation(internal.reviews.retryFailedRepair, { jobId, revision: 1 })).rejects.toThrow("once");
+  });
   it("fails closed on rate limits or malformed reviews without contacting another model platform", async () => {
     const frames = sampleProject.scenes.flatMap((s, i) => [0, 1].map(j => ({ sceneId: s.id, frame: i * 360 + j, url: "https://example.org/frame.jpg" })));
     const config = { CLOUDFLARE_ACCOUNT_ID: "a".repeat(32), CLOUDFLARE_API_TOKEN: "test" };

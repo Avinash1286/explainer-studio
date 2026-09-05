@@ -19,8 +19,8 @@ export function passedReview(review: Review) { return review.scenes.every(s => s
 export function knownIconIssues(project: Project): z.infer<typeof issueSchema>[] {
   return project.scenes.flatMap(scene => scene.nodes.flatMap(node => {
     const name = manifest.entries.find(e => e.id === node.icon)?.name || "";
-    const wrong = (name === "leaf" && /\b(pollen|ovule|seed)\b/i.test(node.label)) || (name === "seedling" && /^seeds?$/i.test(node.label)) || (name === "earth" && /\b(soil|dirt)\b/i.test(node.label));
-    return wrong ? [{ sceneId: scene.id, kind: "icon" as const, detail: `${name} icon is incorrectly labelled ${node.label}.`, repair: "Explain a supported whole-object interaction using a faithful icon and label." }] : [];
+    const wrong = (name === "leaf" && /\b(pollen|ovule|seed)\b/i.test(`${node.label} ${node.cue || ""}`)) || (name === "seedling" && (/^seeds?$/i.test(node.label) || /^seeds?$/i.test(node.cue || ""))) || (name === "earth" && /\b(soil|dirt)\b/i.test(`${node.label} ${node.cue || ""}`));
+    return wrong ? [{ sceneId: scene.id, kind: "icon" as const, detail: `${name} icon is misleading with label '${node.label}' and narration cue '${node.cue || ""}'.`, repair: "Replace the diagram with supported whole-object interactions. Keep the scientific facts correct; do not merely rename the label or change pollen into leaves. The label AND cue must refer to the icon's actual meaning." }] : [];
   }));
 }
 export function frameSamples(scenes: Pick<TimedScene, "id" | "startFrame" | "durationInFrames">[]) {
@@ -31,16 +31,20 @@ export function validateReplacement(previous: Project, value: unknown, sceneIds:
   if (!sceneIds.length || sceneIds.some(id => !previous.scenes.some(s => s.id === id))) throw new Error("Unknown repair scene");
   const fixed = { ...previous, scenes: next.scenes };
   if (JSON.stringify(fixed) !== JSON.stringify(next) || next.scenes.length !== previous.scenes.length) throw new Error("Revision changed project metadata");
+  const errors: string[] = [];
   next.scenes.forEach((scene, index) => {
     if (scene.id !== previous.scenes[index].id) throw new Error("Revision reordered scenes");
     if (!sceneIds.includes(scene.id) && JSON.stringify(scene) !== JSON.stringify(previous.scenes[index])) throw new Error("Revision changed an unaffected scene");
-    if (scene.nodes.length !== (scene.layout === "comparison" ? 2 : 3) || scene.nodes.some(n => !manifest.entries.some(e => e.id === n.icon))) throw new Error("Unsupported repaired diagram");
+    if (scene.nodes.length !== (scene.layout === "comparison" ? 2 : 3) || scene.nodes.some(n => !manifest.entries.some(e => e.id === n.icon))) errors.push(`Scene ${scene.id}: unsupported repaired diagram`);
     const words: string[] = scene.narration.toLowerCase().match(/[a-z]+/g) || [];
     const cues = scene.nodes.map(n => words.indexOf((n.cue || "").toLowerCase()));
-    if (cues.some((cue, i) => cue < 0 || (i > 0 && cue <= cues[i - 1]))) throw new Error("Repair needs ordered distinct narration cues");
+    cues.forEach((cue, i) => {
+      if (cue < 0 || (i > 0 && cue <= cues[i - 1])) errors.push(`Scene ${scene.id}: repair needs ordered distinct narration cues. '${scene.nodes[i].cue}' first appears at word ${cue}; it must appear after ${i ? cues[i - 1] : -1}. Use an exact spoken word and order nodes by their first occurrence.`);
+    });
   });
   const count = next.scenes.reduce((n, s) => n + s.narration.trim().split(/\s+/).length, 0);
-  if (count < (next.targetDuration || 60) * 1.8 || count > (next.targetDuration || 60) * 2.4) throw new Error("Repair narration does not fit duration");
-  if (knownIconIssues(next).length) throw new Error("Repair retained known icon category errors");
+  if (count < (next.targetDuration || 60) * 1.8 || count > (next.targetDuration || 60) * 2.4) errors.push(`Repair narration does not fit duration: received ${count} words, need ${Math.ceil((next.targetDuration || 60) * 1.8)}-${Math.floor((next.targetDuration || 60) * 2.4)} total across all scenes.`);
+  for (const issue of knownIconIssues(next).filter(issue => sceneIds.includes(issue.sceneId))) errors.push(`Scene ${issue.sceneId}: icon category error: ${issue.detail} ${issue.repair}`);
+  if (errors.length) throw new Error(errors.join("\n"));
   return next;
 }

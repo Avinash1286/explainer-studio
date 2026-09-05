@@ -11,7 +11,7 @@
     "dev:backend": "convex dev",
     "build": "npm run build:web && npm run build:worker",
     "build:web": "node scripts/build-web.mjs",
-    "build:worker": "esbuild workers/media/index.ts scripts/render-fixture.ts scripts/render-project.ts --bundle --packages=external --platform=node --target=node22 --format=esm --outdir=dist",
+    "build:worker": "esbuild workers/media/index.ts scripts/render-fixture.ts scripts/render-project.ts scripts/verify-repair.ts --bundle --packages=external --platform=node --target=node22 --format=esm --outdir=dist",
     "worker": "node --env-file-if-exists=.env.worker dist/workers/media/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -23,7 +23,8 @@
     "render:project": "node dist/scripts/render-project.js",
     "providers:setup": "node scripts/setup-providers.mjs",
     "review:setup": "node scripts/setup-review.mjs",
-    "delivery:setup": "node scripts/setup-delivery.mjs"
+    "delivery:setup": "node scripts/setup-delivery.mjs",
+    "repair:verify": "node --env-file-if-exists=.env dist/scripts/verify-repair.js"
   },
   "dependencies": {
     "@convex-dev/rate-limiter": "0.3.2",

@@ -8,6 +8,28 @@ const schema = z.object({ answer: z.literal("yes") });
 const primary = (content: unknown) => Response.json({ choices: [{ message: { content: JSON.stringify(content) } }] });
 const backup = (content: unknown) => Response.json({ success: true, result: { response: content } });
 describe("provider boundaries", () => {
+  it("optionally switches a repair to Cloudflare only after exhausting bounded validation attempts", async () => {
+    const transport = vi.fn<typeof fetch>().mockImplementation(async url => String(url).includes("nvidia") ? primary({ answer: "wrong" }) : backup({ answer: "yes" }));
+    const result = await structured(config, "JSON", "question", {}, x => schema.parse(x), transport, "nvidia", { fallbackOnInvalid: true });
+    expect(result.attempts.map(a => a.provider)).toEqual(["nvidia", "nvidia", "nvidia", "cloudflare"]);
+    expect(result.data.answer).toBe("yes");
+    transport.mockImplementation(async () => new Response("private body", { status: 401 }));
+    await expect(structured(config, "JSON", "question", {}, x => x, transport, "nvidia", { fallbackOnInvalid: true })).rejects.toThrow("401");
+  });
+  it("retains malformed JSON in repair feedback and never silently fixes or accepts it", async () => {
+    const broken = '{"answer":"yes"';
+    const transport = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ choices: [{ message: { content: broken } }] })).mockResolvedValueOnce(primary({ answer: "yes" }));
+    const result = await structured(config, "JSON", "question", {}, x => schema.parse(x), transport);
+    expect(result.attempts.map(a => a.outcome)).toEqual(["invalid-json", "success"]);
+    const messages = JSON.parse(String(transport.mock.calls[1][1]?.body)).messages;
+    expect(messages[2]).toEqual({ role: "assistant", content: broken });
+    expect(messages[3].content).toContain("escape quotes");
+  });
+  it("rejects a truncated completion even when its partial content parses", async () => {
+    const transport = vi.fn<typeof fetch>().mockImplementation(async () => Response.json({ choices: [{ finish_reason: "length", message: { content: '{"answer":"yes"}' } }] }));
+    await expect(structured(config, "JSON", "question", {}, x => schema.parse(x), transport)).rejects.toThrow("truncated");
+    expect(transport).toHaveBeenCalledTimes(3);
+  });
   it("switches to Cloudflare after a primary rate limit and records attempts", async () => {
     const transport = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response("", { status: 429 })).mockResolvedValueOnce(backup({ answer: "yes" }));
     const result = await structured(config, "JSON", "question", z.toJSONSchema(schema), x => schema.parse(x), transport);

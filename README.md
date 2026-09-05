@@ -2,7 +2,7 @@
 
 Turn a question into a short, illustrated lesson. This repository implements a staged agentic explainer-video system.
 
-**Current release: H3 implemented; review and email awaiting qualification.** Visitors can save lesson briefs and render a fresh, scripted plant-energy demo with Kokoro narration and three animated layouts. Topic research and generation are implemented behind a provider qualification gate. The static plant sketch is labelled separately from rendered results.
+**Current release: H3 repair hardening implemented; content and email acceptance incomplete.** Visitors can save lesson briefs and render a fresh, scripted plant-energy demo with Kokoro narration and three animated layouts. Topic research and generation are implemented behind a provider qualification gate. The static plant sketch is labelled separately from rendered results.
 
 - Live app: https://wooden-pheasant-677.convex.site
 - Build status and next steps: [PHASES.md](PHASES.md)
@@ -86,3 +86,5 @@ The initial repository uses one package to keep setup small; the plan's `apps/we
 ## Contribution workflow
 
 Read `AGENTS.md` and the generated Convex guidelines before backend changes. `npx convex ai-files install` refreshes the official Convex agent guidance and installs local skills. Submit only validated changes; update the phase record with evidence and limitations. Provider credentials belong server-side in Convex, except the worker's narrowly scoped credential in Zerops. Public environment variables must never contain secrets.
+
+Repair reliability evidence and remaining gates: [repair acceptance](docs/repair-acceptance.md). Run `npm run repair:verify -- project.json sources.json review.json runs/repair-verification` for the real local repair/render/review regression. No generated draft was approved in this phase.

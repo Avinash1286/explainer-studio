@@ -68,17 +68,17 @@ export const repairContext = internalQuery({ args: { requestId: v.id("revisionRe
   if (!job || job.status !== "planning" || job.revision !== request.fromRevision || !task?.projectJson || !research) return null;
   return { request, task, research: research.json };
 } });
-export const replace = internalMutation({ args: { requestId: v.id("revisionRequests"), projectJson: v.string(), evidenceJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
+export const replace = internalMutation({ args: { requestId: v.id("revisionRequests"), projectJson: v.string(), evidenceJson: v.string(), attemptsJson: v.optional(v.string()) }, returns: v.null(), handler: async (ctx, args) => {
   const current = await ctx.runQuery(internal.reviews.repairContext, { requestId: args.requestId });
   if (!current) return null;
-  if (args.projectJson.length > 100_000 || args.evidenceJson.length > 20_000) throw new Error("Revision too large");
+  if (args.projectJson.length > 100_000 || args.evidenceJson.length > 20_000 || (args.attemptsJson?.length || 0) > 4000) throw new Error("Revision too large");
   const previous = projectSchema.parse(JSON.parse(current.task.projectJson!));
   const next = validateReplacement(previous, JSON.parse(args.projectJson), current.request.sceneIds);
   const revision = current.request.fromRevision + 1;
   const provenance = { ...JSON.parse(current.task.provenanceJson || "{}"), revision, parentRevision: current.request.fromRevision, revisionEvidence: JSON.parse(args.evidenceJson), revisedSceneIds: current.request.sceneIds };
   await ctx.db.patch(current.task._id, { projectJson: JSON.stringify(next), provenanceJson: JSON.stringify(provenance), revision, attemptBase: current.task.attempt, status: "queued", result: undefined, worker: undefined, leaseUntil: 0 });
   await ctx.db.patch(current.request.jobId, { revision, status: "rendering", stageMessage: "Revised scenes queued. Unchanged narration will be reused when cached.", updatedAt: Date.now() });
-  await ctx.db.patch(args.requestId, { status: "completed" });
+  await ctx.db.patch(args.requestId, { status: "completed", attemptsJson: args.attemptsJson });
   return null;
 } });
 export const repairFailed = internalMutation({ args: { requestId: v.id("revisionRequests") }, returns: v.null(), handler: async (ctx, { requestId }) => {
@@ -134,5 +134,19 @@ export const retryUnavailable = internalMutation({ args: versionArgs, returns: v
   await ctx.db.patch(review._id, { status: "pending" });
   await ctx.db.patch(job._id, { status: "reviewing", stageMessage: "Retrying review of the saved video", updatedAt: Date.now() });
   await start(ctx, internal.reviews.run, args, { startAsync: true });
+  return null;
+} });
+
+// One administrative retry after an implementation fix. Preserve the original
+// automatic repair count, request and version; this is not a new public loop.
+export const retryFailedRepair = internalMutation({ args: versionArgs, returns: v.null(), handler: async (ctx, args) => {
+  const job = await ctx.db.get(args.jobId);
+  const request = await ctx.db.query("revisionRequests").withIndex("by_jobId_and_requestId", q => q.eq("jobId", args.jobId).eq("requestId", `automatic-${args.revision}`)).unique();
+  const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", args.jobId)).unique();
+  if (!reviewReady() || job?.revision !== args.revision || job.status !== "failed" || !task?.result || request?.status !== "failed" || !request.automatic || request.recoveryAttempted) throw new Error("Only a failed automatic repair can recover once for the same rendered version");
+  await ctx.db.patch(request._id, { status: "pending", recoveryAttempted: true });
+  await ctx.db.patch(job._id, { status: "planning", stageMessage: "Retrying the saved scene repair after an implementation fix", updatedAt: Date.now() });
+  await ctx.db.insert("jobEvents", { jobId: job._id, kind: "repair_recovery", message: "Operator resumed the failed repair once; automatic repair budget retained", createdAt: Date.now() });
+  await start(ctx, internal.reviews.repair, { requestId: request._id }, { startAsync: true });
   return null;
 } });

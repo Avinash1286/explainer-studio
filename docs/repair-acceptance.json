@@ -1,0 +1,117 @@
+{
+  "checkedAt": "2026-09-05T14:25:57.912Z",
+  "phase": "H3 repair reliability",
+  "localChecks": {
+    "command": "npm run check",
+    "tests": 62
+  },
+  "liveRepair": {
+    "execution": "Local regression using original deployed research/project/review; not written back to the original job",
+    "inputHash": "027649562a3a4f2010df2da193365c18bec7b2023f9251074559797a2129ad37",
+    "changedSceneIds": [
+      "scene-1",
+      "scene-3",
+      "scene-4"
+    ],
+    "unchangedSceneIds": [
+      "scene-2"
+    ],
+    "attempts": [
+      {
+        "provider": "nvidia",
+        "outcome": "invalid-output",
+        "elapsedMs": 8556
+      },
+      {
+        "provider": "nvidia",
+        "outcome": "invalid-output",
+        "elapsedMs": 5652
+      },
+      {
+        "provider": "nvidia",
+        "outcome": "invalid-output",
+        "elapsedMs": 5909
+      },
+      {
+        "provider": "cloudflare",
+        "outcome": "invalid-output",
+        "elapsedMs": 19538
+      },
+      {
+        "provider": "cloudflare",
+        "outcome": "success",
+        "elapsedMs": 18766
+      }
+    ],
+    "structuralValidation": "Passed compiler before final incomplete-takeaway guard; final guard rejects this candidate",
+    "benchmark": {
+      "totalSeconds": 150.8420289,
+      "synthesisSeconds": 52.73399999999674,
+      "renderSeconds": 80.72243900000001,
+      "ttsPeakRssMb": null,
+      "ttsCacheHits": 1,
+      "durationSeconds": 60,
+      "frames": 1440,
+      "videoBytes": 3220550,
+      "videoSha256": "6a6af206109ca476b74177d0abf39b184d35e542b79158795f0dec1d5c85cd25",
+      "platform": "win32",
+      "node": "v24.15.0",
+      "remotion": "4.0.520",
+      "concurrency": 2
+    },
+    "review": {
+      "status": "unavailable",
+      "provider": "cloudflare",
+      "model": "@cf/meta/llama-4-scout-17b-16e-instruct",
+      "httpStatus": 429
+    },
+    "manualInspection": {
+      "status": "rejected",
+      "decodedFrames": [
+        1,
+        5,
+        7
+      ],
+      "findings": [
+        "Scene 4 takeaway ends mid-word: transfer of poll. Final compiler now rejects this incomplete sentence.",
+        "Scene 4 relationship arrows run Seedling -> Bee -> Flower; the sequence does not clearly explain seed formation.",
+        "Scene 3 largely repeats pollination rather than explaining its Seed Formation title."
+      ],
+      "audioListeningPerformed": false
+    },
+    "approved": false
+  },
+  "originalJob": {
+    "id": "j97ckmhjpvzabnam746dnnpqy18dt64y",
+    "revision": 2,
+    "automaticRepairs": 1,
+    "recoveryAttempted": true,
+    "status": "failed",
+    "note": "One deployed recovery failed before the final compiler changes. Original draft and exhausted recovery budget are preserved."
+  },
+  "freshTopic": {
+    "jobId": "j97eqfdqvfj9an7v2vnrybaq258dtd7c",
+    "topic": "How does water move through evaporation, clouds, and rain?",
+    "durationSeconds": 75,
+    "status": "failed",
+    "checkpoint": "research",
+    "finalFailure": "Cloudflare request failed (0): transport failure or deadline; no validated plan or render",
+    "operatorResumes": 2
+  },
+  "production": {
+    "generationEnabled": false,
+    "backendDeployments": [
+      "lovely-dalmatian-395",
+      "wooden-pheasant-677"
+    ],
+    "frontendChanged": false,
+    "workerChanged": false
+  },
+  "remaining": [
+    "Successful fresh planning and independent rendered review",
+    "Clear causal diagrams and nonrepetitive narration",
+    "User scene-edit acceptance",
+    "Consented AgentMail delivery after separate setup",
+    "H4 five unseen topics"
+  ]
+}

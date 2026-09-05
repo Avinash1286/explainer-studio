@@ -17,6 +17,7 @@ import type * as lib_critic from "../lib/critic.js";
 import type * as lib_generationConfig from "../lib/generationConfig.js";
 import type * as lib_limits from "../lib/limits.js";
 import type * as lib_providers from "../lib/providers.js";
+import type * as lib_repair from "../lib/repair.js";
 import type * as lib_session from "../lib/session.js";
 import type * as mailActions from "../mailActions.js";
 import type * as mailWebhook from "../mailWebhook.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   "lib/generationConfig": typeof lib_generationConfig;
   "lib/limits": typeof lib_limits;
   "lib/providers": typeof lib_providers;
+  "lib/repair": typeof lib_repair;
   "lib/session": typeof lib_session;
   mailActions: typeof mailActions;
   mailWebhook: typeof mailWebhook;
