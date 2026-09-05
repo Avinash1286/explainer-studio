@@ -68,7 +68,9 @@ export const prepareLesson = internalMutation({ args: { token: v.string(), jobId
   const shareId = await ctx.db.insert("lessonShares", { jobId: job._id, revision: args.revision, tokenHash: await hashToken(args.shareToken), expiresAt: shareExpires });
   await ctx.scheduler.runAt(shareExpires, internal.delivery.expireShare, { shareId });
   const project = projectSchema.parse(JSON.parse(version.projectJson));
-  const link = `${env.CONVEX_SITE_URL}/lesson/?share=${args.shareToken}`;
+  // Convex static hosting uses SPA fallback for extensionless paths. Resolve
+  // the exported page explicitly so an email opens the shared lesson, not `/`.
+  const link = `${env.CONVEX_SITE_URL}/lesson/index.html?share=${args.shareToken}`;
   const outboxId = await ctx.db.insert("mailOutbox", { jobId: job._id, key, inbox: env.AGENTMAIL_INBOX_ID, recipientId: recipient._id, kind: "lesson", revision: args.revision, bodyJson: JSON.stringify({ to: [recipient.email], subject: "Your Explainer Studio lesson is ready", text: `${project.title}\n\nWatch revision ${args.revision}: ${link}\n\nAnyone with this link can watch for seven days. The lesson passed automated source and sampled-frame review; this is not a guarantee of accuracy.\n\nSources:\n${project.sources.map(s => `${s.title}: ${s.url}`).join("\n")}\n\nOpenMoji illustrations: CC BY-SA 4.0, animated adaptations.`, track_opens: false, track_clicks: false }), state: "queued", createdAt: Date.now(), expiresAt: Date.now() + 3600_000, attempt: 0 });
   await start(ctx, internal.delivery.run, { outboxId }, { startAsync: true });
   return null;

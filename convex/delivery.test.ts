@@ -46,7 +46,7 @@ describe("verified lesson delivery", () => {
     const rows = await t.run(ctx => ctx.db.query("mailOutbox").withIndex("by_jobId", q => q.eq("jobId", jobId)).take(10));
     const item = rows.find(r => r.kind === "lesson")!;
     expect(rows).toHaveLength(2);
-    expect(JSON.parse(item.bodyJson).text).toContain(`/lesson/?share=${shareToken}`);
+    expect(JSON.parse(item.bodyJson).text).toContain(`/lesson/index.html?share=${shareToken}`);
     expect(await t.query(api.delivery.shared, { token: shareToken })).toMatchObject({ revision: 1, video: expect.any(String), sources: expect.any(Array) });
     expect(await t.query(api.delivery.shared, { token: "f".repeat(64) })).toBeNull();
     const fetcher = vi.fn<typeof fetch>().mockRejectedValueOnce(new Error("Response lost")).mockResolvedValueOnce(Response.json({ message_id: "message-1" })); vi.stubGlobal("fetch", fetcher);

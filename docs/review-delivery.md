@@ -28,7 +28,7 @@ Convex creates one outbox entry per lesson version and recipient. The immutable 
 
 The HTTPS webhook verifies the exact raw body using Svix before parsing. It checks the sending inbox, records event IDs, and applies monotonic sent/delivered/bounced transitions. A callback arriving before the send acknowledgement gets a retryable 503. Delivered means acceptance by the receiving mail server, not proof that the message reached the inbox or was read.
 
-Email links open a static Next.js lesson page backed by a hashed 256-bit share capability. Anyone holding that link can view the approved version for seven days; it carries no workspace credential. Scheduled expiry removes the share and invalidates cached queries. The page includes playback, captions, sources and OpenMoji attribution. Email failures do not change video approval or availability in the owner's workspace.
+Email links open the exported `/lesson/index.html` page backed by a hashed 256-bit share capability. The explicit filename avoids Convex static hosting's root SPA fallback for `/lesson/`. Anyone holding that link can view the approved version for seven days; it carries no workspace credential. Scheduled expiry removes the share and invalidates cached queries. The page includes playback, captions, sources and OpenMoji attribution. Email failures do not change video approval or availability in the owner's workspace.
 
 ## Setup and remaining acceptance
 
