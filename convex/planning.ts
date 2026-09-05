@@ -1,7 +1,8 @@
 import { v } from "convex/values";
-import { internalAction } from "./_generated/server";
+import { internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { authorLesson } from "./lib/authoring";
+import { directScenes, validateDirectedPlan, type DirectorAttempt } from "./lib/director";
 import { providerConfig } from "./lib/generationConfig";
 import { embed, research } from "./lib/providers";
 import { EMBEDDING_SPACE, researchSchema, validateDraft, type Draft, type Research } from "../packages/contracts/generation";
@@ -27,7 +28,7 @@ export const planScenes = internalAction({ args: { jobId: v.id("jobs") }, handle
 
 export const retrieveIcons = internalAction({ args: { jobId: v.id("jobs") }, handler: async (ctx, { jobId }): Promise<null> => {
   const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId });
-  if (artifacts.some(a => a.stage === "project")) return null;
+  if (artifacts.some(a => a.stage === "base" || a.stage === "project")) return null;
   const researchRecord = JSON.parse(artifacts.find(a => a.stage === "research")!.json) as { sources: Research; retrievedAt: number };
   const planned = JSON.parse(artifacts.find(a => a.stage === "plan")!.json) as { data: Draft; attempts: unknown };
   const draft = validateDraft(planned.data, researchRecord.sources, job.duration);
@@ -62,7 +63,7 @@ export const retrieveIcons = internalAction({ args: { jobId: v.id("jobs") }, han
     return match.icon;
   });
   let index = 0;
-  const project = projectSchema.parse({ version: 1, id: jobId, title: draft.title, targetDuration: job.duration, origin: "generated", voice: "af_heart", speed: 0.9,
+  const compiled = projectSchema.parse({ version: 1, id: jobId, title: draft.title, targetDuration: job.duration, origin: "generated", voice: "af_heart", speed: 0.9,
     scenes: draft.scenes.map(scene => ({ ...scene, nodes: scene.nodes.map(node => ({ icon: selectedIcons[index++], label: node.label, cue: node.cue })) })),
     sources: researchRecord.sources.map(({ title, url }) => ({ title, url })) });
   const provenance = { topic: job.topic, audience: job.audience, generationProvider: job.generationProvider || "nim", researchProvider: "firecrawl", retrievedAt: researchRecord.retrievedAt,
@@ -70,6 +71,63 @@ export const retrieveIcons = internalAction({ args: { jobId: v.id("jobs") }, han
     sceneEvidence: draft.scenes.map(s => ({ sceneId: s.id, evidence: s.evidence })),
     planningAttempts: planned.attempts, selectionMethod: "literal-catalog-identity", reusedCatalogVectors: !openai && reuse, ...(!openai ? { embeddingSpace: EMBEDDING_SPACE } : {}), candidates,
     verification: `Source IDs and exact quotes checked mechanically. Publication requires separate factual and decoded-frame review using ${openai ? "OpenAI" : "NVIDIA NIM and Cloudflare Workers AI"}.` };
-  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: "project", json: JSON.stringify({ project, provenance }) });
+  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: "base", json: JSON.stringify({ project: compiled, provenance }) });
+  return null;
+} });
+
+export const directorSceneIds = internalQuery({ args: { jobId: v.id("jobs") }, returns: v.array(v.string()), handler: async (ctx, args): Promise<string[]> => {
+  const { artifacts } = await ctx.runQuery(internal.generation.context, args);
+  if (artifacts.some(a => a.stage === "project")) return [];
+  const base = artifacts.find(a => a.stage === "base");
+  if (!base) throw new Error("Missing compiled lesson");
+  return projectSchema.parse(JSON.parse(base.json).project).scenes.map(s => s.id);
+} });
+
+export const directScene = internalAction({ args: { jobId: v.id("jobs"), sceneId: v.string() }, returns: v.null(), handler: async (ctx, { jobId, sceneId }) => {
+  const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId });
+  if (artifacts.some(a => a.stage === "project")) return null;
+  const base = artifacts.find(a => a.stage === "base");
+  if (!base) throw new Error("Missing compiled lesson");
+  const sources = researchSchema.parse(JSON.parse(artifacts.find(a => a.stage === "research")!.json).sources);
+  const compiled = projectSchema.parse(JSON.parse(base.json).project);
+  const target = compiled.scenes.find(scene => scene.id === sceneId);
+  if (!target) throw new Error("Unknown scene to direct");
+  const previous = artifacts.find(a => a.stage === `visual-${sceneId}`);
+  if (previous) {
+    try { validateDirectedPlan(JSON.parse(previous.json).visualPlan, target.narration); return null; }
+    catch { /* Re-direct only a saved plan rejected by the current validators. */ }
+  }
+  // Saved neighbouring scenes establish identities and color continuity without
+  // rerunning their paid inference after a later scene fails.
+  const project = projectSchema.parse({ ...compiled, scenes: compiled.scenes.map(scene => {
+    const saved = artifacts.find(a => a.stage === `visual-${scene.id}`);
+    if (saved) {
+      try { return { ...scene, visualPlan: validateDirectedPlan(JSON.parse(saved.json).visualPlan, scene.narration) }; }
+      catch { /* Other invalid checkpoints are re-directed in their own steps. */ }
+    }
+    return scene;
+  }) });
+  const result = await directScenes(providerConfig(job.generationProvider), project, sources, [sceneId]);
+  const scene = result.project.scenes.find(s => s.id === sceneId)!;
+  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: `visual-${sceneId}`, json: JSON.stringify({ sceneId, visualPlan: scene.visualPlan, attempts: result.attempts[0].attempts }) });
+  return null;
+} });
+
+export const finalizeProject = internalAction({ args: { jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, { jobId }) => {
+  const { artifacts } = await ctx.runQuery(internal.generation.context, { jobId });
+  if (artifacts.some(a => a.stage === "project")) return null;
+  const base = artifacts.find(a => a.stage === "base");
+  if (!base) throw new Error("Missing compiled lesson");
+  const { project: value, provenance } = JSON.parse(base.json);
+  const compiled = projectSchema.parse(value);
+  const directorAttempts: DirectorAttempt[] = [];
+  const project = projectSchema.parse({ ...compiled, scenes: compiled.scenes.map(scene => {
+    const saved = artifacts.find(a => a.stage === `visual-${scene.id}`);
+    if (!saved) throw new Error("Every generated scene requires a validated visual plan");
+    const record = JSON.parse(saved.json);
+    directorAttempts.push({ sceneId: scene.id, attempts: record.attempts });
+    return { ...scene, visualPlan: validateDirectedPlan(record.visualPlan, scene.narration) };
+  }) });
+  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: "project", json: JSON.stringify({ project, provenance: { ...provenance, visualPlanVersion: 1, directorAttempts } }) });
   return null;
 } });

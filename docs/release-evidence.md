@@ -1,4 +1,14 @@
-# Release 0.6.0 acceptance evidence
+# Release evidence
+
+## Visual system 0.7.0 — September 6
+
+The clean-canvas renderer and separate scene director are implemented. `npm run check` passed 163 tests across 17 files, TypeScript, ESLint, static export and the worker build. Fresh inspection covered all ten videos currently in `F:\cai\target`, with dense samples of selected actions. See [visual direction](visual-direction-070.md) for coverage and acceptance criteria.
+
+The final hand-authored renderer calibration produced a 51.2917-second MP4 in 91.54 seconds locally, including Kokoro speech, progressive illustrations, charge movement and a complete circuit. Sampled frames show no fixed header/footer, scene counter, credit strip or burned captions. This is renderer evidence, not an AI generation success.
+
+Development has the new director and geometry checks. The production worker is 0.7.0/protocol 6; the new production backend is not yet deployed. The live solar canary is undergoing its fifth workflow attempt after four recorded operator resumes. Earlier invalid output, NVIDIA timeout and Cloudflare 429 failures are retained. A complete new generated MP4, independent review and reference-level visual acceptance remain pending. OpenAI stays disabled at the owner's request.
+
+## Historical 0.6.0 acceptance evidence
 
 Recorded September 5, 2026. The current release adds an explicit NVIDIA NIM + Cloudflare Workers AI or OpenAI choice. The saved choice follows each lesson through planning, factual review, actual JPEG frame review and scene edits. Both routes retain Firecrawl research, local Kokoro narration and deterministic Remotion rendering. There is no silent fallback between the two choices.
 

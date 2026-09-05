@@ -71,7 +71,8 @@ export const claim = internalMutation({
         const scenes = projectSchema.parse(JSON.parse(task.projectJson!)).scenes;
         const explicit = scenes.some(s => s.connections !== undefined);
         const textCards = scenes.some(s => s.nodes.some(n => n.icon === "TEXT"));
-        if ((protocol || 0) < (textCards ? 5 : explicit ? 4 : 3)) continue;
+        const directed = scenes.some(s => s.visualPlan);
+        if ((protocol || 0) < (directed ? 6 : textCards ? 5 : explicit ? 4 : 3)) continue;
       }
       const job = await ctx.db.get(task.jobId);
       if (!job || job.status === "cancelled") { await ctx.db.patch(task._id, { status: "cancelled" }); continue; }
@@ -139,9 +140,9 @@ export const registerUpload = internalMutation({
     // Track files even after cancellation so a late upload can be collected.
     const task = await ctx.db.get(args.taskId);
     if (!task || task.worker !== args.worker || task.attempt !== args.attempt) throw new ConvexError("Stale upload registration");
-    const existing = await ctx.db.query("mediaUploads").withIndex("by_taskId_and_attempt", q => q.eq("taskId", args.taskId).eq("attempt", args.attempt)).take(21);
+    const existing = await ctx.db.query("mediaUploads").withIndex("by_taskId_and_attempt", q => q.eq("taskId", args.taskId).eq("attempt", args.attempt)).take(29);
     if (existing.some(x => x.storageId === args.storageId)) return null;
-    if (existing.length >= 20) throw new ConvexError("Upload count exceeded");
+    if (existing.length >= 28) throw new ConvexError("Upload count exceeded");
     const metadata = await ctx.db.system.get(args.storageId);
     if (!metadata || metadata.size > 30_000_000) throw new ConvexError("Missing or oversized artifact");
     const id = await ctx.db.insert("mediaUploads", { taskId: args.taskId, attempt: args.attempt, storageId: args.storageId, createdAt: Date.now(), committed: false });
@@ -161,7 +162,7 @@ export const complete = internalMutation({
     }
     const task = await activeLease(ctx, args);
     if (!Number.isFinite(args.result.durationSeconds) || args.result.durationSeconds < (task.projectJson ? 60 : 15) || args.result.durationSeconds > (task.projectJson ? 90 : 45)) throw new ConvexError("Invalid video duration");
-    const uploads = await ctx.db.query("mediaUploads").withIndex("by_taskId_and_attempt", q => q.eq("taskId", args.taskId).eq("attempt", args.attempt)).take(21);
+    const uploads = await ctx.db.query("mediaUploads").withIndex("by_taskId_and_attempt", q => q.eq("taskId", args.taskId).eq("attempt", args.attempt)).take(29);
     const expected = [[args.result.video, "video/mp4"], [args.result.project, "application/json"], [args.result.captions, "text/vtt"], [args.result.poster, "image/png"]] as const;
     if (new Set(expected.map(([id]) => id)).size !== 4) throw new ConvexError("Artifacts must be distinct");
     for (const [id, contentType] of expected) {
@@ -175,8 +176,9 @@ export const complete = internalMutation({
     if (task.projectJson) {
       const project = projectSchema.parse(JSON.parse(task.projectJson));
       const frames = args.result.frames || [];
-      if (frames.length !== project.scenes.length * 2 || new Set(frames.map(f => f.storageId)).size !== frames.length || frames.some(f => expected.some(([id]) => id === f.storageId))) throw new ConvexError("Missing or duplicate review frames");
-      for (const scene of project.scenes) if (frames.filter(f => f.sceneId === scene.id).length !== 2) throw new ConvexError("Frame coverage incomplete");
+      const expectedFrames = project.scenes.reduce((n,s)=>n+(s.visualPlan?3:2),0);
+      if (frames.length !== expectedFrames || new Set(frames.map(f => f.storageId)).size !== frames.length || frames.some(f => expected.some(([id]) => id === f.storageId))) throw new ConvexError("Missing or duplicate review frames");
+      for (const scene of project.scenes) if (frames.filter(f => f.sceneId === scene.id).length !== (scene.visualPlan?3:2)) throw new ConvexError("Frame coverage incomplete");
       for (const frame of frames) {
         const upload = uploads.find(u => u.storageId === frame.storageId);
         const metadata = await ctx.db.system.get(frame.storageId);

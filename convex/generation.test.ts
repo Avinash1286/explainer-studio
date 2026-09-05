@@ -7,6 +7,8 @@ import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { testDraft, testSources } from "./testFixtures";
 import manifest from "../public/openmoji/manifest.json";
+import { syntheticVisualPlan } from "../tests/director-helpers";
+import { retryableDirectorFailure } from "./generation";
 const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
 const token = "e".repeat(64);
 const vector = Array.from({ length: 768 }, (_, i) => i === 0 ? 1 : 0);
@@ -29,6 +31,7 @@ function mockProviders() {
     if (String(url).includes("firecrawl")) return Response.json({ success: true, data: { web: testSources.map(s => ({ title: s.title, url: s.url, markdown: s.text })) } });
     if (String(url).includes("bge-base")) return Response.json({ success: true, result: { data: body.text.map(() => vector) } });
     const prompt = JSON.parse(body.messages[1].content);
+    if (prompt.scene?.narration) return Response.json({ choices: [{ message: { content: JSON.stringify(syntheticVisualPlan(prompt.scene.narration)) } }] });
     const content = { title: testDraft.title, scenes: testDraft.scenes.map((scene, i) => ({
       title: scene.title, narration: "The sun warms water in lakes and rivers, helping liquid water change into an invisible gas that rises into air. This process moves water around the planet every day.",
       optionalNarration: "", takeaway: "Sunlight helps water move through the atmosphere.", icons: ["sun", "water"], connections: [],
@@ -38,6 +41,56 @@ function mockProviders() {
   });
 }
 describe("durable topic generation", () => {
+  it("retries only transient director failures, including a transient primary before fallback", () => {
+    expect(retryableDirectorFailure("Error: cloudflare request failed (429); primary: nvidia request failed (0)")).toBe(true);
+    expect(retryableDirectorFailure("Error: openai request failed (503)")).toBe(true);
+    expect(retryableDirectorFailure("Error: cloudflare request failed (401); primary: nvidia request failed (503)")).toBe(false);
+    expect(retryableDirectorFailure("Error: cloudflare request failed (429); primary: beats.2.x must be a number")).toBe(false);
+    expect(retryableDirectorFailure("Planner could not produce a valid supported lesson")).toBe(false);
+  });
+  it("durably retries one transient unsaved scene and keeps completed scene inference sequential", async () => {
+    vi.useFakeTimers();
+    const { t, jobId } = await setup(true); const base = mockProviders(); const sceneCalls: string[] = [];
+    let targetCalls = 0;
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url, request) => {
+      const body = JSON.parse(String(request?.body));
+      const prompt = body.messages ? JSON.parse(body.messages[1].content) : null;
+      if (prompt?.scene) {
+        sceneCalls.push(prompt.scene.id);
+        if (prompt.scene.id === "scene-2" && ++targetCalls <= 2) return new Response("temporary", { status: targetCalls === 1 ? 503 : 429 });
+      }
+      return base(url, request);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    await t.mutation(api.generation.generate, { token, jobId });
+    await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
+    expect((await t.run(ctx => ctx.db.get(jobId)))).toMatchObject({ status: "rendering", revision: 1 });
+    expect(sceneCalls).toEqual(["scene-1", "scene-2", "scene-2", "scene-2", "scene-3", "scene-4"]);
+    const events = await t.run(ctx => ctx.db.query("jobEvents").withIndex("by_jobId", q => q.eq("jobId", jobId)).collect());
+    expect(events.filter(event => event.kind === "director_retry")).toHaveLength(1);
+    expect(await t.run(ctx => ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).collect())).toHaveLength(1);
+  });
+  it.each(["auth", "invalid-output"] as const)("does not durably repeat a director %s failure", async failure => {
+    vi.useFakeTimers();
+    const { t, jobId } = await setup(true); const base = mockProviders(); let directorCalls = 0;
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockImplementation(async (url, request) => {
+      const body = JSON.parse(String(request?.body));
+      const prompt = body.messages ? JSON.parse(body.messages[1].content) : null;
+      if (prompt?.scene) {
+        directorCalls++;
+        if (failure === "auth") return new Response("unauthorized", { status: 401 });
+        if (String(url).includes("cloudflare")) return new Response("rate limit", { status: 429 });
+        return Response.json({ choices: [{ message: { content: "{}" } }] });
+      }
+      return base(url, request);
+    }));
+    await t.mutation(api.generation.generate, { token, jobId });
+    await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("failed");
+    expect(directorCalls).toBe(failure === "auth" ? 1 : 4);
+    const events = await t.run(ctx => ctx.db.query("jobEvents").withIndex("by_jobId", q => q.eq("jobId", jobId)).collect());
+    expect(events.filter(event => event.kind === "director_retry")).toHaveLength(0);
+  });
   it("keeps public generation closed during an operator canary and still requires qualified providers", async () => {
     vi.useFakeTimers();
     const { t, jobId } = await setup();
@@ -68,7 +121,7 @@ describe("durable topic generation", () => {
     });
     await t.run(ctx => ctx.db.patch(jobId, { status: "rendering" }));
     expect(await t.mutation(internal.media.claim, { worker: "older", protocol: 4 })).toBeNull();
-    expect(await t.mutation(internal.media.claim, { worker: "current", protocol: 5 })).not.toBeNull();
+    expect(await t.mutation(internal.media.claim, { worker: "current", protocol: 6 })).not.toBeNull();
   });
   it("lets an operator resume a failed plan without repeating research or reopening rendered work", async () => {
     vi.useFakeTimers();
@@ -98,13 +151,15 @@ describe("durable topic generation", () => {
     await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
     const job = await t.run(ctx => ctx.db.get(jobId));
     expect(job?.status).toBe("rendering");
-    const artifacts = await t.run(ctx => ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(4));
-    expect(artifacts.map(a => a.stage).sort()).toEqual(["plan", "project", "research"]);
-    expect(fetcher).toHaveBeenCalledTimes(2); // Research + authoring; qualified icon vectors are reused.
+    const artifacts = await t.run(ctx => ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(14));
+    expect(artifacts.map(a => a.stage).sort()).toEqual(["base", "plan", "project", "research", "visual-scene-1", "visual-scene-2", "visual-scene-3", "visual-scene-4"]);
+    expect(fetcher).toHaveBeenCalledTimes(6); // Research + script + four separately saved visual plans.
     expect(await t.mutation(internal.media.claim, { worker: "old-worker" })).toBeNull();
-    const task = await t.mutation(internal.media.claim, { worker: "new-worker", protocol: 4 });
+    expect(await t.mutation(internal.media.claim, { worker: "previous-worker", protocol: 5 })).toBeNull();
+    const task = await t.mutation(internal.media.claim, { worker: "new-worker", protocol: 6 });
     expect(task?.fixtureVersion).toBe("generated-v1");
     expect(JSON.parse(task!.projectJson!).scenes).toHaveLength(4);
+    expect(JSON.parse(task!.projectJson!).scenes.every((scene: { visualPlan?: unknown }) => scene.visualPlan)).toBe(true);
   });
   it("reuses research checkpoints and rejects late work after cancellation", async () => {
     const { t, jobId } = await setup(true);
@@ -117,6 +172,79 @@ describe("durable topic generation", () => {
     await expect(t.mutation(internal.generation.checkpoint, { jobId, stage: "plan", json: "{}" })).rejects.toThrow("no longer active");
     await t.mutation(internal.generation.enqueue, { jobId });
     expect(await t.mutation(internal.media.claim, { worker: "a", protocol: 3 })).toBeNull();
+  });
+  it("resumes failed direction without charging again for already saved scenes", async () => {
+    vi.useFakeTimers();
+    const { t, jobId } = await setup(true);
+    const base = mockProviders(); let unavailable = true;
+    const calls: string[] = [];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url, request) => {
+      const body = JSON.parse(String(request?.body));
+      const prompt = body.messages ? JSON.parse(body.messages[1].content) : null;
+      if (prompt?.scene) {
+        calls.push(prompt.scene.id);
+        if (unavailable && prompt.scene.id === "scene-3") return new Response("unavailable", { status: 503 });
+      }
+      return base(url, request);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    await t.mutation(api.generation.generate, { token, jobId });
+    await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("failed");
+    const saved = await t.run(ctx => ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(14));
+    const savedIds = saved.filter(a => a.stage.startsWith("visual-")).map(a => a.stage.slice(7));
+    expect(savedIds).toEqual(expect.arrayContaining(["scene-1", "scene-2"]));
+    const counts = new Map(savedIds.map(id => [id, calls.filter(call => call === id).length]));
+    const failedJob = (await t.run(ctx => ctx.db.get(jobId)))!;
+    await t.run(ctx => ctx.db.patch(failedJob.sessionId, { expired: false, expiresAt: Date.now() + 86_400_000 }));
+    expect(await t.query(api.generation.details, { token, jobId })).toMatchObject({ canRetry: true });
+    unavailable = false;
+    await t.mutation(api.generation.retryPlanning, { token, jobId });
+    await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("rendering");
+    for (const id of savedIds) expect(calls.filter(call => call === id)).toHaveLength(counts.get(id)!);
+    expect(fetcher.mock.calls.filter(([url]) => String(url).includes("firecrawl"))).toHaveLength(1);
+    expect(await t.run(ctx => ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).collect())).toHaveLength(1);
+  });
+  it("rejects unfinished direction, forged scene checkpoints and stale actions before inference", async () => {
+    const { t, jobId } = await setup(true); const fetcher = mockProviders(); vi.stubGlobal("fetch", fetcher);
+    await t.run(ctx => ctx.db.patch(jobId, { generation: true, status: "researching" }));
+    await t.action(internal.planning.researchTopic, { jobId });
+    await t.action(internal.planning.planScenes, { jobId });
+    await t.action(internal.planning.retrieveIcons, { jobId });
+    fetcher.mockClear();
+    await expect(t.action(internal.planning.finalizeProject, { jobId })).rejects.toThrow("Every generated scene");
+    await expect(t.mutation(internal.generation.checkpoint, { jobId, stage: "visual-missing", json: JSON.stringify({ sceneId: "missing", visualPlan: syntheticVisualPlan(testDraft.scenes[0].narration) }) })).rejects.toThrow("Unknown directed scene");
+    await expect(t.mutation(internal.generation.checkpoint, { jobId, stage: "arbitrary", json: "{}" })).rejects.toThrow("Unsupported checkpoint");
+    await t.run(ctx => ctx.db.patch(jobId, { status: "cancelled" }));
+    expect(await t.mutation(internal.generation.directorWaiting, { jobId, sceneId: "scene-1" })).toBe(false);
+    await expect(t.action(internal.planning.directScene, { jobId, sceneId: "scene-1" })).rejects.toThrow("no longer active");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("refreshes only invalid pre-render visual caches and preserves their paid attempt history", async () => {
+    const { t, jobId } = await setup(true); const fetcher = mockProviders(); vi.stubGlobal("fetch", fetcher);
+    await t.run(ctx => ctx.db.patch(jobId, { generation: true, status: "researching" }));
+    await t.action(internal.planning.researchTopic, { jobId });
+    await t.action(internal.planning.planScenes, { jobId });
+    await t.action(internal.planning.retrieveIcons, { jobId });
+    await t.action(internal.planning.directScene, { jobId, sceneId: "scene-1" });
+    const before = (await t.query(internal.generation.context, { jobId })).artifacts;
+    const compiled = JSON.parse(before.find(a => a.stage === "base")!.json).project;
+    const oldPlan = syntheticVisualPlan(compiled.scenes[1].narration);
+    oldPlan.entities[0].kind = "water"; // Valid in the prior release; no actual transform state.
+    await t.run(ctx => ctx.db.insert("generationArtifacts", { jobId, stage: "visual-scene-2", json: JSON.stringify({ sceneId: "scene-2", visualPlan: oldPlan, attempts: [{ provider: "nvidia", model: "prior-model", responseId: "prior-response", outcome: "success", elapsedMs: 1 }] }), createdAt: Date.now() }));
+    fetcher.mockClear();
+    await t.action(internal.planning.directScene, { jobId, sceneId: "scene-1" });
+    await t.action(internal.planning.directScene, { jobId, sceneId: "scene-2" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const after = (await t.query(internal.generation.context, { jobId })).artifacts;
+    for (const artifact of before) expect(after.find(a => a.stage === artifact.stage)?.json).toBe(artifact.json);
+    const refreshed = JSON.parse(after.find(a => a.stage === "visual-scene-2")!.json);
+    expect(refreshed.visualPlan.entities[0].kind).toBe("beaker");
+    expect(refreshed.attempts.map((attempt: { outcome: string }) => attempt.outcome)).toEqual(["superseded-invalid-plan", "success"]);
+    expect(refreshed.attempts[0].responseId).toBe("prior-response");
+    await t.run(ctx => ctx.db.patch(jobId, { revision: 2 }));
+    await expect(t.mutation(internal.generation.checkpoint, { jobId, stage: "visual-scene-3", json: JSON.stringify({ ...refreshed, sceneId: "scene-3" }) })).rejects.toThrow("pre-render");
   });
   it("does not expose research or start another browser's lesson", async () => {
     const { t, jobId } = await setup(true);
@@ -153,7 +281,7 @@ describe("durable topic generation", () => {
     expect(job?.status).toBe("rendering");
     // Draining scheduled work also expires sessions in this harness.
     await t.run(ctx => ctx.db.patch(job!.sessionId, { expiresAt: Date.now() + 60_000, expired: false }));
-    const task = await t.mutation(internal.media.claim, { worker: "active-renderer", protocol: 5 });
+    const task = await t.mutation(internal.media.claim, { worker: "active-renderer", protocol: 6 });
     expect(task).not.toBeNull();
     await t.mutation(api.jobs.cancel, { token, jobId });
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("cancelled");

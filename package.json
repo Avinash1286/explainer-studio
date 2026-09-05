@@ -1,6 +1,6 @@
 {
   "name": "explainer-studio",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -33,6 +33,7 @@
     "@convex-dev/workflow": "0.4.6",
     "@fontsource-variable/dm-sans": "5.3.0",
     "@fontsource/instrument-serif": "5.3.0",
+    "@fontsource/kalam": "5.3.0",
     "@remotion/bundler": "4.0.520",
     "@remotion/renderer": "4.0.520",
     "convex": "1.45.0",

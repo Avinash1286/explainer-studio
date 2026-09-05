@@ -1,5 +1,7 @@
 # Hackathon readiness
 
+**September 6 visual revision:** 0.7.0 adds a separate scene director, original illustrations, narration-aligned actions and a canvas without fixed overlays. All 163 tests and the complete local check pass. Development is updated and the production worker supports protocol 6; new production backend deployment and full generated-video visual acceptance remain pending. The hand-authored calibration is not a generated demo. [Visual direction](visual-direction-070.md) records the fresh reference review and open checks. The table below preserves the earlier 0.6.0 baseline and is not acceptance evidence for 0.7.0.
+
 Checked September 5, 2026. **The app is available; the complete hackathon entry is not yet finished.** This checklist separates the deployed baseline, the provider update, product acceptance and external submission steps. [Release evidence](release-evidence.md) is the source for measured results; [release operations](release-operations.md) contains configuration and recovery procedures.
 
 ## Product and provider evidence

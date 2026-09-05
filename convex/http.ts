@@ -41,12 +41,12 @@ http.route({
 const id = <T extends "mediaTasks" | "_storage">() => z.string().min(10).max(100).transform(value => value as Id<T>);
 const lease = { taskId: id<"mediaTasks">(), attempt: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), worker: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/) };
 const mediaRequest = z.discriminatedUnion("op", [
-  z.object({ op: z.literal("claim"), worker: lease.worker, protocol: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional() }).strict(),
+  z.object({ op: z.literal("claim"), worker: lease.worker, protocol: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]).optional() }).strict(),
   z.object({ op: z.literal("renew"), ...lease, message: z.string().max(120) }).strict(),
   z.object({ op: z.literal("uploadUrl"), ...lease }).strict(),
   z.object({ op: z.literal("abandon"), ...lease }).strict(),
   z.object({ op: z.literal("registerUpload"), ...lease, storageId: id<"_storage">() }).strict(),
-  z.object({ op: z.literal("complete"), ...lease, result: z.object({ video: id<"_storage">(), project: id<"_storage">(), captions: id<"_storage">(), poster: id<"_storage">(), durationSeconds: z.number().min(15).max(90), frames: z.array(z.object({ sceneId: z.string().max(40), frame: z.number().int().nonnegative(), storageId: id<"_storage">() }).strict()).max(16).optional() }).strict() }).strict(),
+  z.object({ op: z.literal("complete"), ...lease, result: z.object({ video: id<"_storage">(), project: id<"_storage">(), captions: id<"_storage">(), poster: id<"_storage">(), durationSeconds: z.number().min(15).max(90), frames: z.array(z.object({ sceneId: z.string().max(40), frame: z.number().int().nonnegative(), storageId: id<"_storage">() }).strict()).max(24).optional() }).strict() }).strict(),
 ]);
 http.route({ path: "/worker/media", method: "POST", handler: httpAction(async (ctx, request) => {
   if (!env.WORKER_AUTH_TOKEN || env.WORKER_AUTH_TOKEN.length < 32) return new Response("Worker not configured", { status: 503 });

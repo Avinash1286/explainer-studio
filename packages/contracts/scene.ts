@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { visualPlanSchema, type VisualTiming } from "./visual";
 
 export const FPS = 24;
 export const FIXTURE_VERSION = "plant-energy-v1";
@@ -9,6 +10,7 @@ export const sceneSchema = z.object({
   narration: z.string().min(10).max(600),
   nodes: z.array(z.object({ icon: z.string().regex(/^(?:[A-F0-9-]+|TEXT)$/), label: z.string().min(1).max(24), cue: z.string().min(1).max(24).optional() })).min(2).max(3),
   takeaway: z.string().max(90),
+  visualPlan: visualPlanSchema.optional(),
   connections: z.array(z.object({ from: z.number().int().min(0).max(2), to: z.number().int().min(0).max(2), label: z.string().min(1).max(28) })).max(3).optional(),
 });
 export const projectSchema = z.object({
@@ -21,5 +23,5 @@ export const projectSchema = z.object({
 });
 export type Scene = z.infer<typeof sceneSchema>;
 export type Project = z.infer<typeof projectSchema>;
-export type TimedScene = Scene & { startFrame: number; durationInFrames: number; audioFile: string; audioSeconds: number; cueFrames: number[]; words: { text: string; start: number; end: number }[] };
+export type TimedScene = Scene & { startFrame: number; durationInFrames: number; audioFile: string; audioSeconds: number; cueFrames: number[]; visualTiming?: VisualTiming; words: { text: string; start: number; end: number }[] };
 export type RenderProject = Omit<Project, "scenes"> & { fps: number; width: number; height: number; durationInFrames: number; scenes: TimedScene[]; attribution: string; timingMethod: string };

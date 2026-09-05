@@ -15,6 +15,7 @@ import type * as icons from "../icons.js";
 import type * as jobs from "../jobs.js";
 import type * as lib_authoring from "../lib/authoring.js";
 import type * as lib_critic from "../lib/critic.js";
+import type * as lib_director from "../lib/director.js";
 import type * as lib_factCheck from "../lib/factCheck.js";
 import type * as lib_generationConfig from "../lib/generationConfig.js";
 import type * as lib_limits from "../lib/limits.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   jobs: typeof jobs;
   "lib/authoring": typeof lib_authoring;
   "lib/critic": typeof lib_critic;
+  "lib/director": typeof lib_director;
   "lib/factCheck": typeof lib_factCheck;
   "lib/generationConfig": typeof lib_generationConfig;
   "lib/limits": typeof lib_limits;

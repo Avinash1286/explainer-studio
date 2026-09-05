@@ -9,6 +9,7 @@ import { repairInput, repairScenes } from "./lib/repair";
 import { DEFAULT_OPENAI_MODEL, PROVIDER_MESSAGES } from "../packages/contracts/provider";
 import { goodReview, reviewSetup, sampleProject } from "../tests/review-helpers";
 import { testDraft, testSources } from "./testFixtures";
+import { syntheticVisualPlan } from "../tests/director-helpers";
 
 const config: ProviderConfig = { generationProvider: "openai", OPENAI_API_KEY: "test-openai", NVIDIA_API_KEY: "test-nvidia", CLOUDFLARE_API_TOKEN: "test-cf", CLOUDFLARE_ACCOUNT_ID: "a".repeat(32) };
 const answerSchema = z.object({ answer: z.literal("yes") }).strict();
@@ -135,24 +136,37 @@ describe("OpenAI rendered evidence and workflow", () => {
     expect(transport).not.toHaveBeenCalled();
   });
 
-  it("builds literal icons and text cards without any embedding catalog or provider call", async () => {
+  it("builds literal concept notes without embeddings then directs every scene only on OpenAI", async () => {
     vi.useFakeTimers();
+    vi.stubEnv("OPENAI_API_KEY", "test-openai");
     const { t, jobId } = await reviewSetup();
     const draft = structuredClone(testDraft);
     draft.scenes[0].nodes[0] = { concept: "text:sun", label: "Sun", cue: "sun" };
     await t.run(async ctx => {
       await ctx.db.patch(jobId, { generationProvider: "openai", status: "planning" });
+      for (const task of await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).collect()) await ctx.db.delete(task._id);
       await ctx.db.insert("generationArtifacts", { jobId, stage: "plan", json: JSON.stringify({ data: draft, attempts: [{ provider: "openai", model: DEFAULT_OPENAI_MODEL, responseId: "resp-plan" }] }), createdAt: Date.now() });
     });
     const transport = vi.fn<typeof fetch>(); vi.stubGlobal("fetch", transport);
     await t.action(internal.planning.retrieveIcons, { jobId });
+    expect(transport).not.toHaveBeenCalled();
+    transport.mockImplementation(async (_, request) => {
+      const prompt = JSON.parse(JSON.parse(String(request?.body)).input[0].content);
+      return completed(syntheticVisualPlan(prompt.scene.narration), `resp-direct-${prompt.scene.id}`);
+    });
+    const ids = await t.query(internal.planning.directorSceneIds, { jobId });
+    for (const sceneId of ids) await t.action(internal.planning.directScene, { jobId, sceneId });
+    await t.action(internal.planning.finalizeProject, { jobId });
     const artifact = await t.run(ctx => ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId).eq("stage", "project")).unique());
     const result = JSON.parse(artifact!.json);
     expect(result.project.scenes[0].nodes[0].icon).toBe("TEXT");
     expect(result.project.scenes[0].nodes[1].icon).toBe("1F4A7");
     expect(result.provenance).toMatchObject({ generationProvider: "openai", reusedCatalogVectors: false, planningAttempts: [{ responseId: "resp-plan" }] });
     expect(result.provenance).not.toHaveProperty("embeddingSpace");
-    expect(transport).not.toHaveBeenCalled();
+    expect(transport).toHaveBeenCalledTimes(draft.scenes.length);
+    expect(transport.mock.calls.every(call => call[0] === "https://api.openai.com/v1/responses")).toBe(true);
+    expect(result.project.scenes.every((scene: { visualPlan?: unknown }) => scene.visualPlan)).toBe(true);
+    expect(result.provenance.directorAttempts[0].attempts[0].responseId).toBe(`resp-direct-${draft.scenes[0].id}`);
   });
 
   it("uses the job choice for both review gates and stores the actual provider and response", async () => {

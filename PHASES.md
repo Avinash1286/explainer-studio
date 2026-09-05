@@ -1,6 +1,10 @@
 # Implementation phases
 
-Release 0.6.0 frontend and backend are deployed on Convex. The existing media runtime and frozen topic evaluation remain separate baseline evidence. See [release evidence](docs/release-evidence.md) for exact validation/deployment outcomes and [hackathon readiness](docs/hackathon-readiness.md) for remaining acceptance and submission work.
+**Current 0.7.0 visual work:** the illustrated director, original SVG objects, staged actions, clean canvas and three-frame mechanism review are implemented. There are 163 passing tests across 17 files; the full check, including both builds, has passed. Development is staged and the production worker is 0.7.0, but the new production backend is not deployed. The canary's fifth workflow attempt (fourth operator resume) is planning; no generated MP4 exists yet. Visual acceptance remains open. See [visual direction](docs/visual-direction-070.md).
+
+## Historical 0.5–0.6 milestones
+
+The table records the previous release, not 0.7.0 quality or deployment acceptance. The frozen evaluation and previous public example remain baseline evidence. See [release evidence](docs/release-evidence.md) and [hackathon readiness](docs/hackathon-readiness.md).
 
 | Workstream | Implementation | Acceptance |
 |---|---|---|
@@ -9,7 +13,9 @@ Release 0.6.0 frontend and backend are deployed on Convex. The existing media ru
 | 3. Release preparation | Convex app 0.6.0 deployed; development backend synced; final runtime `04c4635` public with Vercel Ready; worker 0.5.6 | Exact-commit clean install passed 117 tests in 14 files plus types/lint/builds. Public health/worker and solar playback verified. Salt recovery rendered and passed all factual checks but failed visual review; both attempts remain unapproved. No build or topic run remains in progress. |
 | 4. Provider choice update | 0.6.0 implements selected OpenAI Responses planning, factual/frame review and repairs, retaining NVIDIA/Cloudflare as default; OpenAI intentionally disabled at the owner's request | Latest full check passed: 117 tests in 14 files plus types, lint and builds. Production browser verified unavailable OpenAI creates zero jobs, default-route submission creates one, and the existing lesson's provider survives form changes/reload. Desktop/390-pixel mobile views have no overflow. Enabling OpenAI is not an implementation exit gate; live sponsor usage remains absent. |
 
-Remaining event gates: verify a consented AgentMail delivery; complete 3–5 real user trials and address findings; have the owner record the demo; clarify sponsor eligibility with OpenAI intentionally disabled; verify participant eligibility/registration and submit the final materials. The repair correction and its separate recovery have finished verification; the recovery was not approved. Variable visual review and limited word-card presentation remain product limitations. The frozen 4/5 automatic result is not a manual-quality pass or user-trial result.
+## Remaining acceptance
+
+Remaining gates include the 0.7.0 build/deployment, a completed provider-generated lesson, actual playback/review and the owner's reference comparison; then consented AgentMail delivery, 3–5 real user trials, the owner-recorded demo, sponsor/participant eligibility, registration and final submission. The historical salt recovery was not approved. The frozen 4/5 automatic result is not a manual-quality pass or user-trial result.
 
 The entries below are historical development notes. They do not override the current release-evidence report or imply production is still disabled. No email, social post or submission receipt is claimed without a real event.
 

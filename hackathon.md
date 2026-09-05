@@ -1,5 +1,7 @@
 # Explainer Studio — build log
 
+**Current 0.7.0 visual update — September 6:** illustrated direction, 51 bounded visual kinds, progressive construction, spoken action timing and clean canvases are implemented. There are 163 passing tests across 17 files; the full check, including both builds, has passed. The development backend is staged and the production worker is 0.7.0; the new production backend is not deployed. The live canary is planning on workflow attempt four (the third operator resume), with no generated MP4 or visual acceptance yet. See [fresh reference review and visual direction](docs/visual-direction-070.md). The 0.6.0 evidence below remains historical.
+
 ## Project
 
 A single-topic explainer-video system for short educational lessons, using source-grounded scripts, consistent illustrated scenes, narration, and frame review.
@@ -10,7 +12,7 @@ A single-topic explainer-video system for short educational lessons, using sourc
 - Event: https://www.convex.dev/hackathons/all-gas
 - First implementation session in this repository: September 5, 2026. The new repository was created from scratch after the reference-video planning work; commit history records actual implementation. This does not attest to the participant's personal eligibility or registration.
 
-## Current working functionality
+## Historical 0.6.0 working functionality
 
 Release 0.6.0 frontend and backend are deployed on Convex; public health returns HTTP 200 with generation enabled. A visitor can submit a question, choose duration, audience and provider, watch realtime progress, revisit the lesson in the same browser and cancel a run. The established NVIDIA/Cloudflare pipeline uses Firecrawl research and the existing Zerops Kokoro/Remotion/FFmpeg worker. Approved versions expose video, captions, source/project data, targeted scene revisions and revocable share links. The manually inspected solar revision 3 remains available in the gallery.
 
@@ -18,7 +20,7 @@ Baseline validation passed 80 automated tests, TypeScript, lint and builds. The 
 
 Release 0.6.0 implements an OpenAI provider option alongside the default NVIDIA NIM + Cloudflare Workers AI route. It uses the Responses API for planning, factual review, decoded-frame review and repairs, with `gpt-5.4-mini` as the configurable `OPENAI_MODEL` default. The latest bounded-repair correction passed 117 tests across 14 files, TypeScript, ESLint, static export and worker build, and is deployed to the backend. Browser checks confirmed default selection, unavailable OpenAI creating zero jobs, and a subsequent default-route submission creating one job. The owner explicitly chose to leave OpenAI disabled; enabling it is not required to complete this implementation, and no live OpenAI inference is claimed.
 
-Final runtime [`04c4635`](https://github.com/Avinash1286/explainer-studio/commit/04c4635) is on public main; its [Vercel validation](https://explainer-studio-checks-1ryoohj3q-avinash1286s-projects.vercel.app) is Ready after an exact-commit clean install, 117 tests and full builds. Production and development backends are synced. Initial `0ebfce2`/109-test evidence remains in the historical log. The media worker is 0.5.6 with seven capabilities and a heartbeat observed three seconds old. Desktop/390-pixel mobile layouts had no overflow; changing the form provider and reloading preserved the live lesson's NVIDIA/Cloudflare selection. Independent-browser solar playback advanced 24 seconds with captions, a 60.053-second 1280×720 file and five source links.
+The 0.6.0 runtime [`04c4635`](https://github.com/Avinash1286/explainer-studio/commit/04c4635) reached public main and its [Vercel validation](https://explainer-studio-checks-1ryoohj3q-avinash1286s-projects.vercel.app) passed an exact-commit clean install, 117 tests and full builds. At that release, production and development backends were synced and the media worker was 0.5.6 with seven capabilities. Initial `0ebfce2`/109-test evidence remains in the historical log. Desktop/390-pixel mobile layouts had no overflow; changing the form provider and reloading preserved the live lesson's NVIDIA/Cloudflare selection. Independent-browser solar playback advanced 24 seconds with captions, a 60.053-second 1280×720 file and five source links.
 
 The salt regression finished without approval. Its initial source rejection and service-failed repair remain recorded. One operator recovery removed only the unsupported phrase, preserved the other three scenes' content and produced a 60-second revision 2 with all four factual checks passing. NVIDIA visual review nevertheless rejected scene 1 for lacking illustrated ions/lattice and directed arrows despite the supported word-card/association layout. Neither attempt is approved; the draft remains editable, sharing/email stay closed, and solar remains the sole manually qualified public example. No further tuning or live attempt is in progress for this topic.
 
@@ -27,17 +29,17 @@ The salt regression finished without approval. Its initial source rejection and 
 | Service | Intended role | Current integration status |
 |---|---|---|
 | Convex | Authoritative state, jobs, realtime UI, storage, workflow, vectors | Live production generation/revision/sharing and static hosting verified |
-| NVIDIA NIM | Default-route planning, factual review and qualified vision fallback | Real provider and lesson evidence recorded |
+| NVIDIA NIM | Default-route planning, visual direction, factual review and qualified vision fallback | Historical lesson evidence recorded; new director has partial canary output, without a completed 0.7.0 lesson |
 | Cloudflare Workers AI | Default-route text backup, frame review and pinned icon embeddings | Real provider evidence recorded; quota exhaustion and NVIDIA vision fallback documented |
-| OpenAI | Optional selected route for planning, factual/frame review and repairs | Implemented in 0.6.0; intentionally disabled at the owner's request; no live sponsor usage |
+| OpenAI | Optional selected route for planning, visual direction, factual/frame review and repairs | Provider choice introduced in 0.6.0; intentionally disabled at the owner's request; no live sponsor usage |
 | Firecrawl | Retrieve research evidence | Live qualification and source-backed lesson use recorded |
 | Kokoro 82M / Zerops | Self-hosted speech and media workers | CPU synthesis/rendering deployed and benchmarked on Zerops |
-| OpenMoji | Licensed illustration assets | 24 pinned, hashed SVG assets bundled with CC BY-SA attribution |
+| Original SVG library / OpenMoji | New directed illustrations / legacy catalog assets | 51 bounded visual kinds, including 35 original everyday drawings; 24 pinned OpenMoji assets retained with attribution |
 | AgentMail | Opt-in completion delivery and delivery status | Configured-inbox GET returned HTTP 200 with matching identity; production webhook configured; consented delivery acceptance pending |
 
 ## Remaining before final entry
 
-Verify a consented AgentMail delivery, complete 3–5 real user trials and respond to feedback, record/upload the owner demo, clarify sponsor eligibility with OpenAI intentionally disabled, and complete the actual social post and VibeApps submission. Participant eligibility and Luma registration remain unverified. Build/deployment and the bounded-repair verification are finished; reviewer variability and word-card presentation remain known limitations. See [hackathon readiness](docs/hackathon-readiness.md), [demo runbook](docs/demo-runbook.md) and [submission draft](docs/submission-draft.md). The official deadline is September 22, 2026 at noon Pacific (September 23, 00:45 Nepal time).
+Finish 0.7.0 build/deployment and verify a real generated lesson through playback, review and the owner's reference comparison. Then verify consented AgentMail delivery, complete 3–5 real user trials and respond to feedback, record/upload the owner demo, clarify sponsor eligibility with OpenAI intentionally disabled, and complete the actual social post and VibeApps submission. Participant eligibility and Luma registration remain unverified. The old build and recovery evidence does not close the new visual acceptance. See [hackathon readiness](docs/hackathon-readiness.md), [demo runbook](docs/demo-runbook.md) and [submission draft](docs/submission-draft.md). The official deadline is September 22, 2026 at noon Pacific (September 23, 00:45 Nepal time).
 
 ## Historical work log
 

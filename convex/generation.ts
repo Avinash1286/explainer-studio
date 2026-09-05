@@ -5,20 +5,59 @@ import { action, internalAction, internalMutation, internalQuery, mutation, quer
 import { requireSession } from "./lib/session";
 import { generationAvailability, generationReady, providerConfig, reviewReady } from "./lib/generationConfig";
 import { projectSchema } from "../packages/contracts/scene";
+import { validateDirectedPlan } from "./lib/director";
+import type { Attempt } from "./lib/providers";
 import { generationProvider } from "./schema";
 import { limits } from "./lib/limits";
-import { openAIErrorMessage, providerFailureMessage, PROVIDER_MESSAGES, type GenerationProvider } from "../packages/contracts/provider";
+import { openAIErrorMessage, providerFailureMessage, PROVIDER_MESSAGES, transientProviderFailure, type GenerationProvider } from "../packages/contracts/provider";
 
 export const workflow = new WorkflowManager(components.workflow, { workpoolOptions: { maxParallelism: 2 } });
+
+export function retryableDirectorFailure(error: string): boolean {
+  if (!transientProviderFailure(error)) return false;
+  // A rate-limited fallback after three invalid primary outputs is still a
+  // validation failure; retrying would repeat the same paid invalid candidates.
+  const primary = error.split("; primary:")[1];
+  return !primary || transientProviderFailure(primary);
+}
+
 export const run = workflow.define({ args: { jobId: v.id("jobs") }, returns: v.null() }).handler(async (step, args): Promise<null> => {
   // Each action persists a checkpoint. Replays reuse it rather than charging again.
   await step.runAction(internal.generation.verifyProviderForJob, args, { retry: false });
   await step.runAction(internal.planning.researchTopic, args, { retry: { maxAttempts: 2, initialBackoffMs: 3000, base: 2 } });
   await step.runAction(internal.planning.planScenes, args, { retry: false });
   await step.runAction(internal.planning.retrieveIcons, args, { retry: { maxAttempts: 2, initialBackoffMs: 3000, base: 2 } });
+  const sceneIds: string[] = await step.runQuery(internal.planning.directorSceneIds, args);
+  // Sequential scene checkpoints reduce inference pressure and let every scene
+  // see its predecessor's final visual identities. Backoff is durable, not a
+  // sleeping paid action; completed scenes are never regenerated on recovery.
+  for (const sceneId of sceneIds) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try { await step.runAction(internal.planning.directScene, { ...args, sceneId }, { retry: false }); break; }
+      catch (error) {
+        if (attempt === 2 || !retryableDirectorFailure(String(error))) throw error;
+        if (!await step.runMutation(internal.generation.directorWaiting, { ...args, sceneId })) return null;
+        await step.sleep(30_000, { name: `Wait before retrying ${sceneId}` });
+      }
+    }
+  }
+  await step.runAction(internal.planning.finalizeProject, args, { retry: false });
   await step.runMutation(internal.generation.enqueue, args);
   return null;
 });
+
+export const directorWaiting = internalMutation({ args: { jobId: v.id("jobs"), sceneId: v.string() }, returns: v.boolean(), handler: async (ctx, args) => {
+  const job = await ctx.db.get(args.jobId);
+  if (!job?.generation || job.revision !== 1 || job.status !== "planning") return false;
+  if (await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", args.jobId)).first()) return false;
+  const base = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", args.jobId).eq("stage", "base")).unique();
+  const index = base ? projectSchema.parse(JSON.parse(base.json).project).scenes.findIndex(scene => scene.id === args.sceneId) : -1;
+  if (index < 0) return false;
+  const message = `The AI service is temporarily unavailable. Retrying scene ${index + 1} once; completed scenes remain saved.`;
+  await ctx.db.patch(args.jobId, { stageMessage: message, updatedAt: Date.now() });
+  await ctx.db.insert("jobEvents", { jobId: args.jobId, kind: "director_retry", message, createdAt: Date.now() });
+  return true;
+} });
 
 export const availability = query({ args: {}, handler: async ctx => {
   const [nim, openai] = await Promise.all([generationAvailability(ctx, "nim"), generationAvailability(ctx, "openai")]);
@@ -82,7 +121,7 @@ export const verifyProviderForJob = internalAction({ args: { jobId: v.id("jobs")
 export const startCanary = internalMutation({ args: { jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, { jobId }) => {
   const job = await ctx.db.get(jobId);
   if (!job || !["queued", "failed"].includes(job.status)) throw new ConvexError("Canary needs a queued brief or failed pre-render plan");
-  const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(4);
+  const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(14);
   if (artifacts.some(a => a.stage !== "research")) throw new ConvexError("Canary cannot replace a rendered project");
   if (!await generationReady(ctx, true, job.generationProvider)) throw new ConvexError("Canary providers must be qualified");
   await ctx.db.patch(jobId, { generation: true, status: "researching", stageMessage: "Finding sources for your question", updatedAt: Date.now() });
@@ -109,14 +148,15 @@ export const retryPlanning = mutation({ args: { token: v.string(), jobId: v.id("
 export const resumePlanning = internalMutation({ args: { jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, { jobId }) => {
   const job = await ctx.db.get(jobId);
   if (!job?.generation || job.status !== "failed") throw new ConvexError("Only failed generation can resume");
-  const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(4);
-  if (artifacts.some(a => a.stage !== "research")) throw new ConvexError("Only a failed pre-render plan can resume");
+  const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(14);
+  const media = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).first();
+  if (media || artifacts.some(a => !["research", "plan", "base"].includes(a.stage) && !a.stage.startsWith("visual-"))) throw new ConvexError("Only a failed pre-render plan can resume");
   const state = await generationAvailability(ctx, job.generationProvider);
   if (!state.enabled) throw new ConvexError(state.message);
-  await ctx.db.patch(jobId, { status: "planning", stageMessage: artifacts.length ? "Retrying the lesson plan using saved research" : "Retrying research for this lesson", updatedAt: Date.now() });
+  await ctx.db.patch(jobId, { status: "planning", stageMessage: artifacts.some(a => a.stage === "base") ? "Continuing visual direction using saved scenes" : artifacts.length ? "Retrying the lesson plan using saved research" : "Retrying research for this lesson", updatedAt: Date.now() });
   const workflowId = await start(ctx, internal.generation.run, { jobId }, { onComplete: internal.generation.finished, context: { jobId }, startAsync: true });
   await ctx.db.patch(jobId, { workflowId });
-  await ctx.db.insert("jobEvents", { jobId, kind: "planning_retry", message: "Operator resumed planning using saved research", createdAt: Date.now() });
+  await ctx.db.insert("jobEvents", { jobId, kind: "planning_retry", message: "Planning resumed using saved research, script and directed scenes", createdAt: Date.now() });
   return null;
 } });
 
@@ -142,18 +182,38 @@ export const generate = mutation({
 export const context = internalQuery({ args: { jobId: v.id("jobs") }, handler: async (ctx, { jobId }) => {
   const job = await ctx.db.get(jobId);
   if (!job || !job.generation || !["researching", "planning"].includes(job.status)) throw new ConvexError("Generation no longer active");
-  const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(4);
+  const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(14);
   return { job, artifacts };
 } });
 
-export const checkpoint = internalMutation({ args: { jobId: v.id("jobs"), stage: v.union(v.literal("research"), v.literal("plan"), v.literal("project")), json: v.string() }, handler: async (ctx, args) => {
+export const checkpoint = internalMutation({ args: { jobId: v.id("jobs"), stage: v.string(), json: v.string() }, handler: async (ctx, args) => {
   const job = await ctx.db.get(args.jobId);
   if (!job || !job.generation || !["researching", "planning"].includes(job.status)) throw new ConvexError("Generation no longer active");
   if (args.json.length > 100_000) throw new ConvexError("Artifact too large");
+  let visualNarration: string | undefined;
+  if (!["research", "plan", "base", "project"].includes(args.stage)) {
+    if (!args.stage.startsWith("visual-")) throw new ConvexError("Unsupported checkpoint stage");
+    const base = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", args.jobId).eq("stage", "base")).unique();
+    const sceneId = args.stage.slice(7), record = JSON.parse(args.json);
+    const scene = base ? projectSchema.parse(JSON.parse(base.json).project).scenes.find(s => s.id === sceneId) : undefined;
+    if (!scene || record.sceneId !== sceneId) throw new ConvexError("Unknown directed scene checkpoint");
+    const media = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", args.jobId)).first();
+    if (job.revision !== 1 || media) throw new ConvexError("Visual checkpoints are only for active pre-render planning");
+    validateDirectedPlan(record.visualPlan, scene.narration);
+    visualNarration = scene.narration;
+  }
   const previous = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", args.jobId).eq("stage", args.stage)).unique();
-  if (previous) return null;
-  await ctx.db.insert("generationArtifacts", { ...args, createdAt: Date.now() });
-  const message = args.stage === "research" ? "Sources found. Writing and checking the lesson" : args.stage === "plan" ? "Choosing illustrations for each scene" : "Scene plan ready for narration and animation";
+  if (previous) {
+    if (!visualNarration) return null;
+    try { validateDirectedPlan(JSON.parse(previous.json).visualPlan, visualNarration); return null; }
+    catch { /* Superseded validators may reject an older pre-render cache. */ }
+    const old = JSON.parse(previous.json) as { attempts?: Attempt[] }, next = JSON.parse(args.json);
+    const json = JSON.stringify({ ...next, attempts: [...(Array.isArray(old.attempts) ? old.attempts : []).map(attempt => ({ ...attempt, ...(attempt.outcome === "success" ? { outcome: "superseded-invalid-plan" } : {}) })), ...next.attempts] });
+    if (json.length > 100_000) throw new ConvexError("Artifact too large");
+    await ctx.db.patch(previous._id, { json, createdAt: Date.now() });
+    await ctx.db.insert("jobEvents", { jobId: args.jobId, kind: "director_refresh", message: "Replaced an outdated invalid scene plan while preserving valid saved scenes and inference provenance", createdAt: Date.now() });
+  } else await ctx.db.insert("generationArtifacts", { ...args, createdAt: Date.now() });
+  const message = args.stage === "research" ? "Sources found. Writing and checking the lesson" : args.stage === "plan" ? "Choosing illustrations for each scene" : args.stage === "base" ? "Directing the illustrated actions in each scene" : args.stage.startsWith("visual-") ? "An illustrated scene is directed and saved" : "Scene plan ready for narration and animation";
   await ctx.db.patch(args.jobId, { status: "planning", stageMessage: message, updatedAt: Date.now() });
   await ctx.db.insert("jobEvents", { jobId: args.jobId, kind: args.stage, message, createdAt: Date.now() });
   return null;
@@ -190,8 +250,9 @@ export const details = query({ args: { token: v.string(), jobId: v.id("jobs") },
   const session = await requireSession(ctx, token);
   const job = await ctx.db.get(jobId);
   if (!job || job.sessionId !== session._id) return null;
-  const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(4);
+  const artifacts = await ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(14);
   const source = artifacts.find(a => a.stage === "research");
   const sources = source ? (JSON.parse(source.json) as { sources: { id: string; title: string; url: string }[] }).sources.map(({ id, title, url }) => ({ id, title, url })) : [];
-  return { generated: Boolean(job.generation), stages: artifacts.map(a => a.stage), sources, canRetry: job.status === "failed" && artifacts.every(a => a.stage === "research") && (job.planningRetries || 0) < 1 };
+  const media = job.status === "failed" ? await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).first() : null;
+  return { generated: Boolean(job.generation), stages: artifacts.map(a => a.stage), sources, canRetry: job.status === "failed" && !media && artifacts.every(a => ["research", "plan", "base"].includes(a.stage) || a.stage.startsWith("visual-")) && (job.planningRetries || 0) < 1 };
 } });

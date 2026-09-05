@@ -1,5 +1,7 @@
 # Release operations
 
+**Current 0.7.0 rollout:** 163 tests across 17 files pass; the full check, including both builds, has passed. The visual backend is staged in development, and the production media worker is already 0.7.0. The new production backend is not yet deployed. The canary's fifth workflow attempt (fourth operator resume) is planning, with no generated MP4 yet. This mixed deployment state is not release acceptance. See [visual direction](visual-direction-070.md); the 0.6.0 validation and topic results remain historical evidence.
+
 ## Topology
 
 ```mermaid
@@ -7,8 +9,8 @@ flowchart LR
   Browser[Next.js browser app] --> Convex[Convex database, workflows, files and hosting]
   Convex --> Research[Firecrawl research]
   Convex --> Choice{Saved provider choice}
-  Choice --> Text[NVIDIA text and factual reasoning]
-  Choice --> OpenAI[OpenAI Responses: planning, factual and frame review]
+  Choice --> Text[NVIDIA planning, visual direction and factual reasoning]
+  Choice --> OpenAI[OpenAI Responses: planning, direction and review]
   Text -. transient failure .-> CF[Cloudflare Workers AI]
   Convex --> Vision[Cloudflare vision with NVIDIA vision fallback]
   Worker[Zerops: local Kokoro + Remotion + FFmpeg] -->|authenticated leases and artifacts| Convex
@@ -23,7 +25,7 @@ Convex owns job state, checkpoints, retries, quotas, ownership, icon vectors, re
 1. `npm ci` followed by `npm run check`. Tests use isolated providers; they do not send mail or prove live model accuracy.
 2. `npx convex dev --once` for the development backend; `npx convex deploy --yes` for production.
 3. `npx @convex-dev/static-hosting deploy --dist out --build-command "npm run build:web" --skip-convex`. This builds against the production Convex URL rather than uploading a dev bundle.
-4. Push the Zerops `mediaworker` setup in `zerops.yaml`. Check service ACTIVE and a fresh `workers` heartbeat. Version 0.5.6 supports protocol 5, named causal edges and text cards. A protocol-4 worker cannot claim a text-card job.
+4. Push the Zerops `mediaworker` setup in `zerops.yaml`. Check service ACTIVE and a fresh `workers` heartbeat with version 0.7.0 and `directed-visuals-v1`. Directed scenes require protocol 6; older workers cannot claim them. The 0.7.0 worker retains legacy scene support. Historical worker 0.5.6/protocol-5 checks do not verify the new renderer.
 5. Open `/api/health` on the public site. Check actual generation readiness, not just HTTP 200. NIM readiness requires qualified providers and the complete embedding catalog. OpenAI readiness uses its own server key and model plus shared Firecrawl; the model is checked before starting work.
 6. Generate one real production question; inspect the final video, captions, source links, review, revision, public share and revoke behavior. Only publish manually inspected approved examples through `showcase:publish`.
 7. Push GitHub and verify Vercel's `explainer-studio-checks` build for that exact commit. Local success does not imply a passing remote build.
@@ -32,9 +34,11 @@ Convex owns job state, checkpoints, retries, quotas, ownership, icon vectors, re
 
 - Text generation has at most three validation attempts per provider. Transient NVIDIA failures switch to Cloudflare. Auth errors fail immediately. A Cloudflare daily-allocation exhaustion requires the quota reset or the owner's chosen plan change; no paid upgrade is performed automatically.
 - Owners can retry a failed pre-render plan once; saved research is reused. Owners can retry an unavailable review once using the saved video. These actions cannot reopen a rejected version as approved.
+- New lessons receive a separate visual plan for each scene. Checkpoints retain provider attempts; resumed planning revalidates saved visual plans before reuse. A failed director does not silently emit the old word-card layout. Record each operator resume separately from normal user retries and initial-run outcomes.
 - Scene repair retries transient model/network status failures at most three times, waiting 30 then 60 seconds. It reuses the same request and edit budget. Authentication, unavailable-model and invalid-content failures do not trigger this transport retry. Provider outages produce a safe availability message while retaining the draft.
 - Review workflow has three attempts with 30/60-second backoff. The factual pass uses reasoning-enabled NVIDIA with Cloudflare fallback; frame review sends real JPEG bytes to qualified vision models. Both must pass.
-- One automatic repair and two requested scene edits per lesson. The compiler preserves unaffected scenes, chooses complete narration sentences, canonical icons or literal text cards, ordered spoken cues and explicit causal edges. It never turns an absent endpoint into a different causal edge.
+- Rich scenes provide three action-aware JPEG samples per scene, derived from validated Kokoro word timing; legacy scenes provide two. Verify complete scene coverage and the actual ordered action frames. The review budget is 2 MB per JPEG and 8 MB total decoded JPEG bytes. Sparse samples still require manual normal-speed playback and inspection of important motion.
+- One automatic repair and two requested scene edits per lesson. The compiler preserves unaffected scenes and their visual plans, uses complete narration sentences, and redirects changed rich scenes through the selected provider. Legacy scenes retain canonical icons/text cards and explicit causal edges. A repair cannot drop a rich scene's visual plan or silently change untouched content.
 - Operator recovery functions are internal, version-scoped and intended for implementation fixes. Record their use in evaluation results; do not call recovered runs first-pass successes.
 - Share links expire after seven days and can be revoked. Revocation prevents future page resolution; it cannot erase an already downloaded video or a previously copied underlying file URL.
 - Public showcase entries are deliberately published by an operator. Ordinary user lessons do not appear automatically. Keep public examples separate from user workspaces.
@@ -47,7 +51,7 @@ Set `GENERATION_ENABLED=false` on production to pause new general generation; th
 
 Set `OPENAI_API_KEY` and optionally `OPENAI_MODEL` in ignored `.env`. The default is `gpt-5.4-mini`, which supports Responses, structured outputs and image input. Run `npm run openai:setup -- --prod` for production or omit `-- --prod` for development. Setup checks model access and copies only these two settings to Convex; it does not activate generation or claim an actual video/inference acceptance. Never place the key in a public environment variable.
 
-The user selects a route before generation; the stored route persists through retries and scene edits. Missing key, auth failure, unavailable model and rate/usage limits produce safe toasts. The explicit OpenAI route handles authoring, factual review, frame review and repairs; Firecrawl, canonical icons, Kokoro and Remotion are shared. OpenAI uses the bundled literal asset catalog without calling Cloudflare embeddings. NIM keeps its existing qualified vector index. Both routes preserve approval gates and quotas.
+The user selects a route before generation; the stored route persists through retries and scene edits. Missing key, auth failure, unavailable model and rate/usage limits produce safe toasts. The explicit OpenAI route handles authoring, visual direction, factual review, frame review and repairs; Firecrawl, local illustration vocabulary, Kokoro and Remotion are shared. OpenAI uses the bundled literal asset catalog without calling Cloudflare embeddings. NIM keeps its existing qualified vector index. Both routes preserve approval gates and quotas. OpenAI is currently intentionally disabled at the owner's request.
 
 Model preflight is authenticated and limited per workspace and globally. Existing-lesson preflight remains available while new generation is paused. Upstream errors never copy raw provider response bodies into public toasts.
 
@@ -61,7 +65,7 @@ The AgentMail API key needs `inbox_read` for setup qualification and `message_se
 
 ## Known product boundaries
 
-This release targets short English science and everyday-mechanism explainers, one visual style, two- and three-node diagrams, 24 pinned OpenMoji assets and animated word cards for concepts without faithful icons. It is not an unrestricted animation editor. Kokoro token timing is predicted, not forced alignment. Two sampled frames per scene do not establish that every frame is perfect. The automated factual editor can still miss errors; manual inspection remains necessary before a public demo.
+The 0.7.0 source targets short English explainers with 2–12 illustrated entities per scene, a bounded relationship/action vocabulary and 51 visual kinds, including 35 original everyday illustrations. New lessons use native SVG on a clean canvas without fixed headers, footers or burned captions. The legacy renderer remains for saved projects; existing MP4s are unchanged. Model-authored SVG/code and remote artwork are not accepted. Counts, charges, material bounds, motion direction and visible state changes must match the explanation. Kokoro timing is predicted, not forced alignment. Three sampled frames do not prove every instant is correct, and a hand-authored calibration is not a generated lesson. Manual comparison with the target references remains required before claiming visual quality.
 
 
 ## Repeat a topic evaluation

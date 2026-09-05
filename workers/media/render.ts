@@ -8,6 +8,7 @@ import { fixture } from "../../packages/contracts/fixture";
 import { FPS, projectSchema, type RenderProject } from "../../packages/contracts/scene";
 import { frameSamples } from "../../packages/contracts/review";
 import { fitNarration } from "../../packages/contracts/timing";
+import { compileVisualTiming, validateVisualPlan } from "../../packages/contracts/visual";
 
 function command(executable: string, args: string[], signal?: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
@@ -29,6 +30,7 @@ export async function renderProject(value: unknown, directory: string, stage: (m
   const inputProject = projectSchema.parse(value);
   const catalog = JSON.parse(await readFile("public/openmoji/manifest.json", "utf8")) as { entries: { id: string }[] };
   for (const scene of inputProject.scenes) {
+    if (scene.visualPlan) validateVisualPlan(scene.visualPlan, scene.narration);
     if (scene.nodes.length !== (scene.layout === "comparison" ? 2 : 3)) throw new Error("Invalid layout node count");
     if (scene.nodes.some(n => n.icon !== "TEXT" && !catalog.entries.some(e => e.id === n.icon))) throw new Error("Unknown icon");
   }
@@ -68,11 +70,12 @@ export async function renderProject(value: unknown, directory: string, stage: (m
       const word = audio.words.find(w => w.text.toLowerCase().replace(/[^a-z]/g, "") === (node.cue || node.label).toLowerCase());
       return word ? Math.max(0, Math.round(word.start * FPS) + 8 - 36) : 12 + i * Math.max(32, Math.floor((durationInFrames - 100) / scene.nodes.length));
     });
-    const timed = { ...scene, startFrame: cursor, durationInFrames, audioFile: audio.file, audioSeconds: audio.seconds, cueFrames, words: audio.words };
+    const visualTiming = scene.visualPlan ? compileVisualTiming(scene.visualPlan, audio.words, durationInFrames, FPS) : undefined;
+    const timed = { ...scene, startFrame: cursor, durationInFrames, audioFile: audio.file, audioSeconds: audio.seconds, cueFrames, ...(visualTiming ? { visualTiming } : {}), words: audio.words };
     cursor += durationInFrames;
     return timed;
   });
-  const project: RenderProject = { ...inputProject, scenes, fps: FPS, width: 1280, height: 720, durationInFrames: cursor, attribution: "OpenMoji contributors, CC BY-SA 4.0; animated stroke/fill adaptations. See icon-manifest.json.", timingMethod: speech.timingMethod };
+  const project: RenderProject = { ...inputProject, scenes, fps: FPS, width: 1280, height: 720, durationInFrames: cursor, attribution: "Original Explainer Studio vector diagrams. Legacy OpenMoji assets: CC BY-SA 4.0, animated stroke/fill adaptations; see icon-manifest.json. Kalam font: SIL Open Font License.", timingMethod: speech.timingMethod };
   const icons: Record<string, string> = {};
   for (const id of new Set(scenes.flatMap(scene => scene.nodes.map(node => node.icon)).filter(id => id !== "TEXT"))) icons[id] = await readFile(path.join(root, "public/openmoji", `${id}.svg`), "utf8");
   const manifest = await readFile("public/openmoji/manifest.json", "utf8");
