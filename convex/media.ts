@@ -113,6 +113,16 @@ export const abandon = internalMutation({ args: leaseArgs, returns: v.null(), ha
   return null;
 } });
 
+// One operator-requested attempt after a worker fix; preserve the fencing counter.
+export const retryFailed = internalMutation({ args: { jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, { jobId }) => {
+  const job = await ctx.db.get(jobId);
+  const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).unique();
+  if (job?.status !== "failed" || task?.status !== "failed" || task.result) throw new ConvexError("Only failed unpublished media can retry");
+  await ctx.db.patch(task._id, { status: "queued", worker: undefined, leaseUntil: 0 });
+  await ctx.db.patch(jobId, { status: "rendering", stageMessage: "Retrying the saved lesson after a worker fix", updatedAt: Date.now() });
+  return null;
+} });
+
 export const registerUpload = internalMutation({
   args: { ...leaseArgs, storageId: v.id("_storage") }, returns: v.null(),
   handler: async (ctx, args) => {

@@ -8,7 +8,7 @@ Development provider qualification passed using the owner's configured credentia
 2. Convex Workflow runs a Firecrawl v2 search with main-content Markdown. It requires at least two HTTPS sources on different hostnames and stores up to five bounded excerpts.
 3. NVIDIA Nemotron 3 Super 120B A12B plans four, five or six scenes for 60, 75 or 90 seconds. A duration-specific schema requires 27-36 narration words per scene, a supported layout with the correct node count, and concepts from the available icon vocabulary. The model selects short exact quotations from a topic-ranked excerpt catalog. Source/quote pairs are checked against the original research. The compiler aligns cue inflections, label words and sunlight aliases to spoken words, then orders nodes by their cue. Unresolved or repeated cues fail validation. At least two sources and two layout families are required.
 4. Cloudflare BGE base embeds scene concepts in a pinned 768-dimensional, mean-pooled space. Convex vector search retrieves up to three icons per concept from the 24-asset licensed catalog. A text model selects only from those candidates. Missing candidates fail the plan rather than substituting unrelated assets.
-5. The immutable project and provenance enter the existing Convex media queue. A protocol-2 Zerops worker runs Kokoro, adjusts audio tempo within 0.8-1.25 of the original, compiles an exact 60/75/90-second timeline and renders MP4, captions, poster and project metadata.
+5. The immutable project and provenance enter the existing Convex media queue. A protocol-2 Zerops worker runs Kokoro, adjusts audio tempo within 0.8-1.25 of the original, distributes 0.7-2.5-second scene holds, compiles an exact 60/75/90-second timeline and renders MP4, captions, poster and project metadata. A shorter voice recording uses bounded pauses instead of exceeding the slowdown limit.
 
 Completed steps are persisted as research, plan and project checkpoints. A replay reuses those artifacts. Cancellation stops the workflow and prevents late checkpoint writes and publication. Firecrawl and embedding steps get at most two workflow attempts; planning has up to two validation repairs per provider. An authenticated operator can resume a failed pre-render plan with `generation:resumePlanning`; it reuses research and refuses jobs that already have a plan/project checkpoint. If a process dies after a provider responds but before checkpoint persistence, that external call may be repeated. Exactly-once billing is not claimed.
 
@@ -45,6 +45,8 @@ npm run providers:setup -- --prod
 
 This explicitly targets production. Filling `.env` alone does not configure cloud functions. The worker needs only its existing scoped Convex token; model keys remain in Convex.
 
+Use `npm run providers:setup -- --prod --keep-disabled` to qualify production while retaining the generation gate for content acceptance. The operator-only `media:retryFailed` allows one additional attempt after a worker fix, preserving the monotonic lease counter so stale workers remain fenced.
+
 For manual qualification without copying local configuration:
 
 ```sh
@@ -55,7 +57,7 @@ The qualification action is internal and accessible through authenticated admini
 
 ## Verification and remaining gate
 
-The isolated test suite runs real Convex workflow/component logic with simulated provider HTTP responses. It covers primary rate-limit fallback, bounded repair, bad credentials, malformed embeddings, insufficient research, invented citations, cue/layout constraints, excerpt selection, checkpoint replay, operator recovery, owner isolation, failure completion, cancellation and protocol-2 media handoff. The current suite has 39 passing tests.
+The isolated test suite runs real Convex workflow/component logic with simulated provider HTTP responses. It covers primary rate-limit fallback, bounded repair, bad credentials, malformed embeddings, insufficient research, invented citations, cue/layout constraints, excerpt selection, checkpoint replay, operator recovery, owner isolation, failure completion, cancellation and protocol-2 media handoff. The current suite has 41 passing tests, including the observed short-narration timing case and HTTP renewal after operator recovery.
 
 A separate real Kokoro/Remotion render produced 1440 frames (60 seconds, 1280 x 720, H.264/AAC) in 120.76 seconds on the local Windows machine, using a manually authored test project. Audio fit and predicted word bounds passed; all four boards were sampled visually. See `topic-render-benchmark.json` and `topic-render-verification.json`. It is labelled scripted renderer validation. It is not evidence of live AI topic generation.
 

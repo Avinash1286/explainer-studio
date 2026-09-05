@@ -1,11 +1,12 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import rateLimiter from "@convex-dev/rate-limiter/test";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
 const token = "c".repeat(64);
+afterEach(() => vi.unstubAllEnvs());
 async function setup() {
   const t = convexTest(schema, modules); rateLimiter.register(t);
   await t.mutation(api.sessions.start, { token });
@@ -90,6 +91,14 @@ describe("media leases and publication", () => {
     }
     expect(await t.mutation(internal.media.claim, { worker: "fourth" })).toBeNull();
     expect((await t.query(api.jobs.list, { token })).find(j => j._id === jobId)?.status).toBe("failed");
+    await t.mutation(internal.media.retryFailed, { jobId });
+    const retry = (await t.mutation(internal.media.claim, { worker: "operator-retry" }))!;
+    expect(retry.attempt).toBe(4);
+    vi.stubEnv("WORKER_AUTH_TOKEN", "w".repeat(64));
+    const renewed = await t.fetch("/worker/media", { method: "POST", headers: { Authorization: `Bearer ${"w".repeat(64)}` }, body: JSON.stringify({ op: "renew", taskId: retry.taskId, attempt: 4, worker: "operator-retry", message: "Rendering" }) });
+    expect(renewed.status).toBe(200);
+    await expect(t.mutation(internal.media.renew, { taskId: retry.taskId, attempt: 1, worker: "worker-1", message: "stale" })).rejects.toThrow("Stale");
+    await expect(t.mutation(internal.media.retryFailed, { jobId })).rejects.toThrow("Only failed");
   });
   it("abandons a failed attempt without renewing it indefinitely", async () => {
     const { t } = await setup();

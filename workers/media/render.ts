@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fixture } from "../../packages/contracts/fixture";
 import { FPS, projectSchema, type RenderProject } from "../../packages/contracts/scene";
+import { fitNarration } from "../../packages/contracts/timing";
 
 function command(executable: string, args: string[], signal?: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
@@ -42,11 +43,12 @@ export async function renderProject(value: unknown, directory: string, stage: (m
   await command(python, ["workers/tts/synthesize.py", input, publicDir], signal);
   signal?.throwIfAborted();
   const speech = JSON.parse(await readFile(path.join(publicDir, "speech.json"), "utf8")) as { scenes: { file: string; seconds: number; words: { text: string; start: number; end: number }[] }[]; synthesisSeconds: number; peakRssMb: number | null; timingMethod: string };
+  let holdSeconds = 0.7;
   if (inputProject.targetDuration) {
-    const desiredSpeech = inputProject.targetDuration - inputProject.scenes.length * 0.7;
     const totalSpeech = speech.scenes.reduce((sum, scene) => sum + scene.seconds, 0);
-    const tempo = totalSpeech / desiredSpeech;
-    if (tempo < 0.8 || tempo > 1.25) throw new Error("Narration duration is outside the safe timing adjustment range");
+    const timing = fitNarration(totalSpeech, inputProject.targetDuration, inputProject.scenes.length);
+    const { tempo } = timing;
+    holdSeconds = timing.holdSeconds;
     for (const audio of speech.scenes) {
       const output = audio.file.replace(".wav", "-timed.wav");
       await command(process.env.FFMPEG_BIN || "ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", path.join(publicDir, audio.file), "-af", `atempo=${tempo}`, path.join(publicDir, output)], signal);
@@ -54,12 +56,12 @@ export async function renderProject(value: unknown, directory: string, stage: (m
       audio.seconds /= tempo;
       audio.words = audio.words.map(word => ({ ...word, start: word.start / tempo, end: word.end / tempo }));
     }
-    speech.timingMethod += `; audio and predicted times adjusted by tempo ${tempo.toFixed(5)}`;
+    speech.timingMethod += `; audio and predicted times adjusted by tempo ${tempo.toFixed(5)}; scene holds ${holdSeconds.toFixed(3)}s`;
   }
   let cursor = 0;
   const scenes = inputProject.scenes.map((scene, index) => {
     const audio = speech.scenes[index];
-    const durationInFrames = inputProject.targetDuration && index === inputProject.scenes.length - 1 ? inputProject.targetDuration * FPS - cursor : Math.ceil((audio.seconds + 0.7) * FPS);
+    const durationInFrames = inputProject.targetDuration && index === inputProject.scenes.length - 1 ? inputProject.targetDuration * FPS - cursor : Math.ceil((audio.seconds + holdSeconds) * FPS);
     if (durationInFrames < Math.ceil(audio.seconds * FPS) + 8) throw new Error("Audio exceeds scene duration");
     const cueFrames = scene.nodes.map((node, i) => {
       const word = audio.words.find(w => w.text.toLowerCase().replace(/[^a-z]/g, "") === (node.cue || node.label).toLowerCase());

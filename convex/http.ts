@@ -39,7 +39,7 @@ http.route({
 });
 
 const id = <T extends "mediaTasks" | "_storage">() => z.string().min(10).max(100).transform(value => value as Id<T>);
-const lease = { taskId: id<"mediaTasks">(), attempt: z.number().int().min(1).max(3), worker: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/) };
+const lease = { taskId: id<"mediaTasks">(), attempt: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), worker: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/) };
 const mediaRequest = z.discriminatedUnion("op", [
   z.object({ op: z.literal("claim"), worker: lease.worker, protocol: z.literal(2).optional() }).strict(),
   z.object({ op: z.literal("renew"), ...lease, message: z.string().max(120) }).strict(),
