@@ -13,6 +13,14 @@ describe("compact lesson compiler", () => {
     draft.scenes[0].narration = "Sunlight warms water and changes it into vapor in the air. It can later condense into droplets and return to lakes and rivers. This energy comes from the sun.";
     expect(input.validate(draft).scenes[0].nodes[0].cue).toBe("sunlight");
   });
+  it("keeps vapor distinct from liquid water when a text phrase shares a word with an icon", () => {
+    const draft = value();
+    draft.scenes[0].icons = ["water vapor", "water"];
+    draft.scenes[0].connections = [];
+    const nodes = input.validate(draft).scenes[0].nodes;
+    expect(nodes.map(n => n.concept)).toEqual(["water", "text:water vapor"]);
+    expect(nodes[1].cue).toBe("vapor");
+  });
   it("keeps causal direction when narration changes node order and resolves exact source identities", () => {
     const result = input.validate(value());
     expect(result.scenes[0].nodes.map(n => n.concept)).toEqual(["water", "sun"]);

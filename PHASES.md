@@ -1,12 +1,12 @@
 # Implementation phases
 
-Release 0.5.4 groups the remaining build into the three workstreams requested by the owner. See [release evidence](docs/release-evidence.md) for current live outcomes and [demo runbook](docs/demo-runbook.md) for the owner-recorded video.
+Release 0.5.5 groups the remaining build into the three workstreams requested by the owner. See [release evidence](docs/release-evidence.md) for current live outcomes and [demo runbook](docs/demo-runbook.md) for the owner-recorded video.
 
 | Workstream | Implementation | Acceptance |
 |---|---|---|
-| 1. Generation quality and reliability | Compact source-ID authoring, literal icons/text cards, explicit edges, reasoning-based factual check, NVIDIA vision fallback, bounded recovery | 76 automated tests pass. Live development failures, repairs and holdout outcomes are recorded separately. |
+| 1. Generation quality and reliability | Compact source-ID authoring, literal icons/text cards, explicit edges, reasoning-based factual check, NVIDIA vision fallback, bounded recovery | 79 automated tests pass. Live development failures, repairs and holdout outcomes are recorded separately. |
 | 2. Complete lesson workflow | Review findings, one-scene edits, narration cache, artifact links, expiring/revocable shares, public examples, opt-in email outbox | Anonymous share playback and revocation verified. Real revision and production results: see release evidence. AgentMail access returns 403 until credentials are corrected. |
-| 3. Release preparation | Convex frontend/backend deployment, Zerops worker 0.5.4, Vercel Git checks, operational guide, demo runbook, submission draft, asset notices | Public generation remains subject to live acceptance. Owner demo, actual user feedback, eligibility clarification and final submission are separate external steps. |
+| 3. Release preparation | Convex frontend/backend deployment, Zerops worker 0.5.4, Vercel Git checks, operational guide, demo runbook, submission draft, asset notices | Public generation and a manually inspected example are live; final quality evaluation is recorded separately. Owner demo, actual user feedback, eligibility clarification and final submission are separate external steps. |
 
 The H0–H6 entries below are historical development notes. They do not override the current release-evidence report. No email, social post or submission receipt is claimed without a real event.
 

@@ -22,7 +22,7 @@ Convex owns job state, checkpoints, retries, quotas, ownership, icon vectors, re
 2. `npx convex dev --once` for the development backend; `npx convex deploy --yes` for production.
 3. `npx @convex-dev/static-hosting deploy --dist out --build-command "npm run build:web" --skip-convex`. This builds against the production Convex URL rather than uploading a dev bundle.
 4. Push the Zerops `mediaworker` setup in `zerops.yaml`. Check service ACTIVE and a fresh `workers` heartbeat. Version 0.5.4 supports protocol 5, named causal edges and text cards. A protocol-4 worker cannot claim a text-card job.
-5. Open `/health` on the public site. Check actual generation readiness, not just HTTP 200. The readiness query also requires qualified provider configuration and the complete embedding catalog.
+5. Open `/api/health` on the public site. Check actual generation readiness, not just HTTP 200. The readiness query also requires qualified provider configuration and the complete embedding catalog.
 6. Generate one real production question; inspect the final video, captions, source links, review, revision, public share and revoke behavior. Only publish manually inspected approved examples through `showcase:publish`.
 7. Push GitHub and verify Vercel's `explainer-studio-checks` build for that exact commit. Local success does not imply a passing remote build.
 
@@ -49,3 +49,16 @@ Setup does not send messages. A person must consent to verification, enter the r
 ## Known product boundaries
 
 This release targets short English science and everyday-mechanism explainers, one visual style, two- and three-node diagrams, 24 pinned OpenMoji assets and animated word cards for concepts without faithful icons. It is not an unrestricted animation editor. Kokoro token timing is predicted, not forced alignment. Two sampled frames per scene do not establish that every frame is perfect. The automated factual editor can still miss errors; manual inspection remains necessary before a public demo.
+
+
+## Repeat a topic evaluation
+
+The tracked evaluator uses normal public app operations, without admin recovery or requested edits. It does not send mail. Select one to five topics before tuning, run against the intended deployment, and preserve every outcome.
+
+```sh
+node scripts/evaluate-topics.mjs --deployment https://YOUR.convex.cloud --out runs/evaluation --topics docs/evaluation-topics.json
+# Resume the saved workspace after interruption (jobs continue in Convex):
+node scripts/evaluate-topics.mjs --deployment https://YOUR.convex.cloud --out runs/evaluation --resume
+```
+
+`workspace.json` contains a private creator token and stays under ignored runs/. Share only the sanitized report.json after reviewing it. A stopped CLI does not cancel backend jobs. Use the app�s cancel action if cancellation is intended. `--indices 0,2,4` selects a predeclared subset for separate identical deployments; report the combined denominator and both runtime platforms. Do not count automatic approvals as manual quality passes or change topics after observing failures.

@@ -1,0 +1,40 @@
+{
+  "release": "0.5.4",
+  "codeCommit": "a31a963",
+  "startedAt": "2026-09-05T15:43:53.038Z",
+  "protocol": "Five topics registered before generation; frozen code; no operator recovery, no scene-specific templates, one configured automatic repair. Record all outcomes and manual inspection separately. User trials are not performed.",
+  "topics": [
+    {
+      "topic": "How does rain form in a cloud?",
+      "duration": 60,
+      "status": "failed",
+      "revision": 2
+    },
+    {
+      "topic": "How do plant roots take up water from soil?",
+      "duration": 60,
+      "status": "failed",
+      "revision": 2
+    },
+    {
+      "topic": "Why does a black shirt feel warmer than a white shirt in sunlight?",
+      "duration": 60,
+      "status": "cancelled",
+      "revision": 1
+    },
+    {
+      "topic": "How does a flashlight use a battery to make light?",
+      "duration": 60,
+      "status": "cancelled",
+      "revision": 1
+    },
+    {
+      "topic": "Why does a puddle shrink on a warm day?",
+      "duration": 60,
+      "status": "cancelled",
+      "revision": 1
+    }
+  ],
+  "abortedAt": "2026-09-05T16:03:20.720Z",
+  "outcome": "Superseded after identified defects; release target not met"
+}

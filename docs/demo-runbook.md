@@ -2,6 +2,8 @@
 
 Target: 2 minutes 40 seconds, leaving room below the official three-minute limit. Record the real deployed app at https://wooden-pheasant-677.convex.site/. Keep the browser's creator workspace; clearing browser storage loses its private lessons.
 
+Approved example ready to watch: https://wooden-pheasant-677.convex.site/lesson/index.html?example=solar-cells . To demonstrate editing, generate your own lesson in your normal browser before recording; the public gallery is read-only.
+
 ## Before recording
 
 1. Open the public URL in a fresh browser and check that a published example plays. Check the generation button and the worker heartbeat in the operational checklist.

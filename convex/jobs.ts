@@ -1,4 +1,4 @@
-import { cancel as cancelWorkflow, type WorkflowId } from "@convex-dev/workflow";
+import { cancel as cancelWorkflow, getStatus, type WorkflowId } from "@convex-dev/workflow";
 import { components } from "./_generated/api";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
@@ -64,7 +64,12 @@ export const cancel = mutation({
     if (job.status === "cancelled") return null;
     if (job.status === "completed" || job.status === "failed") throw new ConvexError("This lesson has already finished.");
     await ctx.db.patch(jobId, { status: "cancelled", stageMessage: "Lesson cancelled", updatedAt: Date.now() });
-    if (job.workflowId) await cancelWorkflow(ctx, components.workflow, job.workflowId as WorkflowId);
+    // Planning may already have completed while the separate media/review job
+    // remains active. Cancelling a completed workflow throws and would roll
+    // back the owner cancellation and media lease fence.
+    if (job.workflowId && (await getStatus(ctx, components.workflow, job.workflowId as WorkflowId)).type === "inProgress") {
+      await cancelWorkflow(ctx, components.workflow, job.workflowId as WorkflowId);
+    }
     const media = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).unique();
     if (media) await ctx.db.patch(media._id, { status: "cancelled" });
     await ctx.db.insert("jobEvents", { jobId, kind: "cancelled", message: "Cancelled by owner", createdAt: Date.now() });

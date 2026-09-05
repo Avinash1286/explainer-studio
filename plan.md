@@ -1,3 +1,5 @@
+> Current release: 0.5.5 implements all three remaining workstreams and passes 79 automated tests plus type, lint and build checks. Production generation/revision/sharing and mixed live evaluation are documented in [release evidence](docs/release-evidence.md). AgentMail live delivery and event eligibility remain external gates. Older status notes below are historical.
+
 > Latest phase: H3 repair reliability hardening is implemented and passes 62 tests. A real repaired clip rendered but remains unapproved (Cloudflare review 429 plus manual content rejection); a fresh topic failed planning. Production generation stays disabled. Next: initial-planner reliability and causal diagrams, followed by user revision and consented email acceptance. See `docs/repair-acceptance.md`.
 
 > Current implementation: H3 software is implemented in release 0.4.0. The owner now requires NVIDIA NIM and Cloudflare Workers AI for all hosted model work; local Kokoro remains selected. Cloudflare replaces the previously planned OpenAI reviewer. Production generation stays disabled pending content acceptance. See `docs/review-delivery.md` and `PHASES.md`.

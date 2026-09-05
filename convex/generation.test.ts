@@ -144,4 +144,19 @@ describe("durable topic generation", () => {
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("cancelled");
     expect(await t.mutation(internal.media.claim, { worker: "a", protocol: 3 })).toBeNull();
   });
+  it("cancels a media job after its planning workflow has already completed", async () => {
+    vi.useFakeTimers();
+    const { t, jobId } = await setup(true); vi.stubGlobal("fetch", mockProviders());
+    await t.mutation(api.generation.generate, { token, jobId });
+    await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
+    const job = await t.run(ctx => ctx.db.get(jobId));
+    expect(job?.status).toBe("rendering");
+    // Draining scheduled work also expires sessions in this harness.
+    await t.run(ctx => ctx.db.patch(job!.sessionId, { expiresAt: Date.now() + 60_000, expired: false }));
+    const task = await t.mutation(internal.media.claim, { worker: "active-renderer", protocol: 5 });
+    expect(task).not.toBeNull();
+    await t.mutation(api.jobs.cancel, { token, jobId });
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("cancelled");
+    await expect(t.mutation(internal.media.renew, { taskId: task!.taskId, attempt: task!.attempt, worker: "active-renderer", message: "late progress" })).rejects.toThrow();
+  });
 });

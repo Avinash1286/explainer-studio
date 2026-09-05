@@ -2,7 +2,7 @@
 
 Turn a question into a short illustrated lesson with research, narration, captions, review and targeted revisions.
 
-**Release candidate 0.5.4.** The final three implementation workstreams are present. Live evaluation and production activation are recorded separately in [release evidence](docs/release-evidence.md); a passing build is not a claim of perfect generated content. AgentMail live delivery still needs working inbox credentials and a consented test.
+**Release candidate 0.5.5.** The final three implementation workstreams are present. Live evaluation and production activation are recorded separately in [release evidence](docs/release-evidence.md); a passing build is not a claim of perfect generated content. AgentMail live delivery still needs working inbox credentials and a consented test.
 
 - [Public app](https://wooden-pheasant-677.convex.site/)
 - [Phase status](PHASES.md), [architecture and reference study](plan.md), [actual hackathon log](hackathon.md)
@@ -17,7 +17,7 @@ Turn a question into a short illustrated lesson with research, narration, captio
 - Local Kokoro-82M on Zerops, deterministic Remotion diagrams, explicit directed relationships, MP4, captions, poster and inspectable project outputs.
 - Independent factual and decoded-frame review; one automatic repair, two scene edits, reusable narration cache, bounded planning/review recovery.
 - Approved-version share links with expiry/revocation, operator-published examples, opt-in verified-recipient AgentMail outbox and signed delivery callbacks.
-- 76 automated tests plus TypeScript, lint and builds. Vercel Git integration runs clean-install validation; GitHub Actions is disabled.
+- 79 automated tests plus TypeScript, lint and builds. Vercel Git integration runs clean-install validation; GitHub Actions is disabled.
 
 Workspaces use 256-bit bearer tokens with hashes stored in Convex and seven-day expiry. They are not accounts: clearing browser storage loses access. Source/frame review remains fallible; inspect a lesson before presenting it publicly. Existing reference videos are not redistributed.
 

@@ -11,6 +11,7 @@ export function repairInput(previous: Project, sources: Research, sceneIds: stri
   const excerpts = planningInput(sources, duration, `${previous.title} ${previous.scenes.filter(s => sceneIds.includes(s.id)).map(s => s.narration).join(" ")}`).excerpts;
   const evidence = excerpts.flatMap(source => source.quotes.map((quote, i) => ({ id: `${source.id}-q${i}`, sourceId: source.id, quote })));
   const unchangedWords = previous.scenes.filter(s => !sceneIds.includes(s.id)).reduce((sum, s) => sum + s.narration.trim().split(/\s+/).length, 0);
+  const originalWords = previous.scenes.filter(s => sceneIds.includes(s.id)).reduce((sum, s) => sum + s.narration.trim().split(/\s+/).length, 0);
   const modern = previous.scenes.every(s => s.connections !== undefined);
   const wordBudget = { min: Math.max(sceneIds.length * 10, Math.ceil(duration * (modern ? 1.6 : 1.8)) - unchangedWords), max: Math.floor(duration * (modern ? 2.8 : 2.4)) - unchangedWords };
   const node = z.object({ icon: z.enum(["TEXT", ...iconOptions.map(i => i.id)]), label: z.string().min(1).max(24), cue: z.string().regex(/^[a-zA-Z]+$/).max(24) }).strict();
@@ -28,14 +29,14 @@ export function repairInput(previous: Project, sources: Research, sceneIds: stri
     base.extend({ layout: z.literal("relationship"), nodes: z.array(node).length(3) }),
   ])).length(sceneIds.length) }).strict();
   const prompt = JSON.stringify({
-    task: "Design fresh replacements for the named scenes. Return JSON matching schema exactly. Preserve scene IDs, project meaning and unaffected scenes. Select evidenceIds from the provided passages; do not copy quotations into JSON. Every claim must be supported by those passages. Rebuild misleading diagrams rather than renaming labels or changing true science to fit a wrong icon. For example, bees carry pollen, not leaves. There is no seed, pollen, ovule or soil icon in this catalog. Do not select leaf, seedling or earth to stand for these missing objects, even with a different label or cue. Explain invisible details in narration; illustrate supported whole-object interactions or outcomes. A seedling depicts a young growing plant. Prefer a two-node comparison when only two faithful objects are available; do not force a three-node diagram. Each cue must be a distinct exact word in narration, and nodes must follow the order of those words' FIRST occurrence. Use concise natural sentences. Do not add keys or commentary.",
+    task: "Make the smallest changes needed to resolve the requested edit in the named scenes. The complete original scenes are supplied: preserve their correct narration sentences and details. For an arrow or icon-only issue, keep narration unchanged unless the requested correction requires changing a claim. Return each complete replacement scene as JSON matching schema exactly, retaining IDs, project meaning and unaffected scenes. Select evidenceIds from the supplied passages. Do not introduce new facts, settings, analogies or numbers just to make a replacement different. Preserve true science; never change it to fit an icon. Use literal text cards for missing concepts such as pollen, seeds or soil instead of mislabeling a leaf, seedling or earth. Each cue must be a distinct exact narration word; order nodes by those words' first occurrence. Two faithful concepts are enough. Do not add keys or commentary.",
     sceneIds, requestedEdit: instruction, replacementNarrationWords: wordBudget,
     suggestedWordsPerScene: perScene,
     takeawayInstruction: "Write one complete, source-supported takeaway sentence of about 6-10 words, under 90 characters, ending in punctuation. Never truncate a word or sentence.",
     textCards: "For abstract concepts with no faithful icon, use icon TEXT with a short literal label and cue spoken in narration. It renders an animated word card, not an illustration.",
-    connectionInstruction: "Use connections:[] for association diagrams. Only add a directed connection {from:nodeIndex,to:nodeIndex,label:shortVerb} when supported by sources. Indices refer to the final cue-ordered nodes. Never turn narration order into an implied cause or transformation.",
-    narrationOptions: "Write about 25-30 words of core narration per scene, including every icon cue. Also supply optionalNarration: one extra source-supported sentence of about 8-12 words. The compiler may append or omit that sentence to fit duration. Core narration must remain complete without it. Do not concatenate words or add meaningless filler.",
-    schema: z.toJSONSchema(schema), lesson: { title: previous.title, scenes: previous.scenes.map(s => sceneIds.includes(s.id) ? { id: s.id, title: s.title, replace: true } : s) }, evidence, icons: iconOptions,
+    connectionInstruction: "Use connections:[] for association diagrams. Prefer deleting an incorrect arrow to inventing a new causal claim. Only add a directed connection {from:nodeIndex,to:nodeIndex,label:shortVerbPhrase} when supported by sources. Include prepositions necessary to make the relationship true (for example 'condenses into'). Indices refer to final cue-ordered nodes. Never turn narration order into an implied cause or transformation.",
+    narrationOptions: "Prefer the original narration length; there is no per-scene word minimum beyond the combined replacementNarrationWords budget. Keep natural, complete sentences. optionalNarration can be an empty string, or a complete supported sentence only if duration needs it. Do not add filler or an unrelated claim to hit a word count. The compiler may append or omit the optional sentence. Core narration must remain complete without it.",
+    schema: z.toJSONSchema(schema), lesson: { title: previous.title, scenes: previous.scenes.map(s => ({ ...s, replace: sceneIds.includes(s.id) })) }, evidence, icons: iconOptions,
   });
   return { schema, prompt, wordBudget, evidence, validate(value: unknown) {
     const patch = schema.parse(value);
@@ -59,7 +60,8 @@ export function repairInput(previous: Project, sources: Research, sceneIds: stri
         const used = new Set<string>();
         const ordered = s.nodes.map((node, oldIndex) => {
           const literal = node.icon === "TEXT" ? (node.label.toLowerCase().match(/[a-z]+/g) || []) : iconOptions.find(i => i.id === node.icon)?.cues || [];
-          const cue = literal.filter(word => words.includes(word) && !used.has(word)).sort((a,b) => words.indexOf(a)-words.indexOf(b))[0];
+          const validCues = literal.filter(word => words.includes(word) && !used.has(word));
+          const cue = node.icon === "TEXT" ? validCues.at(-1) : validCues.sort((a,b) => words.indexOf(a)-words.indexOf(b))[0];
           if (cue) { used.add(cue); return { node: { ...node, cue }, oldIndex, replaced: false }; }
           const word = words.find(w => w.length >= 4 && !used.has(w) && !/^(this|that|these|those|their|they|with|from|into|when|where|which|have|does|will|because|about|through|also|only|each|than|then|some|such|more)$/.test(w));
           if (!word) throw new Error(`Scene ${s.id}: needs distinct spoken visual concepts`);
@@ -75,7 +77,7 @@ export function repairInput(previous: Project, sources: Research, sceneIds: stri
       const words = scenes.reduce((sum, s) => sum + s.narration.trim().split(/\s+/).length, 0);
       return { scenes, words };
     });
-    const fitting = choices.filter(c => c.words >= wordBudget.min && c.words <= wordBudget.max).sort((a, b) => Math.abs(a.words - (wordBudget.min + wordBudget.max) / 2) - Math.abs(b.words - (wordBudget.min + wordBudget.max) / 2));
+    const fitting = choices.filter(c => c.words >= wordBudget.min && c.words <= wordBudget.max).sort((a, b) => Math.abs(a.words - originalWords) - Math.abs(b.words - originalWords));
     if (!fitting.length) {
       const min = Math.min(...choices.map(c => c.words)), max = Math.max(...choices.map(c => c.words));
       throw new Error(`${max < wordBudget.min ? "Expand" : "Shorten"} replacement narration: choices contain ${min}-${max} words; need ${wordBudget.min}-${wordBudget.max} combined words. Adjust core narration and optional sentences, using complete supported sentences.`);
