@@ -123,7 +123,7 @@ export const rewrite = internalAction({ args: { requestId: v.id("revisionRequest
   if (!current) return null;
   const previous = projectSchema.parse(JSON.parse(current.task.projectJson!));
   const sources = researchSchema.parse(JSON.parse(current.research).sources);
-  const result = await repairScenes(providerConfig(current.job.generationProvider), previous, sources, current.request.sceneIds, current.request.instruction);
+  const result = await repairScenes(providerConfig(current.job.generationProvider), previous, sources, current.request.sceneIds, current.request.instruction, fetch, current.reviewContext);
   await ctx.runMutation(internal.reviews.replace, { ...args, projectJson: JSON.stringify(result.data.project), evidenceJson: JSON.stringify(result.data.evidence), attemptsJson: JSON.stringify(result.attempts) });
   return null;
 } });

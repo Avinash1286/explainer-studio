@@ -117,11 +117,13 @@ export function validateVisualPlan(value: unknown, narration: string): VisualPla
   for (let i = 0; i < plan.entities.length; i++) for (let j = i+1; j < plan.entities.length; j++) {
     const a = plan.entities[i], b = plan.entities[j];
     if (ancestors(a).has(b.id) || ancestors(b).has(a.id)) continue;
-    // Deliberate overlays must name their parent. A later moving object may
-    // pass another object, but unrelated starting illustrations cannot collide.
-    const overlapW = Math.max(0, Math.min(a.x+a.w/2,b.x+b.w/2)-Math.max(a.x-a.w/2,b.x-b.w/2));
-    const overlapH = Math.max(0, Math.min(a.y+a.h/2,b.y+b.h/2)-Math.max(a.y-a.h/2,b.y-b.h/2));
-    if (overlapW*overlapH > Math.min(a.w*a.h,b.w*b.h)*0.22) errors.push(`${a.id}/${b.id}: illustrations overlap; separate them or declare an intentional parentId overlay`);
+    // Unlabeled glyphs occupy their fitted square, not the unpainted SVG
+    // letterbox. Keep the conservative reserved viewport for labeled objects.
+    const bounds=(entity:VisualEntity)=>{const fit=renderedGlyphSize(entity);return entity.label?{w:entity.w,h:entity.h}:{w:fit.width/VISUAL_CANVAS.width*100,h:fit.height/VISUAL_CANVAS.height*100};};
+    const aa=bounds(a),bb=bounds(b);
+    const overlapW = Math.max(0, Math.min(a.x+aa.w/2,b.x+bb.w/2)-Math.max(a.x-aa.w/2,b.x-bb.w/2));
+    const overlapH = Math.max(0, Math.min(a.y+aa.h/2,b.y+bb.h/2)-Math.max(a.y-aa.h/2,b.y-bb.h/2));
+    if (overlapW*overlapH > Math.min(aa.w*aa.h,bb.w*bb.h)*0.22) errors.push(`${a.id}/${b.id}: illustrations overlap; separate their starting positions. Sharing a parent does not permit siblings to overlap. parentId permits only real ancestor/child containment, never one peer particle inside another.`);
   }
   for (const b of plan.beats) {
     if (!entities.has(b.target) && !relationIds.has(b.target)) errors.push(`${b.id}: missing target`);

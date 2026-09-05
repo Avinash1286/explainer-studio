@@ -65,6 +65,21 @@ describe("directed scene contract", () => {
     copy.relations[0].to = "missing";
     expect(() => validateVisualPlan(copy,scene.narration)).toThrow("existing entities");
   });
+  it("ignores empty SVG letterboxing while still rejecting colliding sibling particles", () => {
+    const scene=visualFixture.scenes[1], copy=structuredClone(scene.visualPlan!);
+    const particle=copy.entities.find(entity=>entity.id==="electron")!;
+    Object.assign(particle,{x:45,y:50,w:12,h:4,label:""});
+    copy.entities.push({...particle,id:"peer",x:50});
+    copy.beats=copy.beats.filter(beat=>beat.target!=="electron");
+    copy.beats.push({id:"move-peer",target:"peer",action:"move",at:.6,duration:.1,cue:"",meaning:"The second particle moves within the material.",x:51,y:50});
+    // Nominal viewports overlap by more than half their width; actual 28.8px
+    // glyphs are separated by64px and should not be rejected as a collision.
+    expect(() => validateVisualPlan(copy,scene.narration)).not.toThrow();
+    copy.entities.at(-1)!.x=46;
+    expect(() => validateVisualPlan(copy,scene.narration)).toThrow("Sharing a parent does not permit siblings to overlap");
+    copy.entities.at(-1)!.x=50; particle.label="Electron"; copy.entities.at(-1)!.label="Peer";
+    expect(() => validateVisualPlan(copy,scene.narration)).toThrow("overlap");
+  });
   it("checks move bounds, spoken anchors, meaningful motion, and chart data", () => {
     const scene = visualFixture.scenes[0];
     const copy = structuredClone(scene.visualPlan!);

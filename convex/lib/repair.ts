@@ -7,7 +7,7 @@ import { iconOptions } from "../../packages/contracts/icon-semantics";
 import { directScenes } from "./director";
 import { reviewSchema } from "../../packages/contracts/review";
 
-export function repairInput(previous: Project, sources: Research, sceneIds: string[], instruction: string) {
+export function repairInput(previous: Project, sources: Research, sceneIds: string[], instruction: string, reviewContext?: string) {
   if (!sceneIds.length || new Set(sceneIds).size !== sceneIds.length || sceneIds.some(id => !previous.scenes.some(s => s.id === id))) throw new Error("Wrong replacement scope");
   const duration = previous.targetDuration || 60;
   const excerpts = planningInput(sources, duration, `${previous.title} ${previous.scenes.filter(s => sceneIds.includes(s.id)).map(s => s.narration).join(" ")}`).excerpts;
@@ -32,7 +32,7 @@ export function repairInput(previous: Project, sources: Research, sceneIds: stri
   ])).length(sceneIds.length) }).strict();
   const prompt = JSON.stringify({
     task: "Make the smallest changes needed to resolve the requested edit in the named scenes. The complete original scenes are supplied: preserve their correct narration sentences and details. For an arrow or icon-only issue, keep narration unchanged unless the requested correction requires changing a claim. Return each complete replacement scene as JSON matching schema exactly, retaining IDs, project meaning and unaffected scenes. Select evidenceIds from the supplied passages. Do not introduce new facts, settings, analogies or numbers just to make a replacement different. Preserve true science; never change it to fit an icon. Use literal text cards for missing concepts such as pollen, seeds or soil instead of mislabeling a leaf, seedling or earth. Each cue must be a distinct exact narration word; order nodes by those words' first occurrence. Two faithful concepts are enough. Do not add keys or commentary.",
-    sceneIds, requestedEdit: instruction, replacementNarrationWords: wordBudget,
+    sceneIds, requestedEdit: instruction, ...(reviewContext ? { originalReviewContext: reviewContext } : {}), replacementNarrationWords: wordBudget,
     suggestedWordsPerScene: perScene,
     takeawayInstruction: "Write one complete, source-supported takeaway sentence of about 6-10 words, under 90 characters, ending in punctuation. Never truncate a word or sentence.",
     textCards: "For abstract concepts with no faithful icon, use icon TEXT with a short literal label and cue spoken in narration. It renders an animated word card, not an illustration.",
@@ -98,11 +98,11 @@ export function repairInput(previous: Project, sources: Research, sceneIds: stri
   } };
 }
 
-export async function repairScenes(config: ProviderConfig, previous: Project, sources: Research, sceneIds: string[], instruction: string, transport: typeof fetch = fetch) {
-  const input = repairInput(previous, sources, sceneIds, instruction);
+export async function repairScenes(config: ProviderConfig, previous: Project, sources: Research, sceneIds: string[], instruction: string, transport: typeof fetch = fetch, reviewContext?: string) {
+  const input = repairInput(previous, sources, sceneIds, instruction, reviewContext);
   const richSceneIds = sceneIds.filter(id => previous.scenes.find(s => s.id === id)?.visualPlan);
   if (richSceneIds.length === sceneIds.length && visualOnlyRepair(instruction, sceneIds)) {
-    const directed = await directScenes(config, previous, sources, sceneIds, instruction, transport);
+    const directed = await directScenes(config, previous, sources, sceneIds, instruction, transport, undefined, reviewContext);
     const project = validateReplacement(previous, directed.project, sceneIds);
     return { data: { project, evidence: sceneIds.map(sceneId => {
       const terms = new Set(previous.scenes.find(s => s.id === sceneId)!.narration.toLowerCase().match(/[a-z]{4,}/g));
@@ -114,7 +114,7 @@ export async function repairScenes(config: ProviderConfig, previous: Project, so
   if (!richSceneIds.length) return result;
   // A changed narration invalidates the old cue anchors. Re-direct before any
   // revision is committed, while preserving all scenes outside repair scope.
-  const directed = await directScenes(config, result.data.project, sources, richSceneIds, instruction, transport);
+  const directed = await directScenes(config, result.data.project, sources, richSceneIds, instruction, transport, undefined, reviewContext);
   return { data: { ...result.data, project: validateReplacement(previous, directed.project, sceneIds) }, attempts: [...result.attempts, ...directed.attempts.flatMap(scene => scene.attempts.map(attempt => ({ ...attempt, stage: "director", sceneId: scene.sceneId })))] };
 }
 
