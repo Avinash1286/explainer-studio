@@ -1,0 +1,22 @@
+zerops:
+  - setup: mediaworker
+    build:
+      os: ubuntu
+      base: nodejs@22
+      buildCommands:
+        - npm ci
+        - npm run build:worker
+      deployFiles:
+        - dist/worker.mjs
+    run:
+      os: ubuntu
+      base: nodejs@22
+      ports:
+        - port: 3001
+          httpSupport: true
+      start: node dist/worker.mjs
+    deploy:
+      readinessCheck:
+        httpGet:
+          port: 3001
+          path: /health

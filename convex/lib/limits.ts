@@ -1,0 +1,9 @@
+import { RateLimiter, DAY, HOUR } from "@convex-dev/rate-limiter";
+import { components } from "../_generated/api";
+import { LIMITS } from "../../packages/contracts";
+
+export const limits = new RateLimiter(components.rateLimiter, {
+  sessionJobs: { kind: "fixed window", rate: LIMITS.jobsPerSessionPerDay, period: DAY, start: 0 },
+  allJobs: { kind: "fixed window", rate: LIMITS.jobsPerDay, period: DAY, start: 0 },
+  sessions: { kind: "fixed window", rate: 100, period: HOUR, start: 0 },
+});
