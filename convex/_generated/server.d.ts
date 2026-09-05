@@ -30,11 +30,16 @@ import type { DataModel } from "./dataModel.js";
 type Env = {
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
+  readonly AGENTMAIL_API_KEY: string | undefined;
+  readonly AGENTMAIL_INBOX_ID: string | undefined;
+  readonly AGENTMAIL_WEBHOOK_SECRET: string | undefined;
   readonly CLOUDFLARE_ACCOUNT_ID: string | undefined;
   readonly CLOUDFLARE_API_TOKEN: string | undefined;
   readonly FIRECRAWL_API_KEY: string | undefined;
   readonly GENERATION_ENABLED: string | undefined;
   readonly NVIDIA_API_KEY: string | undefined;
+  readonly OPENAI_API_KEY: string | undefined;
+  readonly OPENAI_REVIEW_MODEL: string | undefined;
   readonly WORKER_AUTH_TOKEN: string | undefined;
 };
 

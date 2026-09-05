@@ -8,7 +8,7 @@ The detailed H0–H6 acceptance gates remain in `plan.md`, section 11. This stat
 | H0b: external service and media qualification | Partial | Media runtime qualified on Zerops. NVIDIA, Cloudflare and Firecrawl qualified in development and production. OpenAI/AgentMail, intended inbox and official hackathon log integration remain pending. |
 | H1: original rendered fixture | Complete | Deployed and verified; see `docs/media-phase.md`. |
 | H2: topic to complete explainer | Pipeline verified; content gate pending | Real browser topic produced a 60-second draft with captions and sources. Timing/playback passed; incorrect icon labels failed content inspection. Production generation remains disabled. See `docs/topic-generation.md`. |
-| H3: review, revision, delivery | Pending | OpenAI frame review, bounded repair, targeted revision, opt-in verified AgentMail delivery. |
+| H3: review, revision, delivery | Implemented; live provider acceptance pending | Source and decoded-frame review gate, one automatic repair, two targeted user revisions, Kokoro scene cache, verified AgentMail outbox and signed callbacks. See `docs/review-delivery.md`. |
 | H4: evaluation | Pending | Five unseen topics, real user trials, failure/recovery and access checks. |
 | H5: release evidence | Pending | Reproducible setup, final licenses, recorded demo, social/submission draft. |
 | H6: submission | Pending | Owner-authorized social publishing and submission; real receipt recorded. |
@@ -43,4 +43,10 @@ The detailed H0–H6 acceptance gates remain in `plan.md`, section 11. This stat
 
 ## Next gate
 
-Implement H3 factual/visual review and bounded repair against the observed pollen/ovule icon errors, then repeat content acceptance and enable production. Vercel Git integration supplies automated validation on Hobby; GitHub Actions is disabled. H0b's OpenAI/AgentMail qualification is still pending.
+Configure and qualify OpenAI/AgentMail for H3; exercise the known flawed draft through real review and bounded repair, then verify a consented test email and user edit before enabling production. Vercel Git integration supplies automated validation on Hobby; GitHub Actions is disabled. H0b's OpenAI/AgentMail qualification is still pending.
+
+## H3 implementation evidence
+
+- Release 0.4.0 adds version-bound review, repair and delivery workflows.
+- 52 automated tests cover source/frame gate, false-positive icon regression, scope and revision fencing, mailbox verification, idempotent delivery, raw-body signatures and expiry.
+- Live provider acceptance is pending the new OpenAI and AgentMail credentials. No live review approval or sent email is claimed.

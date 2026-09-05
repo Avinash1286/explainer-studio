@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fixture } from "../../packages/contracts/fixture";
 import { FPS, projectSchema, type RenderProject } from "../../packages/contracts/scene";
+import { frameSamples } from "../../packages/contracts/review";
 import { fitNarration } from "../../packages/contracts/timing";
 
 function command(executable: string, args: string[], signal?: AbortSignal) {
@@ -42,7 +43,7 @@ export async function renderProject(value: unknown, directory: string, stage: (m
   const python = process.env.PYTHON_BIN || (process.platform === "win32" ? ".venv/Scripts/python.exe" : ".venv/bin/python");
   await command(python, ["workers/tts/synthesize.py", input, publicDir], signal);
   signal?.throwIfAborted();
-  const speech = JSON.parse(await readFile(path.join(publicDir, "speech.json"), "utf8")) as { scenes: { file: string; seconds: number; words: { text: string; start: number; end: number }[] }[]; synthesisSeconds: number; peakRssMb: number | null; timingMethod: string };
+  const speech = JSON.parse(await readFile(path.join(publicDir, "speech.json"), "utf8")) as { scenes: { file: string; seconds: number; words: { text: string; start: number; end: number }[] }[]; synthesisSeconds: number; peakRssMb: number | null; cacheHits?: number; timingMethod: string };
   let holdSeconds = 0.7;
   if (inputProject.targetDuration) {
     const totalSpeech = speech.scenes.reduce((sum, scene) => sum + scene.seconds, 0);
@@ -101,9 +102,15 @@ export async function renderProject(value: unknown, directory: string, stage: (m
   } finally { signal?.removeEventListener("abort", cancel); }
   signal?.throwIfAborted();
   await renderStill({ serveUrl, composition, inputProps, frame: Math.min(scenes[0].durationInFrames - 10, 180), output: path.join(destination, "poster.png") });
+  const frames = inputProject.origin === "generated" ? frameSamples(scenes) : [];
+  for (const [index, sample] of frames.entries()) {
+    // Decode the finished MP4, so the critic sees the delivered pixels.
+    await command(process.env.FFMPEG_BIN || "ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-ss", String(sample.frame / FPS), "-i", path.join(destination, "video.mp4"), "-frames:v", "1", "-q:v", "2", path.join(destination, `review-${index}.jpg`)], signal);
+  }
+  await writeFile(path.join(destination, "review-frames.json"), JSON.stringify(frames));
   const video = await readFile(path.join(destination, "video.mp4"));
-  const benchmark = { totalSeconds: (performance.now()-started)/1000, synthesisSeconds: speech.synthesisSeconds, renderSeconds: (performance.now()-renderStarted)/1000, ttsPeakRssMb: speech.peakRssMb, durationSeconds: cursor/FPS, frames: cursor, videoBytes: video.length, videoSha256: createHash("sha256").update(video).digest("hex"), platform: process.platform, node: process.version, remotion: "4.0.520", concurrency: Number(process.env.RENDER_CONCURRENCY || 2) };
+  const benchmark = { totalSeconds: (performance.now()-started)/1000, synthesisSeconds: speech.synthesisSeconds, renderSeconds: (performance.now()-renderStarted)/1000, ttsPeakRssMb: speech.peakRssMb, ttsCacheHits: speech.cacheHits || 0, durationSeconds: cursor/FPS, frames: cursor, videoBytes: video.length, videoSha256: createHash("sha256").update(video).digest("hex"), platform: process.platform, node: process.version, remotion: "4.0.520", concurrency: Number(process.env.RENDER_CONCURRENCY || 2) };
   await writeFile(path.join(destination, "project.json"), JSON.stringify({ ...project, provenance, iconManifest: JSON.parse(manifest), benchmark, transcript: inputProject.scenes.map(s => s.narration).join(" ") }, null, 2));
   await writeFile(path.join(destination, "benchmark.json"), JSON.stringify(benchmark, null, 2));
-  return { destination, benchmark };
+  return { destination, benchmark, frames };
 }

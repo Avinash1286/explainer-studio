@@ -1,0 +1,36 @@
+{
+  "phase": "H3 implementation, acceptance pending",
+  "jobId": "j97ckmhjpvzabnam746dnnpqy18dt64y",
+  "revision": 2,
+  "workerVersion": "0.4.0",
+  "attempt": 5,
+  "frameCount": 8,
+  "framesDecodedFromVideo": true,
+  "reviewStatus": "unavailable",
+  "reason": "OPENAI_API_KEY not configured",
+  "approved": false,
+  "benchmark": {
+    "totalSeconds": 120.3295727,
+    "synthesisSeconds": 36.5,
+    "renderSeconds": 72.6987672,
+    "ttsPeakRssMb": null,
+    "ttsCacheHits": 0,
+    "durationSeconds": 60,
+    "frames": 1440,
+    "videoBytes": 3191320,
+    "videoSha256": "5256e21cb7bbcd35199cc69caa2b387699b9702b9ddbb96f144174055c2f7606",
+    "platform": "win32",
+    "node": "v24.15.0",
+    "remotion": "4.0.520",
+    "concurrency": 2
+  },
+  "cacheCheck": {
+    "changedScenes": 1,
+    "totalScenes": 4,
+    "reusedScenes": 3,
+    "synthesisSeconds": 20.53200000000652
+  },
+  "liveOpenAIReviewPassed": false,
+  "liveRepairPassed": false,
+  "emailSent": false
+}

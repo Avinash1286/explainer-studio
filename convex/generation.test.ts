@@ -16,7 +16,7 @@ async function setup(ready = false) {
   await t.mutation(api.sessions.start, { token });
   const jobId = await t.mutation(api.jobs.create, { token, topic: "How does water move around the planet?", duration: 60, audience: "beginner", requestId: "generation-test-001" });
   if (ready) {
-    for (const name of ["NVIDIA_API_KEY", "FIRECRAWL_API_KEY", "CLOUDFLARE_API_TOKEN"]) vi.stubEnv(name, "test");
+    for (const name of ["NVIDIA_API_KEY", "FIRECRAWL_API_KEY", "CLOUDFLARE_API_TOKEN", "OPENAI_API_KEY"]) vi.stubEnv(name, "test");
     vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32)); vi.stubEnv("GENERATION_ENABLED", "true");
     await t.mutation(internal.icons.put, { vectors: manifest.entries.map(() => vector) });
     await t.mutation(internal.icons.record, { passed: true, reportJson: "test qualification" });
@@ -67,7 +67,7 @@ describe("durable topic generation", () => {
     expect(artifacts.map(a => a.stage).sort()).toEqual(["plan", "project", "research"]);
     expect(fetcher).toHaveBeenCalledTimes(4);
     expect(await t.mutation(internal.media.claim, { worker: "old-worker" })).toBeNull();
-    const task = await t.mutation(internal.media.claim, { worker: "new-worker", protocol: 2 });
+    const task = await t.mutation(internal.media.claim, { worker: "new-worker", protocol: 3 });
     expect(task?.fixtureVersion).toBe("generated-v1");
     expect(JSON.parse(task!.projectJson!).scenes).toHaveLength(4);
   });
@@ -81,7 +81,7 @@ describe("durable topic generation", () => {
     await t.mutation(api.jobs.cancel, { token, jobId });
     await expect(t.mutation(internal.generation.checkpoint, { jobId, stage: "plan", json: "{}" })).rejects.toThrow("no longer active");
     await t.mutation(internal.generation.enqueue, { jobId });
-    expect(await t.mutation(internal.media.claim, { worker: "a", protocol: 2 })).toBeNull();
+    expect(await t.mutation(internal.media.claim, { worker: "a", protocol: 3 })).toBeNull();
   });
   it("does not expose research or start another browser's lesson", async () => {
     const { t, jobId } = await setup(true);
@@ -98,7 +98,7 @@ describe("durable topic generation", () => {
     await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("failed");
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(await t.mutation(internal.media.claim, { worker: "a", protocol: 2 })).toBeNull();
+    expect(await t.mutation(internal.media.claim, { worker: "a", protocol: 3 })).toBeNull();
   });
   it("cancels the real workflow without allowing its completion to revive the job", async () => {
     vi.useFakeTimers();
@@ -107,6 +107,6 @@ describe("durable topic generation", () => {
     await t.mutation(api.jobs.cancel, { token, jobId });
     await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("cancelled");
-    expect(await t.mutation(internal.media.claim, { worker: "a", protocol: 2 })).toBeNull();
+    expect(await t.mutation(internal.media.claim, { worker: "a", protocol: 3 })).toBeNull();
   });
 });

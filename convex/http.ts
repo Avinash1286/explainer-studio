@@ -8,7 +8,7 @@ const http = httpRouter();
 
 http.route({
   path: "/health", method: "GET",
-  handler: httpAction(async (ctx) => Response.json({ ok: true, service: "explainer-studio", phase: "topic-generation", generationEnabled: (await ctx.runQuery(internal.serviceReadiness.read, {})).enabled, fixtureGenerationEnabled: true })),
+  handler: httpAction(async (ctx) => Response.json({ ok: true, service: "explainer-studio", phase: "review-and-delivery", generationEnabled: (await ctx.runQuery(internal.serviceReadiness.read, {})).enabled, fixtureGenerationEnabled: true })),
 });
 
 http.route({
@@ -41,12 +41,12 @@ http.route({
 const id = <T extends "mediaTasks" | "_storage">() => z.string().min(10).max(100).transform(value => value as Id<T>);
 const lease = { taskId: id<"mediaTasks">(), attempt: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), worker: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/) };
 const mediaRequest = z.discriminatedUnion("op", [
-  z.object({ op: z.literal("claim"), worker: lease.worker, protocol: z.literal(2).optional() }).strict(),
+  z.object({ op: z.literal("claim"), worker: lease.worker, protocol: z.union([z.literal(2), z.literal(3)]).optional() }).strict(),
   z.object({ op: z.literal("renew"), ...lease, message: z.string().max(120) }).strict(),
   z.object({ op: z.literal("uploadUrl"), ...lease }).strict(),
   z.object({ op: z.literal("abandon"), ...lease }).strict(),
   z.object({ op: z.literal("registerUpload"), ...lease, storageId: id<"_storage">() }).strict(),
-  z.object({ op: z.literal("complete"), ...lease, result: z.object({ video: id<"_storage">(), project: id<"_storage">(), captions: id<"_storage">(), poster: id<"_storage">(), durationSeconds: z.number().min(15).max(90) }).strict() }).strict(),
+  z.object({ op: z.literal("complete"), ...lease, result: z.object({ video: id<"_storage">(), project: id<"_storage">(), captions: id<"_storage">(), poster: id<"_storage">(), durationSeconds: z.number().min(15).max(90), frames: z.array(z.object({ sceneId: z.string().max(40), frame: z.number().int().nonnegative(), storageId: id<"_storage">() }).strict()).max(16).optional() }).strict() }).strict(),
 ]);
 http.route({ path: "/worker/media", method: "POST", handler: httpAction(async (ctx, request) => {
   if (!env.WORKER_AUTH_TOKEN || env.WORKER_AUTH_TOKEN.length < 32) return new Response("Worker not configured", { status: 503 });
@@ -68,6 +68,18 @@ http.route({ path: "/worker/media", method: "POST", handler: httpAction(async (c
       case "complete": { const { op, ...value } = data; void op; return Response.json(await ctx.runMutation(internal.media.complete, value)); }
     }
   } catch { return new Response("Media lease or artifact rejected", { status: 409 }); }
+}) });
+
+http.route({ path: "/webhooks/agentmail", method: "POST", handler: httpAction(async (ctx, request) => {
+  if (Number(request.headers.get("content-length") || 0) > 100_000) return new Response(null, { status: 413 });
+  const body = await request.text();
+  if (body.length > 100_000) return new Response(null, { status: 413 });
+  const id = request.headers.get("svix-id") || "";
+  const timestamp = request.headers.get("svix-timestamp") || "";
+  const signature = request.headers.get("svix-signature") || "";
+  if (id.length > 200 || timestamp.length > 30 || signature.length > 1000) return new Response(null, { status: 400 });
+  const status = await ctx.runAction(internal.mailWebhook.receive, { body, id, timestamp, signature });
+  return new Response(null, { status });
 }) });
 
 export default http;

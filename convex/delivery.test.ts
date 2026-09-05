@@ -1,0 +1,98 @@
+import { Webhook } from "svix";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { api, internal } from "./_generated/api";
+import { goodReview, owner, reviewSetup } from "../tests/review-helpers";
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers(); });
+const code = "c".repeat(64);
+const shareToken = "d".repeat(64);
+const webhookSecret = `whsec_${btoa("12345678901234567890123456789012")}`;
+async function setup(approved = true) {
+  const current = await reviewSetup(); const { t, jobId, lease, result } = current;
+  vi.stubEnv("AGENTMAIL_API_KEY", "test"); vi.stubEnv("AGENTMAIL_INBOX_ID", "test-inbox"); vi.stubEnv("AGENTMAIL_WEBHOOK_SECRET", webhookSecret); vi.stubEnv("CONVEX_SITE_URL", "https://example.convex.site");
+  await t.mutation(internal.media.complete, { ...lease, result });
+  if (approved) await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(goodReview()), model: "test", responseId: "test", usageJson: "{}" });
+  return current;
+}
+describe("verified lesson delivery", () => {
+  it("requires consent, ownership and mailbox verification before a lesson email", async () => {
+    const { t, jobId } = await setup();
+    const args = { token: owner, jobId, email: "test@example.org", code, consent: false };
+    await expect(t.mutation(internal.delivery.prepareVerification, args)).rejects.toThrow("Consent");
+    await t.mutation(api.sessions.start, { token: "b".repeat(64) });
+    await expect(t.mutation(internal.delivery.prepareVerification, { ...args, token: "b".repeat(64), consent: true })).rejects.toThrow("not found");
+    await expect(t.mutation(internal.delivery.prepareLesson, { token: owner, jobId, revision: 1, shareToken, consent: true })).rejects.toThrow("Verify");
+    await t.mutation(internal.delivery.prepareVerification, { ...args, consent: true });
+    await t.mutation(internal.delivery.prepareVerification, { ...args, consent: true });
+    expect(await t.run(ctx => ctx.db.query("mailOutbox").withIndex("by_jobId", q => q.eq("jobId", jobId)).take(10))).toHaveLength(1);
+    for (let i = 0; i < 5; i++) expect(await t.mutation(api.delivery.verify, { token: owner, jobId, code: "e".repeat(64) })).toBe(false);
+    expect(await t.mutation(api.delivery.verify, { token: owner, jobId, code })).toBe(false);
+    expect((await t.query(api.delivery.status, { token: owner, jobId }))?.verified).toBe(false);
+  });
+  it("blocks delivery and share links for unapproved versions", async () => {
+    const { t, jobId } = await setup(false);
+    await t.mutation(internal.delivery.prepareVerification, { token: owner, jobId, email: "test@example.org", code, consent: true });
+    expect(await t.mutation(api.delivery.verify, { token: owner, jobId, code })).toBe(true);
+    await expect(t.mutation(internal.delivery.prepareLesson, { token: owner, jobId, revision: 1, shareToken, consent: true })).rejects.toThrow("reviewed");
+    expect(await t.query(api.delivery.shared, { token: shareToken })).toBeNull();
+  });
+  it("deduplicates lesson sends and binds a working share to the approved version", async () => {
+    const { t, jobId } = await setup();
+    await t.mutation(internal.delivery.prepareVerification, { token: owner, jobId, email: "test@example.org", code, consent: true });
+    await t.mutation(api.delivery.verify, { token: owner, jobId, code });
+    const args = { token: owner, jobId, revision: 1, shareToken, consent: true };
+    await t.mutation(internal.delivery.prepareLesson, args);
+    await t.mutation(internal.delivery.prepareLesson, { ...args, shareToken: "f".repeat(64) });
+    const rows = await t.run(ctx => ctx.db.query("mailOutbox").withIndex("by_jobId", q => q.eq("jobId", jobId)).take(10));
+    const item = rows.find(r => r.kind === "lesson")!;
+    expect(rows).toHaveLength(2);
+    expect(JSON.parse(item.bodyJson).text).toContain(`/lesson/?share=${shareToken}`);
+    expect(await t.query(api.delivery.shared, { token: shareToken })).toMatchObject({ revision: 1, video: expect.any(String), sources: expect.any(Array) });
+    expect(await t.query(api.delivery.shared, { token: "f".repeat(64) })).toBeNull();
+    const fetcher = vi.fn<typeof fetch>().mockRejectedValueOnce(new Error("Response lost")).mockResolvedValueOnce(Response.json({ message_id: "message-1" })); vi.stubGlobal("fetch", fetcher);
+    await expect(t.action(internal.mailActions.send, { outboxId: item._id })).rejects.toThrow("Response lost");
+    await t.action(internal.mailActions.send, { outboxId: item._id });
+    expect(fetcher.mock.calls[0][1]?.body).toBe(fetcher.mock.calls[1][1]?.body);
+    expect(new Headers(fetcher.mock.calls[0][1]?.headers).get("Idempotency-Key")).toBe(item.key);
+    expect(new Headers(fetcher.mock.calls[1][1]?.headers).get("Idempotency-Key")).toBe(item.key);
+    await t.action(internal.mailActions.send, { outboxId: item._id });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect((await t.query(api.media.result, { token: owner, jobId }))?.approved).toBe(true);
+    const shares = await t.run(ctx => ctx.db.query("lessonShares").withIndex("by_tokenHash").take(1));
+    await t.run(ctx => ctx.db.patch(shares[0]._id, { expiresAt: Date.now()-1 }));
+    await t.mutation(internal.delivery.expireShare, { shareId: shares[0]._id });
+    expect(await t.query(api.delivery.shared, { token: shareToken })).toBeNull();
+  });
+  it("verifies raw webhook signatures, rejects tampering/replay and handles reordered events", async () => {
+    const { t, jobId } = await setup();
+    await t.mutation(internal.delivery.prepareVerification, { token: owner, jobId, email: "test@example.org", code, consent: true });
+    const item = (await t.run(ctx => ctx.db.query("mailOutbox").withIndex("by_jobId", q => q.eq("jobId", jobId)).take(1)))[0];
+    await t.mutation(internal.delivery.claim, { outboxId: item._id });
+    await t.mutation(internal.delivery.sent, { outboxId: item._id, messageId: "message-1" });
+    const body = JSON.stringify({ type: "event", event_type: "message.delivered", event_id: "event-1", delivery: { message_id: "message-1", inbox_id: "test-inbox" } });
+    const date = new Date(); const id = "msg-1"; const signature = new Webhook(webhookSecret).sign(id, date, body);
+    const headers = { "svix-id": id, "svix-timestamp": String(Math.floor(date.getTime()/1000)), "svix-signature": signature };
+    expect((await t.fetch("/webhooks/agentmail", { method: "POST", headers, body: body + " " })).status).toBe(401);
+    expect((await t.fetch("/webhooks/agentmail", { method: "POST", headers, body })).status).toBe(204);
+    expect((await t.fetch("/webhooks/agentmail", { method: "POST", headers, body })).status).toBe(204);
+    await t.mutation(internal.delivery.event, { eventId: "event-2", messageId: "message-1", state: "sent" });
+    expect((await t.run(ctx => ctx.db.get(item._id)))?.state).toBe("delivered");
+    const old = new Date(Date.now() - 600_000);
+    expect(await t.action(internal.mailWebhook.receive, { body, id, timestamp: String(Math.floor(old.getTime()/1000)), signature: new Webhook(webhookSecret).sign(id, old, body) })).toBe(401);
+    await t.mutation(internal.delivery.event, { eventId: "event-3", messageId: "message-1", state: "bounced" });
+    expect((await t.run(ctx => ctx.db.get(item._id)))?.state).toBe("bounced");
+    expect((await t.query(api.media.result, { token: owner, jobId }))?.video).toBeTruthy();
+  });
+  it("never retries after the idempotency/verification window", async () => {
+    const { t, jobId } = await setup();
+    await t.mutation(internal.delivery.prepareVerification, { token: owner, jobId, email: "test@example.org", code, consent: true });
+    const item = (await t.run(ctx => ctx.db.query("mailOutbox").withIndex("by_jobId", q => q.eq("jobId", jobId)).take(1)))[0];
+    await t.run(ctx => ctx.db.patch(item._id, { expiresAt: Date.now()-1, attempt: 1 }));
+    expect(await t.mutation(internal.delivery.claim, { outboxId: item._id })).toBeNull();
+    await t.mutation(internal.delivery.eraseVerification, { outboxId: item._id });
+    expect((await t.run(ctx => ctx.db.get(item._id)))?.bodyJson).toBe("{}");
+    const recipient = (await t.run(ctx => ctx.db.query("recipients").withIndex("by_jobId", q => q.eq("jobId", jobId)).take(1)))[0];
+    await t.run(ctx => ctx.db.patch(recipient._id, { expiresAt: Date.now()-1 }));
+    expect(await t.mutation(api.delivery.verify, { token: owner, jobId, code })).toBe(false);
+  });
+});

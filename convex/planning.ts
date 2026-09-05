@@ -64,7 +64,7 @@ export const retrieveIcons = internalAction({ args: { jobId: v.id("jobs") }, han
     sourceMap: researchRecord.sources.map(({ id, title, url }) => ({ id, title, url })),
     sceneEvidence: draft.scenes.map(s => ({ sceneId: s.id, evidence: s.evidence })),
     planningAttempts: planned.attempts, selectionAttempts: selection.attempts, embeddingSpace: EMBEDDING_SPACE, candidates,
-    verification: "Source IDs and exact support quotes checked mechanically; semantic factual review is not yet implemented." };
+    verification: "Source IDs and exact quotes checked mechanically. Publication requires a separate OpenAI source and rendered-frame review." };
   await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: "project", json: JSON.stringify({ project, provenance }) });
   return null;
 } });

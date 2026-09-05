@@ -24,7 +24,7 @@ async function api<T>(body: Record<string, unknown>): Promise<T> {
 }
 async function heartbeat() {
   try {
-    const response = await fetch(new URL("/api/worker/heartbeat", url), { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ workerId, instanceId, version: "0.3.1", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1"] }), signal: AbortSignal.timeout(10_000) });
+    const response = await fetch(new URL("/api/worker/heartbeat", url), { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ workerId, instanceId, version: "0.4.0", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1", "review-frames-v1"] }), signal: AbortSignal.timeout(10_000) });
     if (response.ok) lastHeartbeat = Date.now();
   } catch { console.error(JSON.stringify({ event: "heartbeat_failed" })); }
 }
@@ -35,7 +35,7 @@ async function poll() {
   let directory: string | undefined;
   let attemptLease: { taskId: string; attempt: number; worker: string } | undefined;
   try {
-    const task = await api<{ taskId: string; attempt: number; fixtureVersion: string; projectJson?: string; provenanceJson?: string } | null>({ op: "claim", worker, protocol: 2 });
+    const task = await api<{ taskId: string; attempt: number; fixtureVersion: string; projectJson?: string; provenanceJson?: string } | null>({ op: "claim", worker, protocol: 3 });
     if (!task) return;
     const lease = { taskId: task.taskId, attempt: task.attempt, worker };
     attemptLease = lease;
@@ -62,7 +62,7 @@ async function poll() {
     message = "Uploading the video, captions, and project";
     await renew();
     const files = { video: ["video.mp4", "video/mp4"], project: ["project.json", "application/json"], captions: ["captions.vtt", "text/vtt"], poster: ["poster.png", "image/png"] } as const;
-    const result: Record<string, string | number> = { durationSeconds: rendered.benchmark.durationSeconds };
+    const result: Record<string, unknown> = { durationSeconds: rendered.benchmark.durationSeconds };
     for (const [kind, [name, contentType]] of Object.entries(files)) {
       controller.signal.throwIfAborted();
       const uploadUrl = await api<string>({ op: "uploadUrl", ...lease });
@@ -71,6 +71,19 @@ async function poll() {
       const { storageId } = await response.json() as { storageId: string };
       await api({ op: "registerUpload", ...lease, storageId });
       result[kind] = storageId;
+    }
+    if (rendered.frames.length) {
+      const frames = [];
+      for (const [index, sample] of rendered.frames.entries()) {
+        controller.signal.throwIfAborted();
+        const uploadUrl = await api<string>({ op: "uploadUrl", ...lease });
+        const response = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: await readFile(path.join(directory, `review-${index}.jpg`)), signal: AbortSignal.timeout(30_000) });
+        if (!response.ok) throw new Error(`Frame upload ${response.status}`);
+        const { storageId } = await response.json() as { storageId: string };
+        await api({ op: "registerUpload", ...lease, storageId });
+        frames.push({ ...sample, storageId });
+      }
+      result.frames = frames;
     }
     try { await api({ op: "complete", ...lease, result }); }
     catch { await api({ op: "complete", ...lease, result }); }
@@ -93,7 +106,7 @@ const server = createServer((request, response) => {
   if (request.url !== "/health") { response.writeHead(404); response.end(); return; }
   const ready = !stopping && lastHeartbeat > Date.now()-45_000;
   response.writeHead(ready ? 200 : 503, { "Content-Type": "application/json" });
-  response.end(JSON.stringify({ ready, phase: "topic-generation", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1"], busy: inFlight }));
+  response.end(JSON.stringify({ ready, phase: "review-and-delivery", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1", "review-frames-v1"], busy: inFlight }));
 });
 await heartbeat();
 server.listen(Number(process.env.PORT || 3001), "0.0.0.0");

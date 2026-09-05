@@ -9,6 +9,7 @@ import { ArrowRight, BookOpen, Check, ChevronRight, CircleHelp, Clock3, FileText
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DURATION_PRESETS, LIMITS, PIPELINE_STAGES } from "@/packages/contracts";
+import { LessonReview } from "./lesson-review";
 import { StyleStudy } from "./style-study";
 
 type Job = FunctionReturnType<typeof api.jobs.list>[number];
@@ -91,9 +92,10 @@ function ConnectedStudio() {
 function MediaResult({ token, jobId }: { token: string; jobId: Id<"jobs"> }) {
   const result = useQuery(api.media.result, { token, jobId });
   const details = useQuery(api.generation.details, { token, jobId });
-  const sources = details?.sources.length ? <details className="source-list"><summary>Research sources ({details.sources.length})</summary><ul>{details.sources.map(source => <li key={source.id}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul><small>Sources inform the script. Automated factual and frame review comes in the next phase.</small></details> : null;
-  if (!result?.video) return sources;
+  const sources = details?.sources.length ? <details className="source-list"><summary>Research sources ({details.sources.length})</summary><ul>{details.sources.map(source => <li key={source.id}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul><small>Sources inform the script. Review findings appear below when the draft is rendered.</small></details> : null;
+  if (!result?.video) return <>{sources}<LessonReview key={jobId} token={token} jobId={jobId} approved={false} /></>;
   return <div className="media-result">
+    {result.generated && !result.approved ? <p className="draft-notice"><strong>Unapproved draft</strong>: For your review. Email delivery is disabled until this version passes.</p> : null}
     <video controls preload="metadata" poster={result.poster || undefined} src={result.video} crossOrigin="anonymous" aria-label="Rendered explainer lesson">
       {result.captions ? <track kind="captions" src={result.captions} srcLang="en" label="English" /> : null}
     </video>
@@ -101,6 +103,7 @@ function MediaResult({ token, jobId }: { token: string; jobId: Id<"jobs"> }) {
     <div className="artifact-links"><a href={result.video} target="_blank" rel="noreferrer">Open video</a>{result.project ? <a href={result.project} target="_blank" rel="noreferrer">Project, transcript & sources</a> : null}{result.captions ? <a href={result.captions} target="_blank" rel="noreferrer">Captions</a> : null}</div>
     <small>Illustrations by <a href="https://openmoji.org/">OpenMoji</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Stroke and fill animation adaptations.</small>
     {sources}
+    <LessonReview key={jobId} token={token} jobId={jobId} approved={result.approved} />
   </div>;
 }
 
@@ -203,7 +206,7 @@ function Studio({ jobs, ready, connectionMessage, save, cancel, sample, resultPa
             </section>
           </div>
           {error ? <p className="error-banner" role="alert">{error}</p> : null}
-          {selected ? <section className="selected-brief" aria-live="polite"><div className="selected-top"><span className="eyebrow">YOUR LESSON BRIEF</span><span className={`status-badge ${selected.status}`}>{selected.status === "queued" ? "Brief saved" : selected.status}</span></div><h2>{selected.topic}</h2><p>{selected.stageMessage}</p>{resultPanel?.(selected._id)}{selected.status === "queued" && generationEnabled ? <button className="primary-button" disabled={busy} onClick={generateSelected}>Generate this lesson <ArrowRight size={17} /></button> : null}{["researching", "planning", "rendering"].includes(selected.status) ? <div className="pipeline">{PIPELINE_STAGES.filter(stage => stage.id !== "reviewing").map((stage, index) => <div key={stage.id}><span>{index + 1}</span><strong>{stage.label}</strong><small>{stage.description}</small></div>)}</div> : null}{selected.status !== "cancelled" && selected.status !== "completed" && selected.status !== "failed" ? <button className="text-button" disabled={busy} onClick={cancelSelected}><X size={14} /> Cancel this lesson</button> : null}</section> : null}
+          {selected ? <section className="selected-brief" aria-live="polite"><div className="selected-top"><span className="eyebrow">YOUR LESSON BRIEF</span><span className={`status-badge ${selected.status}`}>{selected.status === "queued" ? "Brief saved" : selected.status}</span></div><h2>{selected.topic}</h2><p>{selected.stageMessage}</p>{resultPanel?.(selected._id)}{selected.status === "queued" && generationEnabled ? <button className="primary-button" disabled={busy} onClick={generateSelected}>Generate this lesson <ArrowRight size={17} /></button> : null}{["researching", "planning", "rendering", "reviewing"].includes(selected.status) ? <div className="pipeline">{PIPELINE_STAGES.map((stage, index) => <div key={stage.id}><span>{index + 1}</span><strong>{stage.label}</strong><small>{stage.description}</small></div>)}</div> : null}{selected.status !== "cancelled" && selected.status !== "completed" && selected.status !== "failed" ? <button className="text-button" disabled={busy} onClick={cancelSelected}><X size={14} /> Cancel this lesson</button> : null}</section> : null}
           <section id="your-lessons" className="library-section"><div className="library-heading"><div><span className="eyebrow">YOUR NEXT EXPLANATION STARTS HERE</span><h2>Your lessons <span>{jobs.length.toString().padStart(2, "0")}</span></h2></div><span className="private-note">Saved to this browser’s workspace</span></div>
             {jobs.length ? <div className="lesson-list">{jobs.map((job) => <button key={job._id} className={`lesson-row ${selectedId === job._id ? "current" : ""}`} onClick={() => select(job._id)}><span className="lesson-icon"><FileText size={20} /></span><span className="lesson-copy"><strong>{job.topic}</strong><small>{job.duration}s · {job.audience === "student" ? "School student" : "Curious beginner"}</small></span><span className={`status-badge ${job.status}`}>{job.status === "queued" ? "Brief saved" : job.status}</span><ArrowRight size={17} /></button>)}</div> : <div className="empty-library"><div><FileText size={23} /></div><h3>A blank page is a good beginning.</h3><p>Your saved lesson briefs will appear here.<br />Start with one question above.</p></div>}
           </section>

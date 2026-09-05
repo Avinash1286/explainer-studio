@@ -41,7 +41,7 @@ export const generate = mutation({
     if (job.generation) return null; // Idempotent even after completion or a lost response.
     if (job.status !== "queued") throw new ConvexError("This lesson cannot be started");
     if (!await generationReady(ctx)) throw new ConvexError("Topic generation is awaiting provider setup");
-    const active = await Promise.all(["researching", "planning", "rendering"].map(status => ctx.db.query("jobs").withIndex("by_status", q => q.eq("status", status as "researching" | "planning" | "rendering")).take(5)));
+    const active = await Promise.all(["researching", "planning", "rendering", "reviewing"].map(status => ctx.db.query("jobs").withIndex("by_status", q => q.eq("status", status as "researching" | "planning" | "rendering" | "reviewing")).take(5)));
     if (active.flat().length >= 5) throw new ConvexError("Generation queue is full. Try again later");
     await ctx.db.patch(jobId, { generation: true, status: "researching", stageMessage: "Finding sources for your question", updatedAt: Date.now() });
     const workflowId = await start(ctx, internal.generation.run, { jobId }, { onComplete: internal.generation.finished, context: { jobId }, startAsync: true });

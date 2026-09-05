@@ -67,3 +67,7 @@ H0 service qualification, Zerops media benchmark, full H1–H4 generation/review
 Both Convex deployments passed real NVIDIA text, real Cloudflare backup behind an injected primary 429, Firecrawl research and 24 icon embeddings. A browser topic generated a 60-second draft in development. The successful media attempt took 117.31 seconds; playback and all artifact URLs passed. Content inspection found incorrect pollen/ovule/seed/soil icon labels, so production topic generation remains disabled pending H3 review and repair. See docs/topic-generation-live.json and docs/topic-generation.md.
 
 GitHub Actions is disabled at repository level and its workflow removed. Vercel Git integration on Hobby runs npm run check; commit accd258 passed with 41 tests plus TypeScript, lint and both builds. No paid Vercel plan or trial was enabled. Worker 0.3.1 adds bounded scene holds and operator recovery with monotonic lease fencing.
+
+## H3 implementation - September 5, 2026
+
+Version-bound source and actual decoded-frame review, bounded automatic repair, targeted revision, scene narration reuse, verified-recipient outbox and signed delivery webhooks are implemented. 52 isolated tests pass; live OpenAI/AgentMail acceptance is pending new credentials. Production generation stays gated. No official event-log integration, real OpenAI approval, received test email or H3 acceptance completion is claimed.

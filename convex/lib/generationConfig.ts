@@ -10,5 +10,5 @@ export async function generationReady(ctx: QueryCtx) {
   const configured = Object.values(providerConfig()).every(Boolean);
   const qualification = await ctx.db.query("providerQualification").withIndex("by_key", q => q.eq("key", EMBEDDING_SPACE)).unique();
   const icons = await ctx.db.query("iconEmbeddings").withIndex("by_space_and_iconId", q => q.eq("space", EMBEDDING_SPACE)).take(manifest.entries.length + 1);
-  return configured && env.GENERATION_ENABLED === "true" && qualification?.passed === true && icons.length === manifest.entries.length;
+  return configured && Boolean(env.OPENAI_API_KEY) && env.GENERATION_ENABLED === "true" && qualification?.passed === true && icons.length === manifest.entries.length;
 }

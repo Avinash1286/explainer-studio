@@ -3,12 +3,15 @@ import { internalMutation, mutation, query, type MutationCtx } from "./_generate
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { requireSession } from "./lib/session";
+import { start } from "@convex-dev/workflow";
+import { mediaResult } from "./schema";
+import { projectSchema } from "../packages/contracts/scene";
 import { limits } from "./lib/limits";
 
 const LEASE_MS = 90_000;
 const MAX_ATTEMPTS = 3;
 const leaseArgs = { taskId: v.id("mediaTasks"), attempt: v.number(), worker: v.string() };
-const resultValidator = v.object({ video: v.id("_storage"), project: v.id("_storage"), captions: v.id("_storage"), poster: v.id("_storage"), durationSeconds: v.number() });
+const resultValidator = mediaResult;
 
 async function activeLease(ctx: MutationCtx, args: { taskId: Id<"mediaTasks">; attempt: number; worker: string }) {
   const task = await ctx.db.get(args.taskId);
@@ -47,9 +50,11 @@ export const result = query({
     const job = await ctx.db.get(jobId);
     if (!job || job.sessionId !== session._id) return null;
     const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).unique();
-    if (!task?.result || task.status !== "completed" || job.status !== "completed") return null;
+    if (!task?.result || task.status !== "completed" || job.status === "cancelled") return null;
+    const review = job.generation ? await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", jobId).eq("revision", job.revision)).unique() : null;
+    const approved = !job.generation || (review?.status === "passed" && job.status === "completed");
     const [video, project, captions, poster] = await Promise.all([ctx.storage.getUrl(task.result.video), ctx.storage.getUrl(task.result.project), ctx.storage.getUrl(task.result.captions), ctx.storage.getUrl(task.result.poster)]);
-    return { video, project, captions, poster, durationSeconds: task.result.durationSeconds, generated: Boolean(job.generation) };
+    return { video, project, captions, poster, durationSeconds: task.result.durationSeconds, generated: Boolean(job.generation), approved };
   },
 });
 
@@ -62,7 +67,7 @@ export const claim = internalMutation({
     if (owned) return { taskId: owned._id, attempt: owned.attempt, fixtureVersion: owned.fixtureVersion, projectJson: owned.projectJson, provenanceJson: owned.provenanceJson };
     const queued = await ctx.db.query("mediaTasks").withIndex("by_status_and_leaseUntil", q => q.eq("status", "queued")).take(5);
     for (const task of queued) {
-      if (task.fixtureVersion === "generated-v1" && protocol !== 2) continue;
+      if (task.fixtureVersion === "generated-v1" && protocol !== 3) continue;
       const job = await ctx.db.get(task.jobId);
       if (!job || job.status === "cancelled") { await ctx.db.patch(task._id, { status: "cancelled" }); continue; }
       const attempt = task.attempt + 1;
@@ -95,7 +100,7 @@ export const recover = internalMutation({
     const job = await ctx.db.get(task.jobId);
     if (job?.status === "cancelled") { await ctx.db.patch(taskId, { status: "cancelled" }); return null; }
     if (task.leaseUntil > Date.now()) { await ctx.scheduler.runAt(task.leaseUntil, internal.media.recover, { taskId, attempt }); return null; }
-    const failed = attempt >= MAX_ATTEMPTS;
+    const failed = attempt - (task.attemptBase || 0) >= MAX_ATTEMPTS;
     await ctx.db.patch(taskId, { status: failed ? "failed" : "queued", worker: undefined, leaseUntil: 0 });
     if (job) await ctx.db.patch(job._id, { status: failed ? "failed" : "rendering", stageMessage: failed ? "The video could not finish after three worker attempts" : "Worker interrupted. Video queued for a fresh attempt", updatedAt: Date.now() });
     return null;
@@ -129,9 +134,9 @@ export const registerUpload = internalMutation({
     // Track files even after cancellation so a late upload can be collected.
     const task = await ctx.db.get(args.taskId);
     if (!task || task.worker !== args.worker || task.attempt !== args.attempt) throw new ConvexError("Stale upload registration");
-    const existing = await ctx.db.query("mediaUploads").withIndex("by_taskId_and_attempt", q => q.eq("taskId", args.taskId).eq("attempt", args.attempt)).take(8);
+    const existing = await ctx.db.query("mediaUploads").withIndex("by_taskId_and_attempt", q => q.eq("taskId", args.taskId).eq("attempt", args.attempt)).take(21);
     if (existing.some(x => x.storageId === args.storageId)) return null;
-    if (existing.length >= 4) throw new ConvexError("Upload count exceeded");
+    if (existing.length >= 20) throw new ConvexError("Upload count exceeded");
     const metadata = await ctx.db.system.get(args.storageId);
     if (!metadata || metadata.size > 30_000_000) throw new ConvexError("Missing or oversized artifact");
     const id = await ctx.db.insert("mediaUploads", { taskId: args.taskId, attempt: args.attempt, storageId: args.storageId, createdAt: Date.now(), committed: false });
@@ -146,12 +151,12 @@ export const complete = internalMutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db.get(args.taskId);
     if (existing?.status === "completed" && existing.attempt === args.attempt && existing.worker === args.worker) {
-      if (!existing.result || (Object.keys(args.result) as (keyof typeof args.result)[]).some(key => existing.result![key] !== args.result[key])) throw new ConvexError("Completion payload changed");
+      if (!existing.result || (Object.keys(args.result) as (keyof typeof args.result)[]).some(key => JSON.stringify(existing.result![key]) !== JSON.stringify(args.result[key]))) throw new ConvexError("Completion payload changed");
       return null;
     }
     const task = await activeLease(ctx, args);
     if (!Number.isFinite(args.result.durationSeconds) || args.result.durationSeconds < (task.projectJson ? 60 : 15) || args.result.durationSeconds > (task.projectJson ? 90 : 45)) throw new ConvexError("Invalid video duration");
-    const uploads = await ctx.db.query("mediaUploads").withIndex("by_taskId_and_attempt", q => q.eq("taskId", args.taskId).eq("attempt", args.attempt)).take(5);
+    const uploads = await ctx.db.query("mediaUploads").withIndex("by_taskId_and_attempt", q => q.eq("taskId", args.taskId).eq("attempt", args.attempt)).take(21);
     const expected = [[args.result.video, "video/mp4"], [args.result.project, "application/json"], [args.result.captions, "text/vtt"], [args.result.poster, "image/png"]] as const;
     if (new Set(expected.map(([id]) => id)).size !== 4) throw new ConvexError("Artifacts must be distinct");
     for (const [id, contentType] of expected) {
@@ -160,8 +165,25 @@ export const complete = internalMutation({
       if (!upload || !metadata || metadata.contentType !== contentType || !metadata.size) throw new ConvexError(`Artifact validation failed: expected ${contentType}, got ${metadata?.contentType}, size ${metadata?.size}, registered ${Boolean(upload)}`);
       await ctx.db.patch(upload._id, { committed: true });
     }
+    const job = await ctx.db.get(task.jobId);
+    if (!job) throw new ConvexError("Lesson missing");
+    if (task.projectJson) {
+      const project = projectSchema.parse(JSON.parse(task.projectJson));
+      const frames = args.result.frames || [];
+      if (frames.length !== project.scenes.length * 2 || new Set(frames.map(f => f.storageId)).size !== frames.length || frames.some(f => expected.some(([id]) => id === f.storageId))) throw new ConvexError("Missing or duplicate review frames");
+      for (const scene of project.scenes) if (frames.filter(f => f.sceneId === scene.id).length !== 2) throw new ConvexError("Frame coverage incomplete");
+      for (const frame of frames) {
+        const upload = uploads.find(u => u.storageId === frame.storageId);
+        const metadata = await ctx.db.system.get(frame.storageId);
+        if (!upload || metadata?.contentType !== "image/jpeg" || !metadata.size || metadata.size > 2_000_000 || !Number.isInteger(frame.frame) || frame.frame < 0 || frame.frame >= args.result.durationSeconds * 24) throw new ConvexError("Invalid review frame");
+        await ctx.db.patch(upload._id, { committed: true });
+      }
+      await ctx.db.insert("lessonVersions", { jobId: job._id, revision: job.revision, projectJson: task.projectJson, provenanceJson: task.provenanceJson || "{}", result: args.result, createdAt: Date.now() });
+      await ctx.db.insert("lessonReviews", { jobId: job._id, revision: job.revision, status: "pending", createdAt: Date.now() });
+      await start(ctx, internal.reviews.run, { jobId: job._id, revision: job.revision }, { startAsync: true });
+    }
     await ctx.db.patch(task._id, { status: "completed", result: args.result });
-    await ctx.db.patch(task.jobId, { status: "completed", duration: args.result.durationSeconds, stageMessage: task.projectJson ? "Your narrated lesson is ready. Sources and transcript are included." : "Original scripted demo rendered with Kokoro narration.", updatedAt: Date.now() });
+    await ctx.db.patch(task.jobId, { status: task.projectJson ? "reviewing" : "completed", duration: args.result.durationSeconds, stageMessage: task.projectJson ? "Draft rendered. Checking source support and actual video frames." : "Original scripted demo rendered with Kokoro narration.", updatedAt: Date.now() });
     return null;
   },
 });

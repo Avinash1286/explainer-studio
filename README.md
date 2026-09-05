@@ -2,7 +2,7 @@
 
 Turn a question into a short, illustrated lesson. This repository implements a staged agentic explainer-video system.
 
-**Current release: topic pipeline awaiting provider setup.** Visitors can save lesson briefs and render a fresh, scripted plant-energy demo with Kokoro narration and three animated layouts. Topic research and generation are implemented behind a provider qualification gate. The static plant sketch is labelled separately from rendered results.
+**Current release: H3 implemented; review and email awaiting qualification.** Visitors can save lesson briefs and render a fresh, scripted plant-energy demo with Kokoro narration and three animated layouts. Topic research and generation are implemented behind a provider qualification gate. The static plant sketch is labelled separately from rendered results.
 
 - Live app: https://wooden-pheasant-677.convex.site
 - Build status and next steps: [PHASES.md](PHASES.md)
@@ -17,9 +17,9 @@ Turn a question into a short, illustrated lesson. This repository implements a s
 - Validated brief creation, idempotent retries, cancellation, per-workspace and global creation quotas using the Convex rate-limiter component.
 - Kokoro 82M narration, predicted token timing, three Remotion layouts, 24 OpenMoji assets, and MP4/captions/poster/project outputs.
 - Authenticated media leases with cancellation, fencing, bounded retries, artifact validation, and idempotent publication.
-- Thirty-five automated tests and Vercel Git-based validation. GitHub Actions is disabled at the owner's request. See [continuous validation](docs/continuous-validation.md).
+- 52 automated tests and Vercel Git-based validation. GitHub Actions is disabled at the owner's request. See [continuous validation](docs/continuous-validation.md).
 
-Convex Workflow coordinates Firecrawl research, NVIDIA planning with Cloudflare fallback, and Cloudflare embeddings in Convex vector search. Both deployments passed provider qualification, and a real topic produced a 60-second draft video. Production generation remains gated because content inspection found inaccurate icon labels. OpenAI frame review and opt-in AgentMail remain planned. See [provider setup and the H2 guide](docs/topic-generation.md). See [the media phase guide](docs/media-phase.md) for renderer setup, measured results, and recovery limits.
+Convex Workflow coordinates Firecrawl research, NVIDIA planning with Cloudflare fallback, and Cloudflare embeddings in Convex vector search. Both deployments passed provider qualification, and a real topic produced a 60-second draft video. Production generation remains gated because content inspection found inaccurate icon labels. OpenAI source/frame review, bounded repair, targeted scene edits and opt-in AgentMail are implemented; real provider acceptance remains pending. See [H3 setup and acceptance](docs/review-delivery.md). See [provider setup and the H2 guide](docs/topic-generation.md). See [the media phase guide](docs/media-phase.md) for renderer setup, measured results, and recovery limits.
 
 ## Local development
 
