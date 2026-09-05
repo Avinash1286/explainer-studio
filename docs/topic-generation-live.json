@@ -1,0 +1,43 @@
+{
+  "jobId": "j97ckmhjpvzabnam746dnnpqy18dt64y",
+  "mediaTask": "jn7df1ycyr3t0wd742t8hqhtq58dt716",
+  "attempt": 4,
+  "pipelinePassed": true,
+  "contentReviewPassed": false,
+  "contentIssues": [
+    "Leaf icons are incorrectly labelled as pollen and ovules.",
+    "Seedlings and a globe are labelled as seed and soil without explaining the symbolism.",
+    "Exact quotation matching does not establish that narration is entailed by its citation."
+  ],
+  "productionGenerationEnabled": false,
+  "benchmark": {
+    "totalSeconds": 117.31163740000001,
+    "synthesisSeconds": 33.76600000000326,
+    "renderSeconds": 71.77015049999999,
+    "ttsPeakRssMb": null,
+    "durationSeconds": 60,
+    "frames": 1440,
+    "videoBytes": 3191320,
+    "videoSha256": "a879ea8e7eacebfd23c93e4e6f0ee7c1b382236940db93fe533f6c3f1dd60b2c",
+    "platform": "win32",
+    "node": "v24.15.0",
+    "remotion": "4.0.520",
+    "concurrency": 2
+  },
+  "timingMethod": "Kokoro predicted token durations; not forced alignment; audio and predicted times adjusted by tempo 0.80000; scene holds 1.023s",
+  "sceneCount": 4,
+  "planningAttempts": [
+    {
+      "provider": "nvidia",
+      "outcome": "success",
+      "elapsedMs": 29134
+    }
+  ],
+  "selectionAttempts": [
+    {
+      "provider": "nvidia",
+      "outcome": "success",
+      "elapsedMs": 1466
+    }
+  ]
+}

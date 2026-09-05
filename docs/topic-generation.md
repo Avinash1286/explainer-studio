@@ -1,6 +1,6 @@
 # H2: topic-to-video pipeline
 
-Development provider qualification passed using the owner's configured credentials. Full topic-to-video acceptance is in progress; production generation remains gated until that test passes.
+Development and production provider qualification passed using the owner's configured credentials. A real browser topic produced a complete 60-second video. Mechanical pipeline acceptance passed; content review found incorrect icon labels, so production topic generation remains gated for H3 review and repair.
 
 ## Pipeline
 
@@ -63,7 +63,11 @@ A separate real Kokoro/Remotion render produced 1440 frames (60 seconds, 1280 x 
 
 The backend and frontend are deployed. Zerops reports worker version `0.3.0` with `generated-v1` capability and a successful readiness check. Browser save/reload/cancel and the disabled-generation setup state passed on desktop and mobile. GitHub Actions is now disabled and its workflow removed. Vercel Git integration on Hobby runs the complete validation command; its first build passed for commit `347bb57`. See [continuous validation](continuous-validation.md).
 
-Live provider checks passed for NVIDIA text, real Cloudflare fallback behind an injected primary 429, Firecrawl research and 24 Cloudflare icon embeddings. See `provider-qualification-development.json`. The original NVIDIA Llama endpoint returned HTTP 410, prompting the model update. A complete plan passed a saved-research diagnostic; initial browser runs exposed cue and schema reliability issues that led to the compiler and constrained-planning fixes above. The remaining H2 gate is a completed browser topic-to-video run, content/playback inspection and production qualification. H3 adds semantic/frame review, bounded revision and opt-in delivery.
+Live provider checks passed in development and production for NVIDIA text, real Cloudflare fallback behind an injected primary 429, Firecrawl research and 24 Cloudflare icon embeddings. See `provider-qualification-development.json` and `provider-qualification-production.json`. The original NVIDIA Llama endpoint returned HTTP 410, prompting the model update. Initial browser runs exposed cue/schema reliability and provider timeout issues that led to the compiler and constrained-planning fixes above.
+
+The browser topic "How do bees help flowering plants make seeds?" produced four generated scenes and a 1440-frame, 1280 x 720, H.264/AAC video. The successful media attempt took 117.31 seconds (33.77 seconds synthesis; 71.77 seconds rendering). The MP4 container is 60.053333 seconds including audio padding. A shorter 44.725-second voice track was adjusted at tempo 0.8 with approximately 1.023-second scene holds. The browser loaded the stored result and playback advanced past 36 seconds without a media error. Timeline, word bounds and cue bounds passed. See `topic-generation-live.json`.
+
+This draft fails content acceptance: a leaf is labelled as pollen and as an ovule; a seedling is labelled as a seed; a globe is labelled as soil. Source-quote checks also do not prove narration entailment. These are concrete reasons to implement H3 semantic/frame review and bounded repair before opening production generation. The scripted production demo remains available. The 117.31-second result is a Windows development render, not a new Zerops benchmark. Zerops service `mediaworker` is ACTIVE and its authenticated heartbeat confirms worker `0.3.1` after the rollout.
 
 ## Limits
 

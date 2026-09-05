@@ -19,7 +19,7 @@ Turn a question into a short, illustrated lesson. This repository implements a s
 - Authenticated media leases with cancellation, fencing, bounded retries, artifact validation, and idempotent publication.
 - Thirty-five automated tests and Vercel Git-based validation. GitHub Actions is disabled at the owner's request. See [continuous validation](docs/continuous-validation.md).
 
-Convex Workflow coordinates Firecrawl research, NVIDIA planning with Cloudflare fallback, and Cloudflare embeddings in Convex vector search. Development provider qualification passed; complete topic-to-video acceptance is in progress. OpenAI frame review and opt-in AgentMail remain planned. See [provider setup and the H2 guide](docs/topic-generation.md). See [the media phase guide](docs/media-phase.md) for renderer setup, measured results, and recovery limits.
+Convex Workflow coordinates Firecrawl research, NVIDIA planning with Cloudflare fallback, and Cloudflare embeddings in Convex vector search. Both deployments passed provider qualification, and a real topic produced a 60-second draft video. Production generation remains gated because content inspection found inaccurate icon labels. OpenAI frame review and opt-in AgentMail remain planned. See [provider setup and the H2 guide](docs/topic-generation.md). See [the media phase guide](docs/media-phase.md) for renderer setup, measured results, and recovery limits.
 
 ## Local development
 

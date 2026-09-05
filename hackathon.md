@@ -60,3 +60,10 @@ See `docs/topic-generation.md` for setup, tests and remaining live acceptance. T
 ## Remaining before submission
 
 H0 service qualification, Zerops media benchmark, full H1–H4 generation/review/evaluation, sponsor integrations, demo, actual user feedback, participant eligibility/registration checks, social post, and event submission. No test emails, social messages, or submission have been sent. See `PHASES.md` and `plan.md` for gates; an installed package is not evidence of a working sponsor integration.
+
+
+## September 5, 2026 - live provider qualification and CI migration
+
+Both Convex deployments passed real NVIDIA text, real Cloudflare backup behind an injected primary 429, Firecrawl research and 24 icon embeddings. A browser topic generated a 60-second draft in development. The successful media attempt took 117.31 seconds; playback and all artifact URLs passed. Content inspection found incorrect pollen/ovule/seed/soil icon labels, so production topic generation remains disabled pending H3 review and repair. See docs/topic-generation-live.json and docs/topic-generation.md.
+
+GitHub Actions is disabled at repository level and its workflow removed. Vercel Git integration on Hobby runs npm run check; commit accd258 passed with 41 tests plus TypeScript, lint and both builds. No paid Vercel plan or trial was enabled. Worker 0.3.1 adds bounded scene holds and operator recovery with monotonic lease fencing.

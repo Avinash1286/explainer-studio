@@ -1,4 +1,4 @@
-> Implementation note (September 5, 2026): H0a foundation and H1 media fixture are implemented; H2 topic generation is implemented but live acceptance awaits provider credentials. H0b external-provider qualification remains pending. See PHASES.md and hackathon.md for current evidence; the document below is the original design plan, and proposed integrations or targets are not completion claims.
+> Implementation note (September 5, 2026): H0a and H1 are implemented. NVIDIA, Cloudflare and Firecrawl are qualified in both deployments. H2 generated a real 60-second draft; its mechanical checks passed, but icon/content review failed, so production generation remains gated for H3. GitHub Actions is disabled; Vercel Git validation is active. See PHASES.md and docs/topic-generation.md for evidence. The original design below is not a completion claim.
 
 # Plan: a topic-to-explainer app for Convex All Gas, with an agentic video harness
 
