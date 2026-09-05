@@ -1,0 +1,112 @@
+{
+  "checkedAt": "2026-09-05T12:56:23.608Z",
+  "provider": "cloudflare",
+  "model": "@cf/meta/llama-4-scout-17b-16e-instruct",
+  "localProbe": {
+    "elapsedMs": 7456,
+    "decodedFrames": 8,
+    "usage": {
+      "prompt_tokens": 32598,
+      "completion_tokens": 178,
+      "total_tokens": 32776,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "neurons": 813.8872680664062
+    },
+    "outcome": "Schema valid; known icon guard rejected the model's initial false-positive pass."
+  },
+  "deployedReview": {
+    "checkedAt": "2026-09-05T12:54:58.610Z",
+    "jobs": [
+      {
+        "revision": 2,
+        "status": "planning",
+        "stageMessage": "Review found issues. Repairing the affected scenes once.",
+        "automaticRepairs": 1
+      }
+    ],
+    "lessonReviews": [
+      {
+        "revision": 2,
+        "status": "rejected",
+        "provider": "cloudflare",
+        "model": "@cf/meta/llama-4-scout-17b-16e-instruct",
+        "report": {
+          "summary": "Draft rejected: icon checks found misleading labels. Review the per-scene findings before publication.",
+          "scenes": [
+            {
+              "sceneId": "scene-1",
+              "factualPass": true,
+              "visualPass": false,
+              "issues": [
+                {
+                  "sceneId": "scene-1",
+                  "kind": "icon",
+                  "detail": "leaf icon is incorrectly labelled Pollen.",
+                  "repair": "Explain a supported whole-object interaction using a faithful icon and label."
+                }
+              ]
+            },
+            {
+              "sceneId": "scene-2",
+              "factualPass": true,
+              "visualPass": true,
+              "issues": []
+            },
+            {
+              "sceneId": "scene-3",
+              "factualPass": false,
+              "visualPass": false,
+              "issues": [
+                {
+                  "sceneId": "scene-3",
+                  "kind": "icon",
+                  "detail": "Incomplete diagram: missing seed and seedling visuals.",
+                  "repair": "Add seed and seedling icons to illustrate seed formation."
+                },
+                {
+                  "sceneId": "scene-3",
+                  "kind": "icon",
+                  "detail": "leaf icon is incorrectly labelled Ovule.",
+                  "repair": "Explain a supported whole-object interaction using a faithful icon and label."
+                },
+                {
+                  "sceneId": "scene-3",
+                  "kind": "icon",
+                  "detail": "seedling icon is incorrectly labelled Seed.",
+                  "repair": "Explain a supported whole-object interaction using a faithful icon and label."
+                }
+              ]
+            },
+            {
+              "sceneId": "scene-4",
+              "factualPass": true,
+              "visualPass": false,
+              "issues": [
+                {
+                  "sceneId": "scene-4",
+                  "kind": "icon",
+                  "detail": "seedling icon is incorrectly labelled Seed.",
+                  "repair": "Explain a supported whole-object interaction using a faithful icon and label."
+                },
+                {
+                  "sceneId": "scene-4",
+                  "kind": "icon",
+                  "detail": "earth icon is incorrectly labelled Soil.",
+                  "repair": "Explain a supported whole-object interaction using a faithful icon and label."
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "Cloudflare storage-URL input returned HTTP 400; deployed code sends bounded inline JPEG bytes instead.",
+    "NVIDIA Llama 4 Scout and Kimi endpoints returned HTTP 404; Llama 3.2 90B probe timed out. No NVIDIA vision fallback is configured.",
+    "Real review can miss visual defects; deterministic guards remain required.",
+    "No OpenAI inference was used. No email was sent."
+  ]
+}

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { projectSchema, type Project, type TimedScene } from "./scene";
 import manifest from "../../public/openmoji/manifest.json";
 
-export const REVIEW_MODEL = "gpt-4.1-2025-04-14";
+export const REVIEW_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 export const issueSchema = z.object({ sceneId: z.string().max(40), kind: z.enum(["factual", "icon", "layout", "timing"]), detail: z.string().min(1).max(500), repair: z.string().min(1).max(500) }).strict();
 export const reviewSchema = z.object({ summary: z.string().min(1).max(1000), scenes: z.array(z.object({ sceneId: z.string().max(40), factualPass: z.boolean(), visualPass: z.boolean(), issues: z.array(issueSchema).max(8) }).strict()).min(3).max(8) }).strict();
 export type Review = z.infer<typeof reviewSchema>;

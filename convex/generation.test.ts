@@ -16,7 +16,7 @@ async function setup(ready = false) {
   await t.mutation(api.sessions.start, { token });
   const jobId = await t.mutation(api.jobs.create, { token, topic: "How does water move around the planet?", duration: 60, audience: "beginner", requestId: "generation-test-001" });
   if (ready) {
-    for (const name of ["NVIDIA_API_KEY", "FIRECRAWL_API_KEY", "CLOUDFLARE_API_TOKEN", "OPENAI_API_KEY"]) vi.stubEnv(name, "test");
+    for (const name of ["NVIDIA_API_KEY", "FIRECRAWL_API_KEY", "CLOUDFLARE_API_TOKEN"]) vi.stubEnv(name, "test");
     vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32)); vi.stubEnv("GENERATION_ENABLED", "true");
     await t.mutation(internal.icons.put, { vectors: manifest.entries.map(() => vector) });
     await t.mutation(internal.icons.record, { passed: true, reportJson: "test qualification" });

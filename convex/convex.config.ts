@@ -8,7 +8,6 @@ const app = defineApp({ httpPrefix: "/api", env: {
   WORKER_AUTH_TOKEN: v.optional(v.string()), GENERATION_ENABLED: v.optional(v.string()),
   NVIDIA_API_KEY: v.optional(v.string()), FIRECRAWL_API_KEY: v.optional(v.string()),
   CLOUDFLARE_ACCOUNT_ID: v.optional(v.string()), CLOUDFLARE_API_TOKEN: v.optional(v.string()),
-  OPENAI_API_KEY: v.optional(v.string()), OPENAI_REVIEW_MODEL: v.optional(v.string()),
   AGENTMAIL_API_KEY: v.optional(v.string()), AGENTMAIL_INBOX_ID: v.optional(v.string()), AGENTMAIL_WEBHOOK_SECRET: v.optional(v.string()),
 } });
 app.use(staticHosting, { httpPrefix: "/" });

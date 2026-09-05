@@ -1,16 +1,16 @@
 # H3: review, revision and delivery
 
-Implementation is present in release 0.4.0. **Live OpenAI review, successful automatic repair and real email acceptance remain pending credentials.** Production topic generation stays disabled. The four H2 provider keys remain configured. GitHub Actions remains disabled; Vercel Hobby runs `npm run check` on pushes.
+Implementation is present in release 0.4.0. **Cloudflare replaces the earlier OpenAI reviewer at the owner's request. Live repair and real email acceptance remain separate gates.** Production topic generation stays disabled. The four H2 provider keys remain configured. GitHub Actions remains disabled; Vercel Hobby runs `npm run check` on pushes.
 
 ## Rendered evidence and publication
 
 Worker protocol 3 decodes two JPEGs from each completed MP4, at 45% and 90% of each scene. It uploads them through the existing fenced, authenticated artifact protocol. Generated tasks require complete per-scene frame coverage, distinct registered storage objects and JPEG size/type validation. The critic checks their frame numbers against the timed project and verifies that the rendered project matches the immutable requested version. These are frames from the video, not separately generated illustrations.
 
-Convex saves the complete version and starts a durable review workflow. The OpenAI Responses adapter sends the actual frame URLs, narration, icon catalog and original Firecrawl text, with `store: false` and structured output. The pinned default is `gpt-4.1-2025-04-14`; set `OPENAI_REVIEW_MODEL` to an explicitly qualified alternative if needed. Model response ID, model name, usage, scene findings and verdict are persisted. Original evidence quotations alone do not count as factual support: the critic is instructed to assess whether sources support the claims. Known live category errors (leaf/pollen, leaf/ovule, seedling/seed and globe/soil) also have deterministic guards.
+Convex saves the complete version and starts a durable review workflow. The Cloudflare Workers AI adapter sends inline bytes from the actual decoded frames, narration, icon catalog and original Firecrawl text with structured output. The fixed model is `@cf/meta/llama-4-scout-17b-16e-instruct`. Provider, model, reported usage, scene findings and verdict are persisted. This API response does not supply a model response ID; none is invented. NVIDIA remains the primary text planner, with Cloudflare fallback on transient errors. Vision uses Cloudflare only: NVIDIA vision candidates tested during migration were unavailable or timed out, and are not enabled. Original evidence quotations alone do not count as factual support: the critic is instructed to assess whether sources support the claims. Known live category errors (leaf/pollen, leaf/ovule, seedling/seed and globe/soil) also have deterministic guards.
 
 Only a passing stored review makes a generated version eligible for email/share delivery. Owners can play rejected or unavailable drafts, clearly labelled unapproved. Legacy H2 generated results are unapproved until migrated and reviewed. The fixed demo remains explicitly labelled and uses its established validation path.
 
-The critic receives at most two API attempts per review workflow, with a 90-second request deadline. Refusal, missing frames, malformed output or provider failure leaves a saved, unapproved draft. No other provider is presented as OpenAI review. Sampling cannot prove the quality of every frame or of the audio; human content acceptance still matters.
+The critic receives at most two API attempts per review workflow, with a 90-second request deadline. Refusal, missing frames, malformed output or provider failure leaves a saved, unapproved draft. There is no fallback to an unqualified vision model or text-only planner. Sampling cannot prove the quality of every frame or of the audio; human content acceptance still matters.
 
 ## Bounded changes
 
@@ -32,17 +32,17 @@ Email links open the exported `/lesson/index.html` page backed by a hashed 256-b
 
 ## Setup and remaining acceptance
 
-Add these to ignored `.env`, then run `npm run review:setup` (development) or `npm run review:setup -- --prod` (production):
+The existing `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are sufficient for frame review. `npm run review:setup` copies those two values from ignored `.env` to development and keeps generation disabled; add `-- --prod` for production. Presence is not an acceptance test. No OpenAI key is required.
+
+Email is independent: add the following to ignored `.env`, then run `npm run delivery:setup` (development) or `npm run delivery:setup -- --prod` (production):
 
 ```dotenv
-OPENAI_API_KEY=
-OPENAI_REVIEW_MODEL=gpt-4.1-2025-04-14
 AGENTMAIL_API_KEY=
 AGENTMAIL_INBOX_ID=
 AGENTMAIL_WEBHOOK_SECRET=
 ```
 
-Register `message.sent`, `message.delivered` and `message.bounced` in AgentMail, targeting the matching deployment's `/api/webhooks/agentmail` endpoint. Development and production webhooks have separate signing secrets: configure one target at a time with its matching secret. Credentials remain in Convex; the renderer and Vercel do not receive them. Setup intentionally leaves generation disabled and does not send messages.
+Register `message.sent`, `message.delivered` and `message.bounced` in AgentMail, targeting the matching deployment's `/api/webhooks/agentmail` endpoint. Development and production webhooks have separate signing secrets: configure one target at a time with its matching secret. Credentials remain in Convex; the renderer and Vercel do not receive them. Email setup does not change generation configuration or send messages.
 
 An operator can resume a saved unavailable review with `reviews:retryUnavailable` using its job ID and current revision after credential setup. `reviews:upgradeLegacy` re-renders a completed pre-H3 draft into a new revision with frame evidence, preserving the earlier version and research. Both are internal functions. They do not imply a passing content review.
 
@@ -50,6 +50,10 @@ Before enabling production: run real review on the known flawed draft; observe r
 
 ## API references checked
 
-- [OpenAI image input](https://developers.openai.com/api/docs/guides/images-vision), [structured output](https://developers.openai.com/api/docs/guides/structured-outputs), [GPT-4.1 snapshot](https://developers.openai.com/api/docs/models/gpt-4.1).
+- [Cloudflare Llama 4 Scout](https://developers.cloudflare.com/workers-ai/models/llama-4-scout-17b-16e-instruct/): vision input and structured output.
 - [AgentMail send](https://docs.agentmail.to/api-reference/inboxes/messages/send), [idempotent sends](https://docs.agentmail.to/idempotency), [signature verification](https://docs.agentmail.to/webhook-verification), [delivery events](https://docs.agentmail.to/events).
 - The installed Svix 2.3.0 implementation returns `undefined` after successful verification; JSON parsing follows verification. The signed-webhook regression test exercises this actual library behavior.
+
+## Hackathon impact
+
+The [official All Gas qualification and judging page](https://www.convex.dev/hackathons/all-gas) expects OpenAI, Firecrawl and AgentMail to do real product work. It does not clearly separate per-sponsor disqualification from scoring. The current owner-selected stack excludes OpenAI; eligibility and scoring are therefore unconfirmed. Using Codex for development is not documented as a substitute for OpenAI product integration. Do not claim full sponsor compliance. No organizer message has been sent.

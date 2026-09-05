@@ -11,7 +11,7 @@ async function setup(approved = true) {
   const current = await reviewSetup(); const { t, jobId, lease, result } = current;
   vi.stubEnv("AGENTMAIL_API_KEY", "test"); vi.stubEnv("AGENTMAIL_INBOX_ID", "test-inbox"); vi.stubEnv("AGENTMAIL_WEBHOOK_SECRET", webhookSecret); vi.stubEnv("CONVEX_SITE_URL", "https://example.convex.site");
   await t.mutation(internal.media.complete, { ...lease, result });
-  if (approved) await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(goodReview()), model: "test", responseId: "test", usageJson: "{}" });
+  if (approved) await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
   return current;
 }
 describe("verified lesson delivery", () => {

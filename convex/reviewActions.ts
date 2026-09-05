@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { z } from "zod";
-import { env, internalAction } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { projectSchema, sceneSchema, type TimedScene } from "../packages/contracts/scene";
 import { frameSamples, validateReplacement } from "../packages/contracts/review";
@@ -26,13 +26,22 @@ export const inspect = internalAction({ args: { jobId: v.id("jobs"), revision: v
   if (cursor !== Math.round(result.durationSeconds * 24)) throw new Error("Invalid rendered duration");
   const samples = frameSamples(timed as TimedScene[]);
   if (result.frames?.length !== samples.length) throw new Error("Missing frame evidence");
-  const frames = await Promise.all(samples.map(async sample => {
+  const frames = [];
+  let imageBytes = 0;
+  for (const sample of samples) {
     const frame = result.frames!.find(f => f.sceneId === sample.sceneId && f.frame === sample.frame);
-    const url = frame ? await ctx.storage.getUrl(frame.storageId) : null;
-    if (!url) throw new Error("Missing frame evidence");
-    return { ...sample, url };
-  }));
-  const review = await inspectFrames(env.OPENAI_API_KEY, env.OPENAI_REVIEW_MODEL, project, sources, frames);
+    const image = frame ? await ctx.storage.get(frame.storageId) : null;
+    if (!image || image.type !== "image/jpeg" || image.size > 2_000_000) throw new Error("Missing frame evidence");
+    imageBytes += image.size;
+    if (imageBytes > 8_000_000) throw new Error("Frame evidence exceeds review budget");
+    const bytes = new Uint8Array(await image.arrayBuffer());
+    let binary = "";
+    for (let offset = 0; offset < bytes.length; offset += 8192) binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+    // Workers AI requires inline image bytes for this route. Sending storage
+    // URLs was rejected in live qualification; never omit the images to retry.
+    frames.push({ ...sample, url: `data:image/jpeg;base64,${btoa(binary)}` });
+  }
+  const review = await inspectFrames(providerConfig(), project, sources, frames);
   await ctx.runMutation(internal.reviews.commit, { ...args, ...review });
   return null;
 } });

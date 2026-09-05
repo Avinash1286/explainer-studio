@@ -26,7 +26,8 @@ Actual dependencies used: Next.js, TypeScript, React, Convex database/functions/
 | Firecrawl | Retrieve research evidence | Pending |
 | Kokoro 82M / Zerops | Self-hosted speech and media workers | CPU synthesis/rendering deployed and benchmarked on Zerops |
 | OpenMoji | Licensed illustration assets | 24 pinned, hashed SVG assets bundled with CC BY-SA attribution |
-| OpenAI | Review real rendered frames and gate repairs/publication | Pending |
+| Cloudflare vision | Review real rendered frames and gate repairs/publication | Replaces earlier OpenAI plan at owner request; live acceptance recorded separately |
+| OpenAI product integration | Excluded by owner: hosted inference is NVIDIA/Cloudflare only | Official sponsor-stack qualification/scoring remains unconfirmed |
 | AgentMail | Opt-in completion delivery and delivery status | Pending |
 
 ## September 5, 2026 — foundation
@@ -70,4 +71,4 @@ GitHub Actions is disabled at repository level and its workflow removed. Vercel 
 
 ## H3 implementation - September 5, 2026
 
-Version-bound source and actual decoded-frame review, bounded automatic repair, targeted revision, scene narration reuse, verified-recipient outbox and signed delivery webhooks are implemented. 52 isolated tests pass; live OpenAI/AgentMail acceptance is pending new credentials. Production generation stays gated. No official event-log integration, real OpenAI approval, received test email or H3 acceptance completion is claimed.
+Version-bound source and actual decoded-frame review, bounded automatic repair, targeted revision, scene narration reuse, verified-recipient outbox and signed delivery webhooks are implemented. 52 isolated tests pass; the initial OpenAI plan is superseded by the owner's NVIDIA/Cloudflare-only constraint; Cloudflare vision acceptance uses existing credentials and AgentMail remains separate. Production generation stays gated. No official event-log integration, real OpenAI approval, received test email or H3 acceptance completion is claimed.

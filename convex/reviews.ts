@@ -1,12 +1,13 @@
 import { ConvexError, v } from "convex/values";
 import { start } from "@convex-dev/workflow";
-import { internalMutation, internalQuery, mutation, query, env } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { workflow } from "./generation";
 import { requireSession } from "./lib/session";
 import { projectSchema } from "../packages/contracts/scene";
 import { passedReview, validateReview, validateReplacement } from "../packages/contracts/review";
 import schema from "./schema";
+import { reviewReady } from "./lib/generationConfig";
 
 const versionArgs = { jobId: v.id("jobs"), revision: v.number() };
 const reportValidator = v.object({ summary: v.string(), scenes: v.array(v.object({ sceneId: v.string(), factualPass: v.boolean(), visualPass: v.boolean(), issues: v.array(v.object({ sceneId: v.string(), kind: v.union(v.literal("factual"), v.literal("icon"), v.literal("layout"), v.literal("timing")), detail: v.string(), repair: v.string() })) })) });
@@ -37,14 +38,14 @@ export const unavailable = internalMutation({ args: versionArgs, returns: v.null
   await ctx.db.patch(job._id, { status: "failed", stageMessage: "Review unavailable. Your draft is saved and has not been approved for delivery.", updatedAt: Date.now() });
   return null;
 } });
-export const commit = internalMutation({ args: { ...versionArgs, reportJson: v.string(), model: v.string(), responseId: v.string(), usageJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
+export const commit = internalMutation({ args: { ...versionArgs, reportJson: v.string(), provider: v.literal("cloudflare"), model: v.string(), responseId: v.optional(v.string()), usageJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
   const current = await ctx.runQuery(internal.reviews.context, { jobId: args.jobId, revision: args.revision });
   if (!current) return null;
-  if (args.reportJson.length > 40_000 || args.usageJson.length > 4000 || args.model.length > 100 || args.responseId.length > 200) throw new Error("Review too large");
+  if (args.reportJson.length > 40_000 || args.usageJson.length > 4000 || args.model.length > 100 || (args.responseId?.length || 0) > 200) throw new Error("Review too large");
   const project = projectSchema.parse(JSON.parse(current.task.projectJson!));
   const report = validateReview(JSON.parse(args.reportJson), project);
   const passed = passedReview(report);
-  await ctx.db.patch(current.review._id, { status: passed ? "passed" : "rejected", reportJson: JSON.stringify(report), model: args.model, responseId: args.responseId, usageJson: args.usageJson });
+  await ctx.db.patch(current.review._id, { status: passed ? "passed" : "rejected", reportJson: JSON.stringify(report), provider: args.provider, model: args.model, responseId: args.responseId, usageJson: args.usageJson });
   await ctx.db.insert("jobEvents", { jobId: args.jobId, kind: "review", message: `Revision ${args.revision}: ${passed ? "passed" : "rejected"} factual and rendered-frame review`, createdAt: Date.now() });
   if (passed) {
     await ctx.db.patch(args.jobId, { status: "completed", stageMessage: "Lesson passed automated source and rendered-frame review. Ready to watch or email.", updatedAt: Date.now() });
@@ -96,7 +97,7 @@ export const revise = mutation({ args: { token: v.string(), jobId: v.id("jobs"),
     if (previous.instruction !== args.instruction.trim() || previous.sceneIds[0] !== args.sceneId || previous.fromRevision !== args.revision) throw new ConvexError("Request ID already used");
     return null;
   }
-  if (!env.OPENAI_API_KEY) throw new ConvexError("Review provider setup is required before editing");
+  if (!reviewReady()) throw new ConvexError("Review provider setup is required before editing");
   if (!/^[a-zA-Z0-9-]{16,64}$/.test(args.requestId) || args.instruction.trim().length < 5 || args.instruction.length > 500) throw new ConvexError("Enter an edit request of 5–500 characters");
   if (!job.generation || job.revision !== args.revision || !["failed", "completed"].includes(job.status) || (job.userRevisions || 0) >= 2) throw new ConvexError("This version cannot be edited (maximum two user edits)");
   const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", args.jobId)).unique();
@@ -106,13 +107,13 @@ export const revise = mutation({ args: { token: v.string(), jobId: v.id("jobs"),
   await start(ctx, internal.reviews.repair, { requestId }, { startAsync: true });
   return null;
 } });
-export const details = query({ args: { token: v.string(), jobId: v.id("jobs") }, returns: v.union(v.null(), v.object({ revision: v.number(), canRevise: v.boolean(), scenes: v.array(v.object({ id: v.string(), title: v.string() })), reviews: v.array(v.object({ revision: v.number(), status: v.string(), model: v.union(v.string(), v.null()), report: v.union(v.null(), reportValidator) })) })), handler: async (ctx, args) => {
+export const details = query({ args: { token: v.string(), jobId: v.id("jobs") }, returns: v.union(v.null(), v.object({ revision: v.number(), canRevise: v.boolean(), scenes: v.array(v.object({ id: v.string(), title: v.string() })), reviews: v.array(v.object({ revision: v.number(), status: v.string(), provider: v.union(v.string(), v.null()), model: v.union(v.string(), v.null()), report: v.union(v.null(), reportValidator) })) })), handler: async (ctx, args) => {
   const session = await requireSession(ctx, args.token);
   const job = await ctx.db.get(args.jobId);
   if (!job || job.sessionId !== session._id || !job.generation) return null;
   const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", args.jobId)).unique();
   const reviews = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId)).order("desc").take(5);
-  return { revision: job.revision, canRevise: Boolean(env.OPENAI_API_KEY && task?.result && ["failed", "completed"].includes(job.status) && (job.userRevisions || 0) < 2), scenes: task?.projectJson ? projectSchema.parse(JSON.parse(task.projectJson)).scenes.map(s => ({ id: s.id, title: s.title })) : [], reviews: reviews.map(r => ({ revision: r.revision, status: r.status, model: r.model ?? null, report: r.reportJson ? validateReview(JSON.parse(r.reportJson), projectSchema.parse(JSON.parse(task!.projectJson!))) : null })) };
+  return { revision: job.revision, canRevise: Boolean(reviewReady() && task?.result && ["failed", "completed"].includes(job.status) && (job.userRevisions || 0) < 2), scenes: task?.projectJson ? projectSchema.parse(JSON.parse(task.projectJson)).scenes.map(s => ({ id: s.id, title: s.title })) : [], reviews: reviews.map(r => ({ revision: r.revision, status: r.status, provider: r.provider ?? null, model: r.model ?? null, report: r.reportJson ? validateReview(JSON.parse(r.reportJson), projectSchema.parse(JSON.parse(task!.projectJson!))) : null })) };
 } });
 
 // Operator migration for a pre-H3 rendered draft. Retain the original version;
@@ -129,7 +130,7 @@ export const upgradeLegacy = internalMutation({ args: { jobId: v.id("jobs") }, r
 export const retryUnavailable = internalMutation({ args: versionArgs, returns: v.null(), handler: async (ctx, args) => {
   const job = await ctx.db.get(args.jobId);
   const review = await ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", args.jobId).eq("revision", args.revision)).unique();
-  if (!env.OPENAI_API_KEY || job?.revision !== args.revision || job.status !== "failed" || review?.status !== "unavailable") throw new Error("Only an unavailable review can resume after setup");
+  if (!reviewReady() || job?.revision !== args.revision || job.status !== "failed" || review?.status !== "unavailable") throw new Error("Only an unavailable review can resume after setup");
   await ctx.db.patch(review._id, { status: "pending" });
   await ctx.db.patch(job._id, { status: "reviewing", stageMessage: "Retrying review of the saved video", updatedAt: Date.now() });
   await start(ctx, internal.reviews.run, args, { startAsync: true });

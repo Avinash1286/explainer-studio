@@ -1,7 +1,7 @@
 import { loadEnvFile } from "node:process";
 import { spawnSync } from "node:child_process";
 try { loadEnvFile(".env"); } catch { /* Process environment is supported. */ }
-const required = ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN"];
+const required = ["AGENTMAIL_API_KEY", "AGENTMAIL_INBOX_ID", "AGENTMAIL_WEBHOOK_SECRET"];
 const missing = required.filter(key => !process.env[key]?.trim());
 if (missing.length) { console.error(`Add these to .env: ${missing.join(", ")}`); process.exit(1); }
 const target = process.argv.includes("--prod") ? ["--prod"] : [];
@@ -11,7 +11,7 @@ function set(key, value) {
   console.log(`Configured ${key}`);
 }
 try {
-  set("GENERATION_ENABLED", "false");
+
   for (const key of required) set(key, process.env[key].trim());
-  console.log(`Cloudflare review configured on ${target.length ? "production" : "development"}. Generation remains disabled until live acceptance passes. This checks configuration only; live frame acceptance is separate. No email was sent.`);
+  console.log(`Email configured on ${target.length ? "production" : "development"}. Generation configuration is unchanged. No email was sent.`);
 } catch (error) { console.error(error.message); process.exit(1); }

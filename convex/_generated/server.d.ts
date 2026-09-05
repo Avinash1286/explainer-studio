@@ -38,8 +38,6 @@ type Env = {
   readonly FIRECRAWL_API_KEY: string | undefined;
   readonly GENERATION_ENABLED: string | undefined;
   readonly NVIDIA_API_KEY: string | undefined;
-  readonly OPENAI_API_KEY: string | undefined;
-  readonly OPENAI_REVIEW_MODEL: string | undefined;
   readonly WORKER_AUTH_TOKEN: string | undefined;
 };
 

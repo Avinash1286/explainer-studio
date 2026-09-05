@@ -22,7 +22,8 @@
     "render:fixture": "node dist/scripts/render-fixture.js",
     "render:project": "node dist/scripts/render-project.js",
     "providers:setup": "node scripts/setup-providers.mjs",
-    "review:setup": "node scripts/setup-review.mjs"
+    "review:setup": "node scripts/setup-review.mjs",
+    "delivery:setup": "node scripts/setup-delivery.mjs"
   },
   "dependencies": {
     "@convex-dev/rate-limiter": "0.3.2",

@@ -25,3 +25,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Project validation
 
 Do not create or run GitHub Actions for this project. The owner has selected Vercel Git integration on the Hobby plan for automated validation. `vercel.json` runs `npm run check` before publishing its static validation preview. Keep the primary hackathon app on Convex hosting. Provider credentials belong only in Convex; Vercel receives the public Convex URL.
+
+## Model providers
+
+The owner requires all hosted model inference (text, vision, embeddings and review) to use NVIDIA NIM or Cloudflare Workers AI only. Do not add OpenAI API calls, keys or models. Retain the separately selected local Kokoro-82M TTS. Firecrawl research and AgentMail delivery are non-model services. Document the All Gas sponsor-stack eligibility uncertainty honestly; it does not override this provider restriction.
