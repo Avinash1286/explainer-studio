@@ -6,19 +6,21 @@ Checked September 5, 2026. **The app is available; the complete hackathon entry 
 
 | Gate | Status | Evidence needed to close |
 |---|---|---|
-| App and hosting | 0.6.0 backend/static frontend deployed; public health HTTP 200 with generation enabled | Record final source commit and Git/Vercel result; retain separate media-runtime evidence |
-| Automated validation | 0.6.0 passed `npm run check`: 109 tests across 13 files, TypeScript, ESLint, static export and worker build | Preserve the exact tested source revision and verify final remote Git validation |
+| App and hosting | 0.6.0 deployed, development backend synced, final runtime `04c4635` on public main; Vercel Ready; worker 0.5.6 heartbeat observed three seconds old with seven capabilities | Recheck availability before recording and preserve the demonstrated version |
+| Automated validation | Final `04c4635` passed local and clean-install Vercel checks: 117 tests across 14 files, types, lint, web/worker builds | Complete; repeat for subsequent runtime changes |
 | Five-topic evaluation | 4/5 automatic approvals on the frozen baseline; manual limitations retained | Do not relabel this 5/5 after the separate bicycle replay, or count it as user testing |
-| Provider selector and persistence | Implemented and browser-verified on production: default NVIDIA/Cloudflare; missing-key OpenAI attempt created zero jobs; switching to default created one job and began planning | Keep real-model output and revision qualification separate from selector and isolated persistence checks |
-| Real OpenAI product use | No local API key; no live inference | Supply `OPENAI_API_KEY`, qualify configured `OPENAI_MODEL` (default `gpt-5.4-mini`), then record real planning, source/frame review and a revision/repair; inspect the resulting video |
-| Default provider regression | New production topic accepted and planning began; earlier route/fallback qualification retained | Record the new lesson's final video and inspection outcome; starting planning is not completion |
+| Provider selector and persistence | Production browser verified default route, zero-job missing-key OpenAI attempt, one default-route job and its persisted provider after form changes/reload; desktop/390-pixel mobile without overflow | Keep real-model output and revision qualification separate from selector and isolated persistence checks |
+| Real OpenAI product use | Intentionally disabled at the owner's request; implemented option safely reports unavailable; no live inference | Not required to complete this implementation. Disclose missing sponsor usage and clarify event eligibility; qualify real output only if the owner later enables the route |
+| Default provider regression | Finished, not approved: salt revision 1 failed source review and repair hit service/quota errors. One operator recovery removed only the unsupported phrase and preserved scenes 2–4 content; revision 2 rendered and passed all four factual checks but failed visual review | Retain both failures. The draft stays editable with sharing/email closed; solar remains the only qualified public example |
 | AgentMail delivery | Configured-inbox GET returned HTTP 200 with matching identity; production-scoped webhook and signing secret configured successfully | Obtain consent for recipient verification and lesson delivery; verify the received message, usable links, duplicate trigger and callbacks |
-| Manual showcase quality | Solar revision 3 inspected and public | Inspect the exact provider-qualified lesson used in the final demo; remove unresolved factual, label, relationship or timing defects |
+| Manual showcase quality | Solar revision 3 previously inspected; independent-browser playback advanced 24 seconds with captions, 60.053-second 1280×720 file and five sources | Inspect the exact provider-qualified lesson used in the final demo; remove unresolved factual, label, relationship or timing defects |
 | Real user trials | None recorded | Complete 3–5 trials and apply at least one evidence-based improvement, as required by the project plan |
 
-The 0.6.0 OpenAI option supersedes the older restriction on OpenAI inference. Run `npm run openai:setup -- --prod` after adding the operator's key and optional model override to ignored configuration. Both routes share Firecrawl research, the icon catalog, Kokoro speech and Remotion rendering. OpenAI resolves icons against the exact catalog; the NVIDIA/Cloudflare route retains its vector embeddings. Code, credentials being present, isolated provider mocks and a dropdown label do not establish actual sponsor usage.
+The 0.6.0 OpenAI option is implemented, and the owner has explicitly chosen to leave it disabled. Its safe unavailable state is the intended current behavior, not unfinished configuration work for this implementation. If the owner later enables it, use the setup procedure in release operations and qualify the configured model. Both routes share Firecrawl research, the icon catalog, Kokoro speech and Remotion rendering. OpenAI resolves icons against the exact catalog; the NVIDIA/Cloudflare route retains its vector embeddings. Code and a dropdown label do not establish live sponsor usage.
 
 AgentMail's earlier 403 is resolved. Existing organization/inbox webhook lists were empty before a production-only webhook was created for the configured inbox and `message.sent`, `message.delivered` and `message.bounced` events. Its returned signing secret was saved privately and `npm run delivery:setup -- --prod` succeeded. No email has been sent; configured callbacks do not establish receipt. Keep any remaining sponsor compliance gap explicit until real product evidence or organizer clarification exists.
+
+The salt recovery's NVIDIA visual reviewer demanded illustrated ions/lattice and directed arrows for scene 1 despite the supported word-card/association layout. This exposes variable visual judgments and presentation limits. The gate was not overridden; neither salt attempt counts as an approved result or changes the frozen five-topic evaluation. This topic's verification run is finished, with no further tuning or live attempts in progress.
 
 ## Official entry requirements
 
@@ -28,7 +30,7 @@ The [organizer's Luma page](https://luma.com/convex-allgas-hackathon) supplies r
 
 | Submission item | Current state | Owner action/evidence |
 |---|---|---|
-| Public repository | Existing GitHub repository | Confirm final branch is public and contains the demonstrated release |
+| Public repository | Final runtime commit `04c4635` pushed to public main | Preserve the demonstrated release; record later changes separately |
 | Root build log | Exists; current summary and historical entries maintained | Add actual video, provider proof and final deployment details |
 | Public app | https://wooden-pheasant-677.convex.site/ | Fresh-browser check of final result, sources, captions, generation and shares |
 | Demo video | Runbook prepared; owner recording pending | Record, upload, verify public playback and save URL |
@@ -59,8 +61,9 @@ Ask: What did the lesson explain clearly? Which label or relationship was confus
 
 Populate only after the corresponding event occurs:
 
-- Application deployment: Convex backend/static frontend 0.6.0 verified; exact demonstrated source commit and final Git/Vercel outcome pending.
-- Provider/model and accepted lesson evidence: pending for the OpenAI update.
+- Initial selector deployment: runtime [`0ebfce2`](https://github.com/Avinash1286/explainer-studio/commit/0ebfce2); [Vercel validation](https://explainer-studio-checks-9705f7ydg-avinash1286s-projects.vercel.app) Ready after a clean install, 109 tests and builds.
+- Final repair runtime: [`04c4635`](https://github.com/Avinash1286/explainer-studio/commit/04c4635), production/development backends synced; [Vercel validation](https://explainer-studio-checks-1ryoohj3q-avinash1286s-projects.vercel.app) Ready after exact-commit clean install, 117 tests and full builds. Operator recovery rendered and passed factual checks but failed visual review; final status is unapproved.
+- OpenAI product-use evidence: absent by the owner's choice to leave the implemented route disabled; sponsor eligibility clarification remains pending.
 - AgentMail received-message and callback evidence: pending.
 - Trial summary and improvement: pending.
 - Public video URL and duration: pending owner recording.

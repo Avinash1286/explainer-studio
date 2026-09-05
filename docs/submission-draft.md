@@ -8,7 +8,7 @@ Draft only. Replace evidence-dependent items after real validation; this file is
 
 **Problem:** A short explanation usually requires research, a script, illustrations, voice work and editing across separate tools. Keeping the explanation accurate while coordinating those steps is harder than generating a fluent script.
 
-**Approach:** A Next.js/TypeScript app sends a topic to durable Convex workflows. Firecrawl supplies research. The verified NVIDIA NIM/Cloudflare route plans the explanation and checks claims and rendered frames. Release 0.6.0 adds a selectable OpenAI Responses route for those stages and targeted repairs, using a configurable model (default `gpt-5.4-mini`). Its implementation is complete; live qualification still needs an API key and must be recorded before submission. Canonical icons and word cards compile into deterministic diagrams. A Zerops worker runs local Kokoro-82M, Remotion and FFmpeg to produce video, captions and frame evidence. Source and visual review gate publication. Owners can revise a scene, inspect findings and share an approved version.
+**Approach:** A Next.js/TypeScript app sends a topic to durable Convex workflows. Firecrawl supplies research. The verified NVIDIA NIM/Cloudflare route plans the explanation and checks claims and rendered frames. Release 0.6.0 adds a selectable OpenAI Responses route for those stages and targeted repairs, using a configurable model (default `gpt-5.4-mini`). The owner has intentionally left this implemented option disabled; no live OpenAI product usage is claimed. Canonical icons and word cards compile into deterministic diagrams. A Zerops worker runs local Kokoro-82M, Remotion and FFmpeg to produce video, captions and frame evidence. Source and visual review gate publication. Owners can revise a scene, inspect findings and share an approved version.
 
 **Why Convex matters:** The database is the persistent coordination layer: research checkpoints, realtime progress, lease fencing, immutable versions, reviewer findings, retries, quotas, sharing and the email outbox all survive beyond a browser request.
 
@@ -18,7 +18,9 @@ Draft only. Replace evidence-dependent items after real validation; this file is
 
 **Known limits:** The small icon catalog often falls back to word cards. Generated diagrams and review verdicts can still be wrong; users should inspect the complete lesson. The frozen baseline evaluation yielded 4/5 automated approvals with manual visual limitations, not four polished showcase videos or independent user trials. Generation takes several minutes and can fail when providers time out or exhaust quota.
 
-**Validation:** Release 0.6.0 passes 109 automated tests across 13 files, TypeScript, ESLint, static export and worker build. The Convex frontend/backend are deployed; the provider selector and unavailable-OpenAI behavior are browser-verified, and a fresh default-route lesson began planning. Its final video and the final Git/Vercel result remain pending. Live OpenAI output, consented email receipt and real user trials are separate pending evidence.
+**Validation:** Runtime commit `0ebfce2` is on public main and passes 109 automated tests across 13 files, TypeScript, ESLint, static export and worker build, including clean-install Vercel validation (Ready). The Convex frontend/backend are deployed. Browser checks cover provider persistence, unavailable OpenAI, desktop/mobile layout and independent solar playback with captions and sources. A fresh salt regression rendered but source review rejected one unsupported claim, then automatic repair failed on NVIDIA 502/Cloudflare 429. Preserve that unapproved first attempt separately from any recovery. Live OpenAI output is absent by the owner's choice; consented email receipt and real user trials remain pending evidence.
+
+The final bounded-repair runtime `04c4635` is public and deployed, with development synced; its exact-commit clean-install Vercel validation is Ready with 117 tests across 14 files plus types, lint and builds. One operator recovery removed only the unsupported phrase and preserved the other three scenes' content. Revision 2 rendered and passed all factual checks, but NVIDIA visual review rejected scene 1's word-card/association layout. Both attempts remain unapproved; sharing/email stay closed and the draft remains editable. Variable visual judgments are a known limitation. This correction does not change the earlier frozen evaluation, and solar remains the sole manually qualified public example.
 
 ## Links to enter in the form
 
@@ -31,7 +33,7 @@ Draft only. Replace evidence-dependent items after real validation; this file is
 | Demo video | OWNER TO ADD after recording and upload |
 | Social post | OWNER TO ADD after the actual post |
 | Real user feedback | OWNER TO ADD after actual trials |
-| Demonstrated commit/deployment | ADD the exact versions used in the recording |
+| Current runtime commit/deployment | Final runtime `04c4635` public and deployed, Vercel Ready; Convex app 0.6.0 and media worker 0.5.6 |
 | Submission receipt | NOT SUBMITTED BY THIS TASK |
 
 ## Sponsor evidence to finalize
@@ -40,7 +42,7 @@ Draft only. Replace evidence-dependent items after real validation; this file is
 |---|---|---|
 | Convex coordination and hosting | Public app, real generation/revision/share evidence and root log | Recheck final deployed version and links before submitting |
 | Firecrawl research | Live qualification and stored sources used by generated lessons | Show one source-backed lesson in the recording |
-| OpenAI model option | 0.6.0 route implemented; `OPENAI_API_KEY` is absent locally, so no live inference is claimed | Configure and qualify the model; record real planning, factual/image review and revision/repair output; do not substitute Codex-assisted development for product inference |
+| OpenAI model option | 0.6.0 route implemented and intentionally disabled at the owner's request; no live inference is claimed | Disclose missing product usage and obtain sponsor-eligibility clarification. Enabling the option is not required to finish this implementation |
 | AgentMail completion delivery | Outbox/verification implemented; configured-inbox GET returned HTTP 200 and identity matched; production webhook and signing secret configured | Consented recipient verification and a received-message test with working links and callback evidence; no email has been sent |
 
 The previous decision to exclude OpenAI inference is superseded. If the final submission still lacks real OpenAI or AgentMail usage, disclose that gap and obtain organizer clarification rather than asserting compliance with the sponsor-stack criterion. No organizer question has been sent by this task.
@@ -51,7 +53,7 @@ Draft, not posted:
 
 > Building Explainer Studio: one question becomes a researched, narrated lesson you can inspect, revise and share. Convex coordinates the work, Firecrawl supplies research, and Kokoro + Remotion turn the explanation into video. Try it: https://wooden-pheasant-677.convex.site/ @convex @OpenAI @firecrawl @agentmail
 
-After qualification, add a short, factual sentence about the OpenAI option and AgentMail delivery with a demonstration link. Sponsor tags alone are not evidence that the corresponding service ran in the product.
+After a real delivery test, add a factual sentence about AgentMail with a demonstration link. OpenAI may be described as an implemented but intentionally disabled option; do not imply live use. Sponsor tags alone are not evidence that the corresponding service ran in the product.
 
 ## Event and final entry
 
