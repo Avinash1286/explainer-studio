@@ -55,9 +55,11 @@ The qualification action is internal and accessible through authenticated admini
 
 ## Verification and remaining gate
 
-The isolated test suite runs real Convex workflow/component logic with simulated provider HTTP responses. It covers primary rate-limit fallback, bounded repair, bad credentials, malformed embeddings, insufficient research, invented citations, cue/layout constraints, checkpoint replay, owner isolation, failure completion, cancellation and protocol-2 media handoff.
+All 35 tests, TypeScript, lint, static export and worker build passed. The isolated test suite runs real Convex workflow/component logic with simulated provider HTTP responses. It covers primary rate-limit fallback, bounded repair, bad credentials, malformed embeddings, insufficient research, invented citations, cue/layout constraints, checkpoint replay, owner isolation, failure completion, cancellation and protocol-2 media handoff.
 
 A separate real Kokoro/Remotion render produced 1440 frames (60 seconds, 1280 x 720, H.264/AAC) in 120.76 seconds on the local Windows machine, using a manually authored test project. Audio fit and predicted word bounds passed; all four boards were sampled visually. See `topic-render-benchmark.json` and `topic-render-verification.json`. It is labelled scripted renderer validation. It is not evidence of live AI topic generation.
+
+The backend and frontend are deployed. Zerops reports worker version `0.3.0` with `generated-v1` capability and a successful readiness check. Browser save/reload/cancel and the disabled-generation setup state passed on desktop and mobile. GitHub Actions run `33961142979` could not start because of the account billing lock; local checks passed.
 
 The live H2 gate remains: configure credentials, qualify providers, submit an unseen topic through the development UI, verify source relevance and scene choices, play the resulting 60-90-second video, and record provider attempts plus generation timings. Then qualify production. H3 adds semantic/frame review, bounded revision and opt-in delivery.
 
