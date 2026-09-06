@@ -62,18 +62,21 @@ export const claim = internalMutation({
   args: { worker: v.string(), protocol: v.optional(v.number()) },
   handler: async (ctx, { worker, protocol }) => {
     if (!/^[a-zA-Z0-9_-]{1,100}$/.test(worker)) throw new ConvexError("Invalid worker identity");
+    const compatible = (task: {fixtureVersion:string;projectJson?:string}) => {
+      if(task.fixtureVersion !== "generated-v1") return true;
+      const scenes = projectSchema.parse(JSON.parse(task.projectJson!)).scenes;
+      const assets = scenes.some(scene=>scene.visualPlan?.entities.some(entity=>entity.kind==="asset"));
+      const directed = scenes.some(scene=>scene.visualPlan);
+      const textCards = scenes.some(scene=>scene.nodes.some(node=>node.icon==="TEXT"));
+      const explicit = scenes.some(scene=>scene.connections!==undefined);
+      return (protocol || 0) >= (assets ? 7 : directed ? 6 : textCards ? 5 : explicit ? 4 : 3);
+    };
     const existing = await ctx.db.query("mediaTasks").withIndex("by_status_and_leaseUntil", q => q.eq("status", "running")).take(10);
     const owned = existing.find(t => t.worker === worker && t.leaseUntil > Date.now());
-    if (owned) return { taskId: owned._id, attempt: owned.attempt, fixtureVersion: owned.fixtureVersion, projectJson: owned.projectJson, provenanceJson: owned.provenanceJson };
+    if (owned) return compatible(owned) ? { taskId: owned._id, attempt: owned.attempt, fixtureVersion: owned.fixtureVersion, projectJson: owned.projectJson, provenanceJson: owned.provenanceJson } : null;
     const queued = await ctx.db.query("mediaTasks").withIndex("by_status_and_leaseUntil", q => q.eq("status", "queued")).take(5);
     for (const task of queued) {
-      if (task.fixtureVersion === "generated-v1") {
-        const scenes = projectSchema.parse(JSON.parse(task.projectJson!)).scenes;
-        const explicit = scenes.some(s => s.connections !== undefined);
-        const textCards = scenes.some(s => s.nodes.some(n => n.icon === "TEXT"));
-        const directed = scenes.some(s => s.visualPlan);
-        if ((protocol || 0) < (directed ? 6 : textCards ? 5 : explicit ? 4 : 3)) continue;
-      }
+      if (!compatible(task)) continue;
       const job = await ctx.db.get(task.jobId);
       if (!job || job.status === "cancelled") { await ctx.db.patch(task._id, { status: "cancelled" }); continue; }
       const attempt = task.attempt + 1;

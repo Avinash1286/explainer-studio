@@ -15,7 +15,7 @@ The 0.6.0 deployment and frozen 4/5 automatic evaluation below are historical ba
 - Next.js/TypeScript static app on Convex hosting, realtime progress and anonymous browser workspaces.
 - Convex workflows, research checkpoints, immutable versions, quotas, cancellation, authenticated media leases and stale-result fencing.
 - Firecrawl research; NVIDIA NIM reasoning for planning and factual checking, with Cloudflare Workers AI fallback in the verified baseline.
-- A separate visual director preserves researched narration and chooses bounded illustrations, composition, relationships and meaningful actions. New scenes use 51 supported visual kinds, including 35 original everyday illustrations; legacy saved scenes retain their catalog renderer.
+- A separate visual director preserves researched narration and chooses bounded illustrations, composition, relationships and meaningful actions. New scenes support 51 native visual kinds plus an imported-asset kind. The [supplied asset library](docs/asset-library.md) adds 4,818 vetted SVGs, shortlisted by relevance to each scene; legacy saved scenes retain their catalog renderer.
 - Local Kokoro-82M on Zerops, phrase-timed Remotion rendering, progressive outlines/fills and state changes, MP4, separate captions, poster and inspectable project outputs. Geometry validation and three action-aware review frames per rich scene support the new visual path.
 - Independent factual and decoded-frame review; one automatic repair, two scene edits, reusable narration cache, bounded planning/review recovery.
 - Approved-version share links with expiry/revocation, operator-published examples, opt-in verified-recipient AgentMail outbox and signed delivery callbacks.
@@ -61,7 +61,7 @@ npm run check
 npm run preflight
 ```
 
-`preflight` reports local variable presence only; it does not verify API access or inspect secrets configured in Convex. `check` builds both the web export and the media worker. The tests run isolated Convex mocks and require no cloud credentials.
+`preflight` reports local variable presence only; it does not verify API access or inspect secrets configured in Convex. `check` verifies every bundled lesson asset and builds both the web export and the media worker. The tests run isolated Convex mocks and require no cloud credentials. The committed runtime asset catalog works on a clean checkout without the original Windows asset folder; `npm run assets:import` rebuilds it from the ignored local `assets/` snapshot when that folder is available.
 
 ## Deploy the frontend and backend
 
@@ -94,6 +94,8 @@ app/                 Next.js pages and styling
 components/          Studio interface and original style study
 convex/              Database, functions, rate limits, tests, HTTP routes
 packages/contracts/  Shared types and limits
+packages/assets/     Vetted artwork catalog and scene relevance search
+public/lesson-assets/ Checksum-pinned SVG files for rendering
 workers/media/       Media-worker entry point and renderer
 scripts/             Build and configuration helpers
 docs/                Milestone evidence and operational notes

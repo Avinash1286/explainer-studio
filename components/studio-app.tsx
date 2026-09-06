@@ -108,7 +108,7 @@ function MediaResult({ token, jobId, onError }: { token: string; jobId: Id<"jobs
     </video>
     <p>{result.generated ? "AI-planned lesson" : "Original scripted demo"} · {result.durationSeconds.toFixed(1)} seconds · Kokoro voice</p>
     <div className="artifact-links"><a href={result.video} target="_blank" rel="noreferrer">Open video</a>{result.project ? <a href={result.project} target="_blank" rel="noreferrer">Project, transcript & sources</a> : null}{result.captions ? <a href={result.captions} target="_blank" rel="noreferrer">Captions</a> : null}</div>
-    <small>Illustrations by <a href="https://openmoji.org/">OpenMoji</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Stroke and fill animation adaptations.</small>
+    <small>Original diagrams and catalog artwork. <a href="https://openmoji.org/">OpenMoji</a> assets: <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. <a href="/lesson-assets/NOTICE.md">Artwork credits</a>; selected illustrations are recorded in the project download.</small>
     {sources}
     <LessonReview key={jobId} token={token} jobId={jobId} approved={result.approved} onError={onError} />
   </div>;

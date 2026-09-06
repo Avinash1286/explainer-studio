@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { AbsoluteFill, Audio, cancelRender, Composition, continueRender, delayRender, interpolate, registerRoot, Sequence, staticFile, useCurrentFrame } from "remotion";
 import type { RenderProject, TimedScene } from "../packages/contracts/scene";
-import { VisualBoard } from "./visual-board";
+import { VisualBoard, type AssetImages } from "./visual-board";
 import "@fontsource/kalam/700.css";
 
-export type VideoProps = { project: RenderProject; icons: Record<string, string> };
+export type VideoProps = { project: RenderProject; icons: Record<string, string>; assets?: AssetImages };
+const NO_ASSETS: AssetImages = {};
 const ink = "#171717";
 const progress = (frame: number, start: number, length: number) => interpolate(frame, [start, start + length], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
@@ -53,9 +54,24 @@ function BoardFont() {
   return null;
 }
 
-export function ExplainerVideo({ project, icons }: VideoProps) {
-  return <AbsoluteFill style={{background:"#ffffff"}}><BoardFont />{project.scenes.map(scene => <Sequence key={scene.id} from={scene.startFrame} durationInFrames={scene.durationInFrames}>
-    {scene.visualPlan ? <VisualBoard scene={scene} /> : <LegacyBoard scene={scene} icons={icons} />}
+function BoardAssets({assets}:{assets:AssetImages}) {
+  const [handle] = useState(() => delayRender("Loading the selected illustrations"));
+  useEffect(() => {
+    let active=true;
+    Promise.all(Object.values(assets).map(source=>new Promise<void>((resolve,reject)=>{
+      const image=new Image();
+      image.onload=()=>resolve();
+      image.onerror=()=>reject(new Error("A verified lesson illustration could not be decoded"));
+      image.src=source;
+    }))).then(()=>{if(active)continueRender(handle);}).catch(error=>{if(active)cancelRender(error);});
+    return ()=>{active=false;continueRender(handle);};
+  },[assets,handle]);
+  return null;
+}
+
+export function ExplainerVideo({ project, icons, assets=NO_ASSETS }: VideoProps) {
+  return <AbsoluteFill style={{background:"#ffffff"}}><BoardFont /><BoardAssets assets={assets} />{project.scenes.map(scene => <Sequence key={scene.id} from={scene.startFrame} durationInFrames={scene.durationInFrames}>
+    {scene.visualPlan ? <VisualBoard scene={scene} assets={assets} /> : <LegacyBoard scene={scene} icons={icons} />}
     <Sequence from={8}><Audio src={staticFile(scene.audioFile)} /></Sequence>
   </Sequence>)}</AbsoluteFill>;
 }

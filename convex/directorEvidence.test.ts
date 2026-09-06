@@ -97,16 +97,24 @@ describe("scene-specific cited director context", () => {
     expect(JSON.parse(directorInput(sampleProject, testSources, sceneId, "Repair this scene").prompt).sources).toEqual(testSources);
   });
 
-  it("cuts a five-article directing prompt by over 55% without dropping schema or story", () => {
+  it("cuts source payload by over 95% and halves the complete prompt while preserving direction contracts", () => {
     const longSources = Array.from({ length: 5 }, (_, i) => ({ id: `source-${i + 1}`, title: `Test source ${i + 1}`, url: `https://source${i + 1}.example/article`, text: `${testSources[0].text} ${"This additional research paragraph is unrelated to the scene's cited mechanism. ".repeat(100)}`.slice(0, 8000) }));
     const context = directorEvidenceContext(longSources, evidence, sceneId);
     const full = directorInput(sampleProject, longSources, sceneId), bounded = directorInput(sampleProject, longSources, sceneId, "", context);
-    expect(bounded.prompt.length / full.prompt.length).toBeLessThan(0.45);
     const before = JSON.parse(full.prompt), after = JSON.parse(bounded.prompt);
+    const bytes = (value: string) => new TextEncoder().encode(value).byteLength;
+    // Asset/glyph instructions are identical fixed overhead in both requests.
+    // Measure evidence reduction independently so growth in that shared packet
+    // cannot hide a source-budget regression, while retaining a total-size cap.
+    expect(bytes(JSON.stringify(after.sources)) / bytes(JSON.stringify(before.sources))).toBeLessThan(0.05);
+    expect(after.sources.every((source: { text: string }) => source.text.length <= DIRECTOR_PASSAGE_LIMIT)).toBe(true);
+    expect(bytes(bounded.prompt) / bytes(full.prompt)).toBeLessThan(0.5);
     expect(after.schema).toEqual(before.schema);
     expect(after.lesson).toEqual(before.lesson);
     expect(after.direction).toEqual(before.direction);
     expect(after.scene).toEqual(before.scene);
+    expect(after.assetCatalog).toEqual(before.assetCatalog);
+    expect(after.glyphCatalog).toEqual(before.glyphCatalog);
   });
 
   it("retains both citations and retrieves the omitted circuit requirement from full research", () => {

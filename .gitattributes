@@ -2,3 +2,4 @@
 *.png binary
 *.mp4 binary
 *.wav binary
+/public/lesson-assets/*.svg -text

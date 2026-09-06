@@ -1,6 +1,6 @@
 {
   "name": "explainer-studio",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -16,7 +16,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build",
+    "check": "npm run assets:verify && npm run typecheck && npm run lint && npm test && npm run build",
+    "assets:import": "node scripts/import-lesson-assets.mjs",
+    "assets:verify": "node scripts/verify-lesson-assets.mjs",
     "deploy": "npx @convex-dev/static-hosting deploy --dist out --build-command \"npm run build:web\"",
     "preflight": "node --env-file-if-exists=.env.local scripts/preflight.mjs",
     "render:fixture": "node dist/scripts/render-fixture.js",
@@ -36,6 +38,7 @@
     "@fontsource/kalam": "5.3.0",
     "@remotion/bundler": "4.0.520",
     "@remotion/renderer": "4.0.520",
+    "@xmldom/xmldom": "0.9.12",
     "convex": "1.45.0",
     "lucide-react": "1.41.0",
     "next": "16.3.4",

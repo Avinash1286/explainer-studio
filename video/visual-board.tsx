@@ -9,6 +9,8 @@ import "@fontsource/kalam/700.css";
 export const BOARD_PALETTE = { ink: "#171717", blue: "#91cbed", green: "#98c982", yellow: "#ffe275", orange: "#f6ac68", purple: "#b9a0d6", red: "#f28d86", gray: "#d7dadd", white: "#ffffff" } as const;
 const INK = BOARD_PALETTE.ink;
 const WIDTH = VISUAL_CANVAS.width, HEIGHT = VISUAL_CANVAS.height;
+export type AssetImages = Record<string, string>;
+const NO_ASSETS: AssetImages = {};
 const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, value));
 const progress = (frame: number, start: number, duration: number) => clamp((frame - start) / Math.max(.000001, duration));
 const ease = (value: number) => value * value * (3 - 2 * value);
@@ -172,7 +174,16 @@ function Relation({relation,from,to,frame,durationInFrames,timing,beats}:{relati
   </g>;
 }
 
-function Entity({state,sceneId,frame,dim}:{state:EntityFrameState;sceneId:string;frame:number;dim:number}){
+function AssetPicture({entity,assets,identifier,draw}:{entity:VisualEntity;assets:AssetImages;identifier:string;draw:number}){
+  const source=entity.assetId ? assets[entity.assetId] : undefined;
+  if(!source || !/^data:image\/svg\+xml;base64,[a-zA-Z0-9+/]+={0,2}$/.test(source)) throw new Error(`Missing verified lesson asset image: ${entity.assetId || entity.id}`);
+  const fit=renderedGlyphSize(entity),left=(entity.w*WIDTH/100-fit.width)/2,top=(entity.h*HEIGHT/100-fit.height)/2;
+  // A bounded wipe reveals the original SVG as an isolated image document.
+  // Its source colors/geometry are never rewritten or injected into our DOM.
+  return <><defs><clipPath id={`${identifier}-asset-reveal`}><rect x={left} y={top} width={fit.width*ease(draw)} height={fit.height} /></clipPath></defs><image href={source} x={left} y={top} width={fit.width} height={fit.height} preserveAspectRatio="xMidYMid meet" clipPath={`url(#${identifier}-asset-reveal)`} /></>;
+}
+
+function Entity({state,sceneId,frame,dim,assets}:{state:EntityFrameState;sceneId:string;frame:number;dim:number;assets:AssetImages}){
   const {entity}=state,width=entity.w*WIDTH/100,height=entity.h*HEIGHT/100,color=BOARD_PALETTE[entity.color];
   const identifier=`visual-${sceneId}-${entity.id}`;
   const fill=progress(state.draw, .58, .42);
@@ -181,11 +192,13 @@ function Entity({state,sceneId,frame,dim}:{state:EntityFrameState;sceneId:string
     {state.emphasis>0||state.focus>0?<ellipse cx={state.x} cy={state.y} rx={radius.x+17} ry={radius.y+13} fill="none" stroke={color===INK?BOARD_PALETTE.yellow:color} strokeWidth="10" opacity={Math.max(state.emphasis,state.focus)*.55} />:null}
     {entity.kind==="label"?<g opacity={state.draw}><Label text={entity.label} x={state.x} y={state.y} width={width} fontSize={Math.min(40,height*.65)} color={color} center /></g>:<>
       <g transform={`translate(${state.x} ${state.y}) rotate(${state.rotation}) scale(${state.scale}) translate(${-width/2} ${-height/2})`}>
+        {entity.kind==="asset"?<AssetPicture entity={entity} assets={assets} identifier={identifier} draw={state.draw} />:<>
         <style>{`.${identifier}-trace *{fill:none!important;stroke:${INK}!important;stroke-dasharray:1!important;stroke-dashoffset:${1-state.draw}!important;stroke-width:2.4!important}.${identifier}-trace text{fill:${INK}!important;stroke:none!important}`}</style>
         <svg width={width} height={height} viewBox="0 0 100 100" overflow="visible" stroke={INK} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" fontFamily="Kalam, cursive" fontWeight="700">
           <g opacity={fill}><NormalizedPaths><MechanismGlyph kind={entity.kind} color={color} count={entity.count} values={entity.values} variant={entity.variant} state={state.state} frame={frame} /></NormalizedPaths></g>
           {state.draw<1?<g className={`${identifier}-trace`} opacity={state.draw>0?1:0}><NormalizedPaths><MechanismGlyph kind={entity.kind} color={color} count={entity.count} values={entity.values} variant={entity.variant} state={state.state} frame={frame} /></NormalizedPaths></g>:null}
         </svg>
+        </>}
       </g>
       {entity.label?<g opacity={progress(state.draw,.7,.3)}><Label text={entity.label} x={clamp(state.x,90,WIDTH-90)} y={Math.min(HEIGHT-38,state.y+radius.y+21)} width={Math.min(300,Math.max(155,width+35))} fontSize={27} /></g>:null}
     </>}
@@ -207,7 +220,7 @@ function NormalizedPaths({children}:{children:React.ReactNode}):React.ReactNode{
 }
 
 /** Pure entry point for deterministic still verification and arbitrary frame seeking. */
-export function VisualBoardFrame({plan,timing,durationInFrames,frame,sceneId="board"}:{plan:VisualPlan;timing?:VisualTiming;durationInFrames:number;frame:number;sceneId?:string}){
+export function VisualBoardFrame({plan,timing,durationInFrames,frame,sceneId="board",assets=NO_ASSETS}:{plan:VisualPlan;timing?:VisualTiming;durationInFrames:number;frame:number;sceneId?:string;assets?:AssetImages}){
   const states=evaluateVisualFrame(plan,timing,durationInFrames,frame),byId=new Map(states.map(state=>[state.entity.id,state]));
   const beats=timedBeats(plan,timing,durationInFrames);
   const focus=Math.max(0,...states.map(state=>state.focus));
@@ -217,7 +230,7 @@ export function VisualBoardFrame({plan,timing,durationInFrames,frame,sceneId="bo
   const subjects=states.filter(state=>!parentIds.has(state.entity.id));
   const contained=(relation:VisualRelation)=>Boolean(byId.get(relation.from)?.entity.parentId||byId.get(relation.to)?.entity.parentId);
   const drawRelation=(relation:VisualRelation)=>{const from=byId.get(relation.from),to=byId.get(relation.to);return from&&to?<Relation key={relation.id} relation={relation} from={from} to={to} frame={frame} durationInFrames={durationInFrames} timing={timing} beats={beats} />:null;};
-  const drawEntity=(state:EntityFrameState)=><Entity key={state.entity.id} state={state} sceneId={sceneId} frame={frame} dim={state.focus>0?1:1-focus*.28} />;
+  const drawEntity=(state:EntityFrameState)=><Entity key={state.entity.id} state={state} sceneId={sceneId} frame={frame} dim={state.focus>0?1:1-focus*.28} assets={assets} />;
   return <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" height="100%" style={{display:"block",background:"#ffffff",fontFamily:"Kalam, cursive"}} aria-label={plan.objective}>
     <rect width={WIDTH} height={HEIGHT} fill="#ffffff" />
     {plan.relations.filter(relation=>!contained(relation)).map(drawRelation)}
@@ -230,8 +243,8 @@ export function VisualBoardFrame({plan,timing,durationInFrames,frame,sceneId="bo
   </svg>;
 }
 
-export function VisualBoard({scene}:{scene:TimedScene}){
+export function VisualBoard({scene,assets=NO_ASSETS}:{scene:TimedScene;assets?:AssetImages}){
   const frame=useCurrentFrame();
   if(!scene.visualPlan)return null;
-  return <AbsoluteFill><VisualBoardFrame plan={scene.visualPlan} timing={scene.visualTiming} durationInFrames={scene.durationInFrames} frame={frame} sceneId={scene.id} /></AbsoluteFill>;
+  return <AbsoluteFill><VisualBoardFrame plan={scene.visualPlan} timing={scene.visualTiming} durationInFrames={scene.durationInFrames} frame={frame} sceneId={scene.id} assets={assets} /></AbsoluteFill>;
 }

@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { getLessonAsset } from "../assets/catalog";
 
-export const VISUAL_KINDS = ["sun", "solar-panel", "photon", "electron", "atom", "molecule", "lattice", "battery", "bulb", "house", "plant", "root", "flower", "seed", "water", "beaker", "cloud", "gear", "turbine", "magnet", "speaker", "book", "document", "person", "brain", "chip", "computer", "database", "magnifier", "clock", "shield", "container", "token", "filter", "memory", "pipe", "thermometer", "heat", "wave", "globe", "scale", "valve", "check", "cross", "bars", "pie", "grid", "layers", "circle", "box", "label"] as const;
+export const VISUAL_KINDS = ["sun", "solar-panel", "photon", "electron", "atom", "molecule", "lattice", "battery", "bulb", "house", "plant", "root", "flower", "seed", "water", "beaker", "cloud", "gear", "turbine", "magnet", "speaker", "book", "document", "person", "brain", "chip", "computer", "database", "magnifier", "clock", "shield", "container", "token", "filter", "memory", "pipe", "thermometer", "heat", "wave", "globe", "scale", "valve", "check", "cross", "bars", "pie", "grid", "layers", "circle", "box", "label", "asset"] as const;
 export const VISUAL_COLORS = ["ink", "blue", "green", "yellow", "orange", "purple", "red", "gray", "white"] as const;
 export const TRANSFORM_KINDS = ["battery", "bulb", "plant", "flower", "speaker", "book", "clock", "container", "pipe", "thermometer", "scale", "valve", "beaker", "wave", "bars", "pie", "grid"] as const;
 const id = z.string().regex(/^[a-z][a-z0-9-]{0,35}$/);
@@ -14,6 +15,7 @@ export const visualEntitySchema = z.object({
   values: z.array(z.number().min(0).max(1000000)).max(8).optional(),
   variant: z.enum(["default", "positive", "negative", "open", "closed", "horizontal", "vertical"]).optional(),
   parentId: id.optional(),
+  assetId: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,159}$/).optional(),
 }).strict();
 export const visualRelationSchema = z.object({
   id, from: id, to: id, label: z.string().max(28),
@@ -48,10 +50,16 @@ export type VisualTiming = { entities: Record<string, number>; relations: Record
 export const VISUAL_CANVAS = { width: 1280, height: 720 } as const;
 
 /** Pixel dimensions after SVG's default xMidYMid meet fitting on the 16:9 canvas. */
-export function renderedGlyphSize(entity: Pick<VisualEntity, "kind" | "w" | "h">): { width: number; height: number } {
+export function renderedGlyphSize(entity: Pick<VisualEntity, "kind" | "w" | "h" | "assetId">): { width: number; height: number } {
   const width = entity.w * VISUAL_CANVAS.width / 100;
   const height = entity.h * VISUAL_CANVAS.height / 100;
   if (entity.kind === "label") return { width, height };
+  if (entity.kind === "asset") {
+    const asset = getLessonAsset(entity.assetId);
+    if (!asset || !(asset.width > 0) || !(asset.height > 0)) throw new Error("Unknown or invalid lesson asset");
+    const scale = Math.min(width / asset.width, height / asset.height);
+    return { width: asset.width * scale, height: asset.height * scale };
+  }
   const side = Math.min(width, height);
   return { width: side, height: side };
 }
@@ -61,7 +69,7 @@ export function renderedGlyphSize(entity: Pick<VisualEntity, "kind" | "w" | "h">
  * Other kinds currently use the fitted viewport, not a promise of exact shape containment.
  * These are the entity's unrotated base bounds; inherited group transforms are separate.
  */
-export function visualMaterialBounds(entity: Pick<VisualEntity, "kind" | "x" | "y" | "w" | "h" | "count">): { left: number; right: number; top: number; bottom: number } {
+export function visualMaterialBounds(entity: Pick<VisualEntity, "kind" | "x" | "y" | "w" | "h" | "count" | "assetId">): { left: number; right: number; top: number; bottom: number } {
   const size = renderedGlyphSize(entity);
   let left = 0, right = 100, top = 0, bottom = 100;
   if (entity.kind === "lattice") {
@@ -94,6 +102,16 @@ export function validateVisualPlan(value: unknown, narration: string): VisualPla
   const entities = new Map(plan.entities.map(e => [e.id, e]));
   const relationIds = new Set(plan.relations.map(r => r.id));
   const ids = [...entities.keys(), ...relationIds];
+  // Resolve static artwork before any geometry lookup. A model supplies only a
+  // catalog ID; paths, URLs, new SVG and stateful reinterpretation are forbidden.
+  for (const entity of plan.entities) {
+    if (entity.kind === "asset") {
+      if (!getLessonAsset(entity.assetId)) errors.push(`${entity.id}: asset needs an existing vetted assetId`);
+      if (entity.count !== undefined || entity.values !== undefined || (entity.variant !== undefined && entity.variant !== "default")) errors.push(`${entity.id}: static assets do not support count, values or nondefault variants`);
+      if (plan.entities.some(child => child.parentId === entity.id)) errors.push(`${entity.id}: a static asset cannot enclose an interior mechanism; use a separate explicit cutaway instead of parenting components to its opaque artwork`);
+    } else if (entity.assetId !== undefined) errors.push(`${entity.id}: assetId is only valid for kind asset`);
+  }
+  if (errors.length) throw new Error(errors.join("\n"));
   if (entities.size !== plan.entities.length || relationIds.size !== plan.relations.length || new Set(ids).size !== ids.length) errors.push("Entity and relation IDs must be unique");
   if (new Set(plan.beats.map(b => b.id)).size !== plan.beats.length) errors.push("Beat IDs must be unique");
   for (const e of plan.entities) {

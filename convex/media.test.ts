@@ -4,6 +4,8 @@ import rateLimiter from "@convex-dev/rate-limiter/test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
+import { syntheticVisualPlan } from "../tests/director-helpers";
+import { sampleProject } from "../tests/review-helpers";
 const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
 const token = "c".repeat(64);
 afterEach(() => vi.unstubAllEnvs());
@@ -30,6 +32,23 @@ async function withFiles() {
   return { t, jobId, lease, result: { video, project, captions, poster, durationSeconds: 28 } };
 }
 describe("media leases and publication", () => {
+  it("fences asset jobs to protocol7, including claim replay, while native directed jobs still use6", async () => {
+    const {t,jobId} = await setup();
+    const taskId = await t.run(async ctx => (await ctx.db.query("mediaTasks").withIndex("by_jobId", q=>q.eq("jobId",jobId)).unique())!._id);
+    const native = {...sampleProject,scenes:sampleProject.scenes.map(scene=>({...scene,visualPlan:syntheticVisualPlan(scene.narration)}))};
+    // Claim fencing examines the required wire protocol, independently of the
+    // later worker/catalog validation; this ID is deliberately synthetic.
+    const asset = {...native,scenes:native.scenes.map(scene=>({...scene,visualPlan:{...scene.visualPlan,entities:scene.visualPlan.entities.map((entity,index)=>index===0?{...entity,kind:"asset",assetId:"synthetic-catalog-reference"}:entity)}}))};
+    await t.run(ctx=>ctx.db.patch(taskId,{fixtureVersion:"generated-v1",projectJson:JSON.stringify(asset)}));
+    expect(await t.mutation(internal.media.claim,{worker:"old",protocol:6})).toBeNull();
+    expect(await t.run(async ctx=>(await ctx.db.get(taskId))?.attempt)).toBe(0);
+    const claimed = (await t.mutation(internal.media.claim,{worker:"assets",protocol:7}))!;
+    expect(claimed.taskId).toBe(taskId);
+    expect(await t.mutation(internal.media.claim,{worker:"assets",protocol:6})).toBeNull();
+    expect(await t.mutation(internal.media.claim,{worker:"assets",protocol:7})).toEqual(claimed);
+    await t.run(ctx=>ctx.db.patch(taskId,{status:"queued",worker:undefined,leaseUntil:0,projectJson:JSON.stringify(native)}));
+    expect((await t.mutation(internal.media.claim,{worker:"native",protocol:6}))?.taskId).toBe(taskId);
+  });
   it("deduplicates sample creation and lost claim acknowledgements", async () => {
     const { t, jobId } = await setup();
     expect(await t.mutation(api.media.createSample, { token, requestId: "sample-request-0001" })).toBe(jobId);

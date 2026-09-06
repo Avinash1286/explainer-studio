@@ -1,14 +1,42 @@
 import { bundle } from "@remotion/bundler";
 import { ensureBrowser, makeCancelSignal, renderMedia, renderStill, selectComposition } from "@remotion/renderer";
-import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, copyFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fixture } from "../../packages/contracts/fixture";
-import { FPS, projectSchema, type RenderProject } from "../../packages/contracts/scene";
+import { FPS, projectSchema, type Project, type RenderProject } from "../../packages/contracts/scene";
 import { frameSamples } from "../../packages/contracts/review";
 import { fitNarration } from "../../packages/contracts/timing";
 import { compileVisualTiming, validateVisualPlan } from "../../packages/contracts/visual";
+import { ASSET_CATALOG_VERSION, getLessonAsset } from "../../packages/assets/catalog";
+
+/** Selected, locally vetted SVGs only. Integrity is checked before any TTS work. */
+export async function loadLessonAssets(project: Pick<Project,"scenes">, assetDirectory = path.resolve("public/lesson-assets")) {
+  const ids = [...new Set(project.scenes.flatMap(scene => scene.visualPlan?.entities.filter(entity => entity.kind === "asset").map(entity => entity.assetId) || []))].sort();
+  const entries = ids.map(id => {
+    const asset = getLessonAsset(id);
+    if (!asset || asset.file !== `${asset.id}.svg` || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,159}$/.test(asset.id)) throw new Error("Unknown or unsafe lesson asset reference");
+    return asset;
+  });
+  const assets: Record<string,string> = {};
+  if(entries.length) {
+    let root: string;
+    try { root = await realpath(assetDirectory); }
+    catch { throw new Error("Selected lesson assets are missing from this worker"); }
+    const loaded = await Promise.all(entries.map(async asset => {
+      let location: string;
+      try { location = await realpath(path.join(root,asset.file)); }
+      catch { throw new Error(`Missing vetted lesson asset: ${asset.id}`); }
+      if (!location.startsWith(root + path.sep)) throw new Error(`Unsafe lesson asset location: ${asset.id}`);
+      const bytes = await readFile(location);
+      if (createHash("sha256").update(bytes).digest("hex") !== asset.sha256) throw new Error(`Lesson asset integrity check failed: ${asset.id}`);
+      return [asset.id,`data:image/svg+xml;base64,${bytes.toString("base64")}`] as const;
+    }));
+    Object.assign(assets,Object.fromEntries(loaded));
+  }
+  return { assets, assetManifest: { catalogVersion: ASSET_CATALOG_VERSION, entries } };
+}
 
 function command(executable: string, args: string[], signal?: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
@@ -34,11 +62,13 @@ export async function renderProject(value: unknown, directory: string, stage: (m
     if (scene.nodes.length !== (scene.layout === "comparison" ? 2 : 3)) throw new Error("Invalid layout node count");
     if (scene.nodes.some(n => n.icon !== "TEXT" && !catalog.entries.some(e => e.id === n.icon))) throw new Error("Unknown icon");
   }
+  const {assets,assetManifest} = await loadLessonAssets(inputProject);
   const started = performance.now();
   const root = process.cwd();
   const destination = path.resolve(directory);
   const publicDir = path.join(destination, "public");
   await mkdir(publicDir, { recursive: true });
+  await writeFile(path.join(destination,"asset-manifest.json"),JSON.stringify(assetManifest,null,2));
   const input = path.join(destination, "input.json");
   await writeFile(input, JSON.stringify(inputProject));
   await stage("Synthesizing your narration with Kokoro");
@@ -75,7 +105,8 @@ export async function renderProject(value: unknown, directory: string, stage: (m
     cursor += durationInFrames;
     return timed;
   });
-  const project: RenderProject = { ...inputProject, scenes, fps: FPS, width: 1280, height: 720, durationInFrames: cursor, attribution: "Original Explainer Studio vector diagrams. Legacy OpenMoji assets: CC BY-SA 4.0, animated stroke/fill adaptations; see icon-manifest.json. Kalam font: SIL Open Font License.", timingMethod: speech.timingMethod };
+  const importedCredits = assetManifest.entries.length ? ` Selected supplied artwork: ${[...new Set(assetManifest.entries.map(asset => `${asset.attribution} (${asset.license})`))].join("; ")}. Original SVG geometry and colors preserved with whole-image reveals; see assetManifest and asset-manifest.json for exact selected identities.` : "";
+  const project: RenderProject = { ...inputProject, scenes, fps: FPS, width: 1280, height: 720, durationInFrames: cursor, attribution: `Native Explainer Studio vector diagrams. Legacy OpenMoji assets: CC BY-SA 4.0, animated stroke/fill adaptations; see icon-manifest.json.${importedCredits} Kalam font: SIL Open Font License.`, timingMethod: speech.timingMethod };
   const icons: Record<string, string> = {};
   for (const id of new Set(scenes.flatMap(scene => scene.nodes.map(node => node.icon)).filter(id => id !== "TEXT"))) icons[id] = await readFile(path.join(root, "public/openmoji", `${id}.svg`), "utf8");
   const manifest = await readFile("public/openmoji/manifest.json", "utf8");
@@ -96,7 +127,7 @@ export async function renderProject(value: unknown, directory: string, stage: (m
   await ensureBrowser();
   const serveUrl = await bundle({ entryPoint: path.join(root, "video/composition.tsx"), publicDir, outDir: path.join(destination, "bundle") });
   signal?.throwIfAborted();
-  const inputProps = { project, icons };
+  const inputProps = { project, icons, assets };
   const composition = await selectComposition({ serveUrl, id: "Explainer", inputProps });
   const { cancelSignal, cancel } = makeCancelSignal();
   signal?.addEventListener("abort", cancel, { once: true });
@@ -116,7 +147,7 @@ export async function renderProject(value: unknown, directory: string, stage: (m
   await writeFile(path.join(destination, "review-frames.json"), JSON.stringify(frames));
   const video = await readFile(path.join(destination, "video.mp4"));
   const benchmark = { totalSeconds: (performance.now()-started)/1000, synthesisSeconds: speech.synthesisSeconds, renderSeconds: (performance.now()-renderStarted)/1000, ttsPeakRssMb: speech.peakRssMb, ttsCacheHits: speech.cacheHits || 0, durationSeconds: cursor/FPS, frames: cursor, videoBytes: video.length, videoSha256: createHash("sha256").update(video).digest("hex"), platform: process.platform, node: process.version, remotion: "4.0.520", concurrency: Number(process.env.RENDER_CONCURRENCY || 2) };
-  await writeFile(path.join(destination, "project.json"), JSON.stringify({ ...project, provenance, iconManifest: JSON.parse(manifest), benchmark, transcript: inputProject.scenes.map(s => s.narration).join(" ") }, null, 2));
+  await writeFile(path.join(destination, "project.json"), JSON.stringify({ ...project, provenance, iconManifest: JSON.parse(manifest), assetManifest, benchmark, transcript: inputProject.scenes.map(s => s.narration).join(" ") }, null, 2));
   await writeFile(path.join(destination, "benchmark.json"), JSON.stringify(benchmark, null, 2));
   return { destination, benchmark, frames };
 }

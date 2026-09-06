@@ -5,6 +5,7 @@ zerops:
       base: nodejs@22
       buildCommands:
         - npm ci
+        - npm run assets:verify
         - npm run build:worker
         - node scripts/ensure-browser.mjs
       deployFiles:
@@ -15,6 +16,7 @@ zerops:
         - packages
         - workers/tts
         - public/openmoji
+        - public/lesson-assets
       addToRunPrepare:
         - workers/tts
     run:

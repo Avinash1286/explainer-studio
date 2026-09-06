@@ -101,6 +101,7 @@ export function repairInput(previous: Project, sources: Research, sceneIds: stri
 function directorRepairAttempts(scenes: DirectorAttempt[]) {
   return scenes.flatMap(scene => scene.attempts.map((attempt, index) => ({ ...attempt, stage: "director", sceneId: scene.sceneId,
     ...(index === scene.attempts.length - 1 && scene.layoutAdjustment ? { layoutAdjustment: scene.layoutAdjustment } : {}),
+    ...(index === scene.attempts.length - 1 && scene.assetSelection ? { assetSelection: scene.assetSelection } : {}),
   })));
 }
 

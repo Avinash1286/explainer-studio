@@ -6,6 +6,7 @@ import { post, KIMI_MODEL, ModelOutputError, ProviderError, transient, decodingS
 import { DEFAULT_OPENAI_MODEL } from "../../packages/contracts/provider";
 import manifest from "../../public/openmoji/manifest.json";
 import { compactSceneReview, sceneReviewSchema, validateProseCompaction, type ProseCompaction } from "./reviewProse";
+import { ASSET_REVIEW_POLICY, assetIdentityForReview } from "./factCheck";
 
 type DecodedFrame = { sceneId: string; frame: number; url: string };
 type TokenUsage = { input_tokens?: number; output_tokens?: number; total_tokens?: number };
@@ -42,8 +43,13 @@ export async function inspectSceneFrames(config: ProviderConfig, project: Projec
   if (config.generationProvider !== "openai" && !/^[a-f0-9]{32}$/i.test(config.CLOUDFLARE_ACCOUNT_ID || "")) throw new ProviderError("cloudflare", 401);
   frames = [...frames].sort((a, b) => a.frame - b.frame);
   const schema = sceneReviewSchema(sceneId), jsonSchema = z.toJSONSchema(schema);
+  const selectedAssets = (scene.visualPlan?.entities || []).flatMap(entity => {
+    const catalogIdentity = assetIdentityForReview(entity);
+    return catalogIdentity ? [{ entityId: entity.id, assetId: entity.assetId, catalogIdentity }] : [];
+  });
   const prompt = JSON.stringify({
     targetSceneId: sceneId, lesson: { title: project.title }, scene, sources,
+    ...(selectedAssets.length ? { selectedAssets, importedArtworkPolicy: ASSET_REVIEW_POLICY } : {}),
     mechanismAudit: "Look for an observable starting state, interaction and changed result; a highlight alone does not demonstrate release, separation or transformation. Inspect whether an opaque exterior hides an interior mechanism, whether coincident endpoints obscure a causal arrow, and whether annotations cover the relevant material. For a source-required circuit, circulation or feedback, verify a return path and active necessary segments in the available samples while narration describes continued flow. Do not require a loop for a one-way process. Fields and potential differences must not emit material particles. Report what is actually visible, and state uncertainty where these sparse samples cannot establish continuity.",
     // Only this scene's legacy assets need a catalog legend. Rich plans carry
     // their intended subject kinds; neither legend is proof of visible pixels.

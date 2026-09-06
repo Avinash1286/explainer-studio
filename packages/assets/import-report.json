@@ -1,0 +1,20 @@
+{
+  "version": "wbev-61babac4937cc309",
+  "imported": 4818,
+  "families": {
+    "sketch": 194,
+    "openmoji": 4493,
+    "iconify": 131
+  },
+  "rejected": [
+    {
+      "source": "assets/vendor/openmoji/color/svg/1F3F4-E0063-E0061-E0071-E0063-E007F.svg",
+      "reason": "Unsupported SVG attribute namespace"
+    },
+    {
+      "source": "assets/vendor/openmoji/color/svg/1F3F4-E0065-E0073-E0063-E006D-E007F.svg",
+      "reason": "SVG references a missing or ambiguous local definition"
+    }
+  ],
+  "ignored": "Raster counterparts, font/query caches, and historical embedding indexes remain in the original local snapshot. They are not runtime assets."
+}

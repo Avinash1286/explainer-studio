@@ -17,6 +17,9 @@ __pycache__/
 *.log
 .DS_Store
 Thumbs.db
+# Original user asset snapshot includes query caches and historical embeddings.
+# Deployable checked illustrations and their catalog are tracked separately.
+/assets/
 .agents/
 .claude/
 .vercel/

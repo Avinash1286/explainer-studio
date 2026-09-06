@@ -24,7 +24,7 @@ async function api<T>(body: Record<string, unknown>): Promise<T> {
 }
 async function heartbeat() {
   try {
-    const response = await fetch(new URL("/api/worker/heartbeat", url), { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ workerId, instanceId, version: "0.7.2", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1", "review-frames-v1", "explicit-connections-v1", "text-cards-v1", "directed-visuals-v1"] }), signal: AbortSignal.timeout(10_000) });
+    const response = await fetch(new URL("/api/worker/heartbeat", url), { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ workerId, instanceId, version: "0.8.0", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1", "review-frames-v1", "explicit-connections-v1", "text-cards-v1", "directed-visuals-v1", "library-assets-v1"] }), signal: AbortSignal.timeout(10_000) });
     if (response.ok) lastHeartbeat = Date.now();
   } catch { console.error(JSON.stringify({ event: "heartbeat_failed" })); }
 }
@@ -35,7 +35,7 @@ async function poll() {
   let directory: string | undefined;
   let attemptLease: { taskId: string; attempt: number; worker: string } | undefined;
   try {
-    const task = await api<{ taskId: string; attempt: number; fixtureVersion: string; projectJson?: string; provenanceJson?: string } | null>({ op: "claim", worker, protocol: 6 });
+    const task = await api<{ taskId: string; attempt: number; fixtureVersion: string; projectJson?: string; provenanceJson?: string } | null>({ op: "claim", worker, protocol: 7 });
     if (!task) return;
     const lease = { taskId: task.taskId, attempt: task.attempt, worker };
     attemptLease = lease;
@@ -106,7 +106,7 @@ const server = createServer((request, response) => {
   if (request.url !== "/health") { response.writeHead(404); response.end(); return; }
   const ready = !stopping && lastHeartbeat > Date.now()-45_000;
   response.writeHead(ready ? 200 : 503, { "Content-Type": "application/json" });
-  response.end(JSON.stringify({ ready, phase: "review-and-delivery", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1", "review-frames-v1", "explicit-connections-v1", "text-cards-v1", "directed-visuals-v1"], busy: inFlight }));
+  response.end(JSON.stringify({ ready, phase: "review-and-delivery", capabilities: ["kokoro", "remotion", "fixture-v1", "generated-v1", "review-frames-v1", "explicit-connections-v1", "text-cards-v1", "directed-visuals-v1", "library-assets-v1"], busy: inFlight }));
 });
 await heartbeat();
 server.listen(Number(process.env.PORT || 3001), "0.0.0.0");

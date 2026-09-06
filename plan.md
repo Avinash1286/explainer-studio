@@ -4,6 +4,8 @@
 
 > Hackathon completion also requires consented AgentMail delivery, actual user trials, the owner-recorded demo, eligibility clarification with OpenAI intentionally disabled and final entry. AgentMail inbox/webhook configuration is verified; actual delivery remains separate. [Hackathon readiness](docs/hackathon-readiness.md) tracks those gates. The broader pilot design below is not a claim that every proposed feature shipped.
 
+> Asset extension, 0.8.0: the owner's `F:\wbev\assets` folder has been copied in full to the ignored local `assets/` directory. A portable catalog of 4,818 vetted SVGs now supplies scene-specific candidates to the visual director, with validated catalog IDs, aspect-preserving rendering, selection provenance and artwork-aware reviews. It supplements the 51 native visual kinds without importing stale embeddings. See [asset library](docs/asset-library.md) for checks and rollout; this integration does not close the independent visual acceptance gate.
+
 # Plan: a topic-to-explainer app for Convex All Gas, with an agentic video harness
 
 Prepared and hackathon rules checked 2026-09-05; visual scope refreshed September 6. Current selected stack: Convex, Next.js/TypeScript, NVIDIA NIM + Cloudflare Workers AI by default with an optional OpenAI route, self-hosted Kokoro-82M, an original SVG illustration library, Firecrawl, and the legacy OpenMoji/vector catalog. Convex hosts the frontend; qualified frame review controls publication; AgentMail provides requested completion delivery when configured. **Zerops is the selected media-worker host, using the user's available credits.** Reference folder: `F:\cai\target`.
