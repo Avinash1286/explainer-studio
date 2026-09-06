@@ -19,7 +19,7 @@ The NVIDIA NIM + Cloudflare and OpenAI routes use the same bounded catalog witho
 
 - `assets/`: complete ignored local snapshot, including original indexes, caches, raster counterparts and fonts.
 - `packages/assets/catalog.json`: portable runtime metadata; `catalog.ts` and `search.ts` provide lookup and relevance matching.
-- `public/lesson-assets/`: checksum-pinned SVGs and a matching downloadable manifest, included in worker deployment.
+- `public/lesson-assets/`: checksum-pinned SVGs and a matching downloadable manifest, included in worker deployment. The web build removes individual SVG copies from generated `out/` only; the browser receives videos, the catalog and credits. This stays within Convex hosting's 1,800-file limit while preserving every source file for the worker.
 - `scripts/import-lesson-assets.mjs`: repeatable importer from the local snapshot; `scripts/asset-validation.mjs` validates static SVG structure.
 - `scripts/verify-lesson-assets.mjs`: verifies every runtime file and catalog without needing the original source folder.
 
@@ -45,4 +45,8 @@ September 6 verification: `npm run check` passed all **305 tests across 31 files
 
 The local deterministic integration preview at `runs/asset-import/asset-render-smoke/video.mp4` rendered three relevant subjects selected from real retrieval results: sketch abacus, OpenMoji microscope and Iconify prism. Its 548 frames are 1280×720 at 24 fps (22.833 seconds); H.264 video and AAC audio decode correctly. Six decoded frames were inspected during reveals and after motion. Colors/proportions are preserved and there are no fixed headers, footers or credits. Its selected manifest matches the exported project. The preview's narration and visual plans were hand-authored; its attribution metadata alone was updated after the render began, without changing the video. Exact commands, selection records and inspection notes remain in the ignored run folder.
 
-This asset integration is separate from the unresolved provider-generated reference-quality acceptance recorded in `visual-acceptance-070.md`; a deterministic integration preview does not establish that acceptance. Production rollout and the bounded live director check are recorded below as they complete.
+One bounded live NIM director check offered the real scene shortlist without any previous visual plan. Kimi K3 did not return an HTTP response within the 150-second deadline. No fallback/retry was used and no model-selected IDs were accepted; live model selection therefore remains unverified. Sanitized input/result/provenance are in `runs/asset-import/live-director-*`. OpenAI was not called.
+
+The initial website upload found Convex hosting's 1,800-file limit. The web build now retains 73 website files (including asset metadata and credits), while all 4,818 SVGs remain intact in the worker library. The corrected build, asset verification and build-script lint passed. This changes deployment packaging only.
+
+This asset integration is separate from the unresolved provider-generated reference-quality acceptance recorded in `visual-acceptance-070.md`; a deterministic integration preview does not establish that acceptance. Production rollout is recorded below when verified.
