@@ -1,0 +1,9 @@
+These 16 UI illustrations were copied unchanged from the user-supplied Chalk
+project's public/icons directory. They form a small frontend subset and are
+separate from the lesson renderer's full illustration catalog.
+
+The supplied project's NOTICE.md describes its house illustration library as
+project-specific artwork generated and curated for Chalk. It provides no
+separate copyright license for that generated artwork and notes that generation
+remains subject to the terms of the model provider used to create it. This copy
+does not replace those terms or assert a new artwork license.

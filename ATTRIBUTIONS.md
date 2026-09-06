@@ -1,5 +1,7 @@
 # Asset and dependency notices
 
+- The Chalk frontend design, brand mark, component patterns and interface screenshot were ported from the owner's supplied `F:\wbev` project. Its source-code MIT notice is preserved verbatim in `public/licenses/chalk-source.txt`. Sixteen unchanged house illustrations have their supplied provenance recorded in `public/ui-icons/NOTICE.txt`; the source-code license does not relicense those images.
+- Patrick Hand: Patrick Wagesreiter, SIL Open Font License 1.1. The frontend font and complete notice are in `public/fonts/`.
 - The plant/sun/leaf style study in `components/style-study.tsx` is an original illustration created for this project. It is not copied from the reference videos.
 - UI icons: Lucide, ISC license. The complete notice is in `public/licenses/lucide.txt` and the installed `lucide-react/LICENSE`.
 - DM Sans: the DM Sans Project Authors, SIL Open Font License 1.1. Bundled through Fontsource; complete notice in `public/licenses/dm-sans.txt`.

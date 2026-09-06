@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <title>Chalk</title>
+  <defs>
+    <radialGradient id="aperture-bg" cx="38%" cy="34%" r="72%">
+      <stop offset="0%" stop-color="#f3f4f6" />
+      <stop offset="55%" stop-color="#cfd3da" />
+      <stop offset="100%" stop-color="#9aa1ad" />
+    </radialGradient>
+  </defs>
+  <circle cx="50" cy="50" r="48" fill="url(#aperture-bg)" stroke="#8a909b" stroke-width="1.5" />
+  <g transform="translate(50 50)" fill="#e7e9ee" stroke="#aab0ba" stroke-width="0.8" opacity="0.92">
+    <path d="M0,-36 A36,36 0 0,1 25.5,-25.5 L6,-6 A9,9 0 0,0 0,-9 Z" />
+    <path d="M0,-36 A36,36 0 0,1 25.5,-25.5 L6,-6 A9,9 0 0,0 0,-9 Z" transform="rotate(45)" />
+    <path d="M0,-36 A36,36 0 0,1 25.5,-25.5 L6,-6 A9,9 0 0,0 0,-9 Z" transform="rotate(90)" />
+    <path d="M0,-36 A36,36 0 0,1 25.5,-25.5 L6,-6 A9,9 0 0,0 0,-9 Z" transform="rotate(135)" />
+    <path d="M0,-36 A36,36 0 0,1 25.5,-25.5 L6,-6 A9,9 0 0,0 0,-9 Z" transform="rotate(180)" />
+    <path d="M0,-36 A36,36 0 0,1 25.5,-25.5 L6,-6 A9,9 0 0,0 0,-9 Z" transform="rotate(225)" />
+    <path d="M0,-36 A36,36 0 0,1 25.5,-25.5 L6,-6 A9,9 0 0,0 0,-9 Z" transform="rotate(270)" />
+    <path d="M0,-36 A36,36 0 0,1 25.5,-25.5 L6,-6 A9,9 0 0,0 0,-9 Z" transform="rotate(315)" />
+  </g>
+  <circle cx="50" cy="50" r="16" fill="#1f2430" />
+  <circle cx="56" cy="45" r="4.5" fill="#f6f7f9" opacity="0.9" />
+</svg>

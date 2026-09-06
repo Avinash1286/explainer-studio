@@ -2,6 +2,8 @@
 
 Turn a question into a short illustrated lesson with research, narration, captions, review and targeted revisions.
 
+The frontend now uses the owner's supplied **Chalk** design: an illustrated landing page, a responsive chat workspace at `/chalk/`, searchable lesson history and a private video gallery. Existing job bookmarks and review/delivery workflows remain supported. See the [frontend port record](docs/frontend-port.md) for the design source and behavior mapping.
+
 **The illustrated clean-canvas renderer is implemented; visual acceptance remains open.** An actual NIM-authored 60-second lesson rendered: revision 1 was rejected, and revision 2's review was unavailable. Neither is an approved reference-quality example. The [visual acceptance record](docs/visual-acceptance-070.md) owns current versions, checks, deployment state and observed outcomes. OpenAI remains intentionally disabled.
 
 The 0.6.0 deployment and frozen 4/5 automatic evaluation below are historical baseline evidence. OpenAI remains intentionally disabled by the owner. Consented delivery, actual user trials, the owner-recorded demo and final event submission remain open. See [release evidence](docs/release-evidence.md) and the [readiness checklist](docs/hackathon-readiness.md).
