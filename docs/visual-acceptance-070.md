@@ -4,6 +4,8 @@ Updated September 6, 2026. This record separates the implemented 0.7 illustratio
 
 The [fresh reference review](visual-direction-070.md) covers all ten current files in `F:\cai\target`, with distributed frames and denser motion sequences. This was sampled visual inspection, not continuous playback or fresh listening to all reference audio. Original reference artwork is not distributed with the app.
 
+September 6 asset extension: production now runs the 0.8.0 backend and compatible worker from `17a5b97`, with the frontend packaging correction in `3998aa5`. This supersedes the earlier held-backend rollout state described chronologically below. The owner's supplied artwork is available through bounded per-scene retrieval and validated static-asset rendering. See [asset library](asset-library.md) for its 305-test validation, actual deterministic render and deployment evidence. One bounded live NIM direction request timed out without a candidate; reference-quality acceptance remains open, and the public example MP4 is unchanged.
+
 ## Implemented changes
 
 - Full white video canvas without fixed titles, headers, footers, counters, takeaway banners, credits or burned caption strips. Captions and attribution remain separate. Existing stored MP4s do not change retroactively.

@@ -10,6 +10,8 @@ The 0.6.0 deployment and frozen 4/5 automatic evaluation below are historical ba
 - [Phase status](PHASES.md), [architecture and reference study](plan.md), [actual hackathon log](hackathon.md)
 - [Release operations](docs/release-operations.md), [owner demo runbook](docs/demo-runbook.md), [submission working copy](docs/submission-draft.md)
 
+The **0.8.0 supplied asset integration is deployed**: new scenes can choose relevant artwork from 4,818 vetted SVGs. [Asset library and verification](docs/asset-library.md) records the complete local copy, pipeline behavior, render smoke and rollout. The bounded live NIM director check timed out; this release does not claim a newly approved provider-generated example.
+
 ## Implemented
 
 - Next.js/TypeScript static app on Convex hosting, realtime progress and anonymous browser workspaces.

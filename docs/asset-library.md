@@ -49,4 +49,12 @@ One bounded live NIM director check offered the real scene shortlist without any
 
 The initial website upload found Convex hosting's 1,800-file limit. The web build now retains 73 website files (including asset metadata and credits), while all 4,818 SVGs remain intact in the worker library. The corrected build, asset verification and build-script lint passed. This changes deployment packaging only.
 
-This asset integration is separate from the unresolved provider-generated reference-quality acceptance recorded in `visual-acceptance-070.md`; a deterministic integration preview does not establish that acceptance. Production rollout is recorded below when verified.
+This asset integration is separate from the unresolved provider-generated reference-quality acceptance recorded in `visual-acceptance-070.md`; a deterministic integration preview does not establish that acceptance.
+
+### Production rollout
+
+Feature commit `17a5b97` is deployed to the production Convex backend and Zerops media worker. Zerops version name is `assets080-17a5b97`; service `mediaworker` is ACTIVE. Its fresh production heartbeat reports version 0.8.0 and all nine capabilities, including `library-assets-v1` (instance `1f4677ed-49a5-4124-9aef-5b4ac1c85faf`). The remote build verified all 4,818 SVGs before shipping them.
+
+The frontend deployed successfully with the `3998aa5` packaging correction. Public `/`, `/api/health`, `/lesson-assets/manifest.json` and `/lesson-assets/NOTICE.md` return HTTP 200; the live manifest has the expected version and 4,818 entries. The public availability query reports NVIDIA/Cloudflare enabled and OpenAI disabled with its missing-key message. This is configuration readiness; the live NIM timeout above remains a separate inference limitation. Existing jobs and stored example MP4s were not regenerated.
+
+Vercel clean-install validation reached Ready for both the [feature commit](https://explainer-studio-checks-idhocs0p6-avinash1286s-projects.vercel.app) and [packaging correction](https://explainer-studio-checks-2h5rma7xg-avinash1286s-projects.vercel.app). The latter verifies all 4,818 assets, passes all 305 tests and both builds, and confirms the website export excludes the worker SVG files.
