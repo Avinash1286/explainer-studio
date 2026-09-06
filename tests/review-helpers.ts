@@ -8,6 +8,7 @@ import { testDraft, testSources } from "../convex/testFixtures";
 import { projectSchema } from "../packages/contracts/scene";
 import { frameSamples, type Review } from "../packages/contracts/review";
 import manifest from "../public/openmoji/manifest.json";
+import type { Id } from "../convex/_generated/dataModel";
 export const owner = "a".repeat(64);
 const modules = import.meta.glob(["../convex/**/*.ts", "!../convex/**/*.test.ts"]);
 export const sampleProject = projectSchema.parse({ version: 1, id: "test-review", title: testDraft.title, targetDuration: 60, origin: "generated", voice: "af_heart", speed: 0.9, sources: testSources.map(({ title, url }) => ({ title, url })), scenes: testDraft.scenes.map(s => ({ ...s, nodes: s.nodes.map(n => ({ icon: manifest.entries.find(e => e.name === n.concept)!.id, label: n.label, cue: n.cue })) })) });
@@ -34,4 +35,13 @@ export async function reviewSetup() {
   for (const sample of frameSamples(scenes)) frames.push({ ...sample, storageId: await store("image/jpeg", "synthetic frame") });
   const result = { video: await store("video/mp4", "mock video"), project: await store("application/json", JSON.stringify({ ...sampleProject, scenes })), captions: await store("text/vtt", "WEBVTT"), poster: await store("image/png", "png"), durationSeconds: 60, frames };
   return { t, jobId, lease, result };
+}
+
+export async function currentReviewArgs(t: Awaited<ReturnType<typeof reviewSetup>>["t"], jobId: Id<"jobs">, revision = 1) {
+  const job = await t.run(ctx => ctx.db.get(jobId));
+  return { jobId, revision, ...(job?.reviewRunId ? { runId: job.reviewRunId } : {}) };
+}
+export async function currentRepairArgs(t: Awaited<ReturnType<typeof reviewSetup>>["t"], requestId: Id<"revisionRequests">) {
+  const request = await t.run(ctx => ctx.db.get(requestId));
+  return { requestId, ...(request?.runId ? { runId: request.runId } : {}) };
 }

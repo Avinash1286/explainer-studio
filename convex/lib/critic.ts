@@ -4,6 +4,7 @@ import type { Project } from "../../packages/contracts/scene";
 import type { Research } from "../../packages/contracts/generation";
 import { post, KIMI_MODEL, ModelOutputError, ProviderError, transient, decodingSchema, openAIResponse, type OpenAIContent, type ProviderConfig, type Provider } from "./providers";
 import { DEFAULT_OPENAI_MODEL } from "../../packages/contracts/provider";
+import { errorInfo } from "../../packages/contracts/retry";
 import manifest from "../../public/openmoji/manifest.json";
 import { compactSceneReview, sceneReviewSchema, validateProseCompaction, type ProseCompaction } from "./reviewProse";
 import { ASSET_REVIEW_POLICY, assetIdentityForReview } from "./factCheck";
@@ -120,7 +121,11 @@ export async function inspectSceneFrames(config: ProviderConfig, project: Projec
   else try { response = await request("cloudflare"); }
   catch (error) {
     if (!transient(error) || !config.NVIDIA_API_KEY) throw error;
-    response = await request("nvidia");
+    try { response = await request("nvidia"); }
+    catch (fallbackError) {
+      if (fallbackError instanceof ProviderError) throw new ProviderError(fallbackError.provider, fallbackError.status, { ...fallbackError.info, previous: errorInfo(error) || undefined });
+      throw fallbackError;
+    }
   }
   const attempts: ValidationAttempt[] = [];
   for (let correction = 0; correction <= 1; correction++) {

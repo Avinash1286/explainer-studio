@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
-import { goodReview, owner, reviewSetup, sampleProject } from "../tests/review-helpers";
+import { goodReview, owner, reviewSetup, sampleProject, currentReviewArgs, currentRepairArgs } from "../tests/review-helpers";
 import { knownIconIssues, validateReplacement, validateReview } from "../packages/contracts/review";
 import { inspectFrames } from "./lib/critic";
 import { testSources } from "./testFixtures";
@@ -18,12 +18,12 @@ describe("source and rendered-frame review", () => {
     const { t, jobId, lease, result } = await reviewSetup();
     vi.stubEnv("CLOUDFLARE_API_TOKEN", "test"); vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
     await t.mutation(internal.media.complete, { ...lease, result });
-    await t.mutation(internal.reviews.unavailable, { jobId, revision: 1 });
+    await t.mutation(internal.reviews.unavailable, { ...await currentReviewArgs(t, jobId, 1) });
     const other = "d".repeat(64); await t.mutation(api.sessions.start, { token: other });
     await expect(t.mutation(api.reviews.retryReview, { token: other, jobId, revision: 1 })).rejects.toThrow("not found");
     await t.mutation(api.reviews.retryReview, { token: owner, jobId, revision: 1 });
     expect((await t.run(ctx => ctx.db.get(jobId)))?.reviewRetries).toBe(1);
-    await t.mutation(internal.reviews.unavailable, { jobId, revision: 1 });
+    await t.mutation(internal.reviews.unavailable, { ...await currentReviewArgs(t, jobId, 1) });
     await expect(t.mutation(api.reviews.retryReview, { token: owner, jobId, revision: 1 })).rejects.toThrow("limit");
   });
   it("uses the qualified NVIDIA vision fallback after Cloudflare rate limits, retaining actual image bytes", async () => {
@@ -53,14 +53,14 @@ describe("source and rendered-frame review", () => {
     await t.mutation(internal.media.complete, { ...lease, result });
     const report = goodReview(); report.scenes[0].visualPass = false;
     report.scenes[0].issues = [{ sceneId: "water-0", kind: "layout", detail: "Long title", repair: "Shorten title" }];
-    await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(report), provider: "cloudflare", model: "test", usageJson: "{}" });
+    await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId, 1), reportJson: JSON.stringify(report), provider: "cloudflare", model: "test", usageJson: "{}" });
     const request = (await t.run(ctx => ctx.db.query("revisionRequests").withIndex("by_jobId_and_requestId", q => q.eq("jobId", jobId)).take(1)))[0];
-    await t.mutation(internal.reviews.repairFailed, { requestId: request._id });
+    await t.mutation(internal.reviews.repairFailed, { ...await currentRepairArgs(t, request._id) });
     await expect(t.mutation(internal.reviews.retryFailedRepair, { jobId, revision: 2 })).rejects.toThrow("same rendered version");
     await t.mutation(internal.reviews.retryFailedRepair, { jobId, revision: 1 });
     expect((await t.run(ctx => ctx.db.get(jobId)))?.automaticRepairs).toBe(1);
     expect((await t.run(ctx => ctx.db.get(request._id)))?.recoveryAttempted).toBe(true);
-    await t.mutation(internal.reviews.repairFailed, { requestId: request._id });
+    await t.mutation(internal.reviews.repairFailed, { ...await currentRepairArgs(t, request._id) });
     await expect(t.mutation(internal.reviews.retryFailedRepair, { jobId, revision: 1 })).rejects.toThrow("once");
   });
   it("fails closed on rate limits or malformed reviews without contacting another model platform", async () => {
@@ -125,7 +125,7 @@ describe("source and rendered-frame review", () => {
       return response("sceneId" in report && report.sceneId === sampleProject.scenes[1].id ? {} : report);
     });
     vi.stubGlobal("fetch", fetcher);
-    await expect(t.action(internal.reviewActions.inspect, { jobId, revision: 1 })).rejects.toThrow();
+    await expect(t.action(internal.reviewActions.inspect, { ...await currentReviewArgs(t, jobId, 1) })).rejects.toThrow();
     expect(fetcher).toHaveBeenCalledTimes(4); // Facts, first scene, missing second scene and its one correction.
     const review = await t.run(ctx => ctx.db.query("lessonReviews").withIndex("by_jobId_and_revision", q => q.eq("jobId", jobId).eq("revision", 1)).unique());
     expect(review?.status).toBe("pending");
@@ -139,7 +139,7 @@ describe("source and rendered-frame review", () => {
     expect((await t.query(api.media.result, { token: owner, jobId }))?.approved).toBe(false);
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("reviewing");
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (_, init) => response(reportForRequest(init))); vi.stubGlobal("fetch", fetcher); vi.stubEnv("NVIDIA_API_KEY", "test"); vi.stubEnv("CLOUDFLARE_API_TOKEN", "test"); vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
-    await t.action(internal.reviewActions.inspect, { jobId, revision: 1 });
+    await t.action(internal.reviewActions.inspect, { ...await currentReviewArgs(t, jobId, 1) });
     const payload = JSON.parse(String(fetcher.mock.calls[1][1]?.body));
     expect(fetcher.mock.calls[0][0]).toBe("https://integrate.api.nvidia.com/v1/chat/completions");
     expect(fetcher.mock.calls[1][0]).toBe(`https://api.cloudflare.com/client/v4/accounts/${"a".repeat(32)}/ai/run/@cf/meta/llama-4-scout-17b-16e-instruct`);
@@ -147,7 +147,7 @@ describe("source and rendered-frame review", () => {
     expect(payload.messages[1].content.find((c: { type: string }) => c.type === "image_url").image_url.url).toBe(`data:image/jpeg;base64,${btoa("synthetic frame")}`);
     expect(payload.messages[1].content[0].text).toContain(testSources[0].text);
     expect((await t.query(api.media.result, { token: owner, jobId }))?.approved).toBe(true);
-    await t.action(internal.reviewActions.inspect, { jobId, revision: 1 });
+    await t.action(internal.reviewActions.inspect, { ...await currentReviewArgs(t, jobId, 1) });
     expect(fetcher).toHaveBeenCalledTimes(1 + sampleProject.scenes.length);
     await t.mutation(api.sessions.start, { token: "b".repeat(64) });
     expect(await t.query(api.reviews.details, { token: "b".repeat(64), jobId })).toBeNull();
@@ -158,20 +158,20 @@ describe("source and rendered-frame review", () => {
     await t.mutation(internal.media.complete, { ...lease, result });
     await t.run(ctx => ctx.db.patch(lease.taskId, { projectJson: JSON.stringify({ ...sampleProject, title: "Different title" }) }));
     const fetcher = vi.fn(); vi.stubGlobal("fetch", fetcher);
-    await expect(t.action(internal.reviewActions.inspect, { jobId, revision: 1 })).rejects.toThrow("does not match");
+    await expect(t.action(internal.reviewActions.inspect, { ...await currentReviewArgs(t, jobId, 1) })).rejects.toThrow("does not match");
     expect(fetcher).not.toHaveBeenCalled();
   });
   it("retains an unapproved draft on unavailable critic and ignores stale/cancelled verdicts", async () => {
     const { t, jobId, lease, result } = await reviewSetup();
     await t.mutation(internal.media.complete, { ...lease, result });
-    await t.mutation(internal.reviews.unavailable, { jobId, revision: 1 });
+    await t.mutation(internal.reviews.unavailable, { ...await currentReviewArgs(t, jobId, 1) });
     expect((await t.query(api.media.result, { token: owner, jobId }))?.approved).toBe(false);
-    await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
+    await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId, 1), reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("failed");
     await t.run(ctx => ctx.db.patch(jobId, { status: "reviewing", revision: 2 }));
-    await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
+    await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId, 1), reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
     await t.mutation(api.jobs.cancel, { token: owner, jobId });
-    await t.mutation(internal.reviews.commit, { jobId, revision: 2, reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
+    await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId, 2), reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("cancelled");
   });
   it("rejects known live icon defects even if the model falsely passes them", async () => {
@@ -189,22 +189,22 @@ describe("source and rendered-frame review", () => {
     const { t, jobId, lease, result } = await reviewSetup();
     await t.mutation(internal.media.complete, { ...lease, result });
     const report = goodReview(); report.scenes[0].visualPass = false; report.scenes[0].issues = [{ sceneId: "water-0", kind: "layout", detail: "Title too long", repair: "Shorten title" }];
-    await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(report), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
+    await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId, 1), reportJson: JSON.stringify(report), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
     const request = (await t.run(ctx => ctx.db.query("revisionRequests").withIndex("by_jobId_and_requestId", q => q.eq("jobId", jobId)).take(1)))[0];
     const changed = structuredClone(sampleProject); changed.scenes[0].title = "Evaporation";
-    await t.mutation(internal.reviews.replace, { requestId: request._id, projectJson: JSON.stringify(changed), evidenceJson: "[]" });
+    await t.mutation(internal.reviews.replace, { ...await currentRepairArgs(t, request._id), projectJson: JSON.stringify(changed), evidenceJson: "[]" });
     const task = await t.run(ctx => ctx.db.get(lease.taskId));
     expect(task?.attempt).toBe(1); expect(task?.attemptBase).toBe(1); expect(task?.revision).toBe(2);
     expect(JSON.parse(task!.projectJson!).scenes.slice(1)).toEqual(sampleProject.scenes.slice(1));
     await t.run(async ctx => { await ctx.db.patch(jobId, { status: "reviewing" }); await ctx.db.patch(lease.taskId, { result, status: "completed" }); await ctx.db.insert("lessonReviews", { jobId, revision: 2, status: "pending", createdAt: Date.now() }); });
-    await t.mutation(internal.reviews.commit, { jobId, revision: 2, reportJson: JSON.stringify(report), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
+    await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId, 2), reportJson: JSON.stringify(report), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("failed");
     expect(await t.run(ctx => ctx.db.query("revisionRequests").withIndex("by_jobId_and_requestId", q => q.eq("jobId", jobId)).take(5))).toHaveLength(1);
   });
   it("fences public edits by owner, version and request id, separately from automatic repair", async () => {
     const { t, jobId, lease, result } = await reviewSetup(); vi.stubEnv("CLOUDFLARE_API_TOKEN", "test"); vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
     await t.mutation(internal.media.complete, { ...lease, result });
-    await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
+    await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId, 1), reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
     const args = { token: owner, jobId, revision: 1, requestId: "edit-request-000001", sceneId: "water-0", instruction: "Shorten the title" };
     await t.mutation(api.reviews.revise, args); await t.mutation(api.reviews.revise, args);
     expect((await t.run(ctx => ctx.db.get(jobId)))?.userRevisions).toBe(1);

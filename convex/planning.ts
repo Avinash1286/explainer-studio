@@ -10,25 +10,25 @@ import { EMBEDDING_SPACE, researchSchema, validateDraft, type Draft, type Resear
 import { projectSchema } from "../packages/contracts/scene";
 import manifest from "../public/openmoji/manifest.json";
 
-export const researchTopic = internalAction({ args: { jobId: v.id("jobs") }, handler: async (ctx, { jobId }): Promise<null> => {
-  const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId });
+export const researchTopic = internalAction({ args: { jobId: v.id("jobs"), runId: v.optional(v.string()) }, handler: async (ctx, { jobId, runId }): Promise<null> => {
+  const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId, runId });
   if (artifacts.some(a => a.stage === "research")) return null;
   const sources = await research(providerConfig(job.generationProvider), job.topic);
-  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: "research", json: JSON.stringify({ sources, provider: "firecrawl", retrievedAt: Date.now() }) });
+  await ctx.runMutation(internal.generation.checkpoint, { jobId, runId, stage: "research", json: JSON.stringify({ sources, provider: "firecrawl", retrievedAt: Date.now() }) });
   return null;
 } });
 
-export const planScenes = internalAction({ args: { jobId: v.id("jobs") }, handler: async (ctx, { jobId }): Promise<null> => {
-  const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId });
+export const planScenes = internalAction({ args: { jobId: v.id("jobs"), runId: v.optional(v.string()) }, handler: async (ctx, { jobId, runId }): Promise<null> => {
+  const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId, runId });
   if (artifacts.some(a => a.stage === "plan")) return null;
   const sources: Research = researchSchema.parse(JSON.parse(artifacts.find(a => a.stage === "research")!.json).sources);
   const result = await authorLesson(providerConfig(job.generationProvider), sources, job.duration, job.topic, job.audience);
-  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: "plan", json: JSON.stringify(result) });
+  await ctx.runMutation(internal.generation.checkpoint, { jobId, runId, stage: "plan", json: JSON.stringify(result) });
   return null;
 } });
 
-export const retrieveIcons = internalAction({ args: { jobId: v.id("jobs") }, handler: async (ctx, { jobId }): Promise<null> => {
-  const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId });
+export const retrieveIcons = internalAction({ args: { jobId: v.id("jobs"), runId: v.optional(v.string()) }, handler: async (ctx, { jobId, runId }): Promise<null> => {
+  const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId, runId });
   if (artifacts.some(a => a.stage === "base" || a.stage === "project")) return null;
   const researchRecord = JSON.parse(artifacts.find(a => a.stage === "research")!.json) as { sources: Research; retrievedAt: number };
   const planned = JSON.parse(artifacts.find(a => a.stage === "plan")!.json) as { data: Draft; attempts: unknown };
@@ -72,11 +72,11 @@ export const retrieveIcons = internalAction({ args: { jobId: v.id("jobs") }, han
     sceneEvidence: draft.scenes.map(s => ({ sceneId: s.id, evidence: s.evidence })),
     planningAttempts: planned.attempts, selectionMethod: "literal-catalog-identity", reusedCatalogVectors: !openai && reuse, ...(!openai ? { embeddingSpace: EMBEDDING_SPACE } : {}), candidates,
     verification: `Source IDs and exact quotes checked mechanically. Publication requires separate factual and decoded-frame review using ${openai ? "OpenAI" : "NVIDIA NIM and Cloudflare Workers AI"}.` };
-  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: "base", json: JSON.stringify({ project: compiled, provenance }) });
+  await ctx.runMutation(internal.generation.checkpoint, { jobId, runId, stage: "base", json: JSON.stringify({ project: compiled, provenance }) });
   return null;
 } });
 
-export const directorSceneIds = internalQuery({ args: { jobId: v.id("jobs") }, returns: v.array(v.string()), handler: async (ctx, args): Promise<string[]> => {
+export const directorSceneIds = internalQuery({ args: { jobId: v.id("jobs"), runId: v.optional(v.string()) }, returns: v.array(v.string()), handler: async (ctx, args): Promise<string[]> => {
   const { artifacts } = await ctx.runQuery(internal.generation.context, args);
   if (artifacts.some(a => a.stage === "project")) return [];
   const base = artifacts.find(a => a.stage === "base");
@@ -84,8 +84,8 @@ export const directorSceneIds = internalQuery({ args: { jobId: v.id("jobs") }, r
   return projectSchema.parse(JSON.parse(base.json).project).scenes.map(s => s.id);
 } });
 
-export const directScene = internalAction({ args: { jobId: v.id("jobs"), sceneId: v.string() }, returns: v.null(), handler: async (ctx, { jobId, sceneId }) => {
-  const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId });
+export const directScene = internalAction({ args: { jobId: v.id("jobs"), runId: v.optional(v.string()), sceneId: v.string() }, returns: v.null(), handler: async (ctx, { jobId, sceneId, runId }) => {
+  const { job, artifacts } = await ctx.runQuery(internal.generation.context, { jobId, runId });
   if (artifacts.some(a => a.stage === "project")) return null;
   const base = artifacts.find(a => a.stage === "base");
   if (!base) throw new Error("Missing compiled lesson");
@@ -113,12 +113,12 @@ export const directScene = internalAction({ args: { jobId: v.id("jobs"), sceneId
   const result = await directScenes(providerConfig(job.generationProvider), project, sources, [sceneId], "", fetch, [evidenceContext]);
   const scene = result.project.scenes.find(s => s.id === sceneId)!;
   const direction = result.attempts[0];
-  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: `visual-${sceneId}`, json: JSON.stringify({ sceneId, visualPlan: scene.visualPlan, attempts: direction.attempts, assetSelection: validateAssetSelection(direction.assetSelection, scene.visualPlan!), ...(direction.layoutAdjustment ? { layoutAdjustment: direction.layoutAdjustment } : {}) }) });
+  await ctx.runMutation(internal.generation.checkpoint, { jobId, runId, stage: `visual-${sceneId}`, json: JSON.stringify({ sceneId, visualPlan: scene.visualPlan, attempts: direction.attempts, assetSelection: validateAssetSelection(direction.assetSelection, scene.visualPlan!), ...(direction.layoutAdjustment ? { layoutAdjustment: direction.layoutAdjustment } : {}) }) });
   return null;
 } });
 
-export const finalizeProject = internalAction({ args: { jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, { jobId }) => {
-  const { artifacts } = await ctx.runQuery(internal.generation.context, { jobId });
+export const finalizeProject = internalAction({ args: { jobId: v.id("jobs"), runId: v.optional(v.string()) }, returns: v.null(), handler: async (ctx, { jobId, runId }) => {
+  const { artifacts } = await ctx.runQuery(internal.generation.context, { jobId, runId });
   if (artifacts.some(a => a.stage === "project")) return null;
   const base = artifacts.find(a => a.stage === "base");
   if (!base) throw new Error("Missing compiled lesson");
@@ -133,6 +133,6 @@ export const finalizeProject = internalAction({ args: { jobId: v.id("jobs") }, r
     directorAttempts.push({ sceneId: scene.id, attempts: record.attempts, ...(record.assetSelection ? { assetSelection: validateAssetSelection(record.assetSelection, visualPlan) } : {}), ...(record.layoutAdjustment ? { layoutAdjustment: record.layoutAdjustment } : {}) });
     return { ...scene, visualPlan };
   }) });
-  await ctx.runMutation(internal.generation.checkpoint, { jobId, stage: "project", json: JSON.stringify({ project, provenance: { ...provenance, visualPlanVersion: 1, directorAttempts } }) });
+  await ctx.runMutation(internal.generation.checkpoint, { jobId, runId, stage: "project", json: JSON.stringify({ project, provenance: { ...provenance, visualPlanVersion: 1, directorAttempts } }) });
   return null;
 } });

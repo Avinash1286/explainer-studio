@@ -21,7 +21,7 @@ The **0.8.0 supplied asset integration is deployed**: new scenes can choose rele
 - Firecrawl research; NVIDIA NIM reasoning for planning and factual checking, with Cloudflare Workers AI fallback in the verified baseline.
 - A separate visual director preserves researched narration and chooses bounded illustrations, composition, relationships and meaningful actions. New scenes support 51 native visual kinds plus an imported-asset kind. The [supplied asset library](docs/asset-library.md) adds 4,818 vetted SVGs, shortlisted by relevance to each scene; legacy saved scenes retain their catalog renderer.
 - Local Kokoro-82M on Zerops, phrase-timed Remotion rendering, progressive outlines/fills and state changes, MP4, separate captions, poster and inspectable project outputs. Geometry validation and three action-aware review frames per rich scene support the new visual path.
-- Independent factual and decoded-frame review; one automatic repair, two scene edits, reusable narration cache, bounded planning/review recovery.
+- Independent factual and decoded-frame review; one automatic repair, two scene edits, reusable narration cache, transient-failure backoff and owner recovery from saved checkpoints.
 - Approved-version share links with expiry/revocation, operator-published examples, opt-in verified-recipient AgentMail outbox and signed delivery callbacks.
 - Vercel Git integration runs clean-install validation; GitHub Actions is disabled. Isolated tests do not establish live provider quality, visual acceptance or email delivery.
 
@@ -32,6 +32,8 @@ Workspaces use 256-bit bearer tokens with hashes stored in Convex and seven-day 
 Introduced in 0.6.0, the per-lesson choice is **NVIDIA NIM + Cloudflare Workers AI** (default) or **OpenAI**. The OpenAI route uses the Responses API for planning, visual direction, factual checks, decoded-frame review and repairs. Its default model is `gpt-5.4-mini`, configurable with `OPENAI_MODEL`. Both routes retain Firecrawl research, local illustrations, Kokoro-82M speech and Remotion/FFmpeg rendering. The selected route stays attached to the lesson through revisions; OpenAI failures do not silently switch providers.
 
 OpenAI is intentionally disabled at the owner's request. Its selectable option safely reports that it is not configured; no live OpenAI inference is claimed. If the owner later enables it, add `OPENAI_API_KEY` and optionally `OPENAI_MODEL` to ignored operator configuration, then run `npm run openai:setup -- --prod` for production qualification. Visitors do not enter API keys. See [release operations](docs/release-operations.md) for setup and [release evidence](docs/release-evidence.md) for checks actually completed.
+
+New and resumed planning, model-review and scene-edit workflows allow up to **five total attempts per failed step** for temporary rate limits, timeouts, network errors and service outages. The recovery panel shows the reason, next attempt and saved progress. After automatic retries stop, **Resume from saved progress** continues an eligible lesson without creating another lesson or discarding completed checkpoints; quota, credential or model-access problems need owner correction first. See [recovery and limits](docs/release-operations.md#recovery-and-limits) for timing and resume limits.
 
 ## Historical 0.6.0 verification
 

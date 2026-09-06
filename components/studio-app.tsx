@@ -8,7 +8,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { LIMITS } from "@/packages/contracts";
 import { LessonReview } from "./lesson-review";
-import { friendlyError } from "./studio-toast";
+import { RecoveryPanel } from "./recovery-panel";
 import { Studio } from "./whiteboard/studio-shell";
 
 type Job = FunctionReturnType<typeof api.jobs.list>[number];
@@ -80,13 +80,10 @@ function ConnectedStudio() {
 function MediaResult({ token, jobId, onError }: { token: string; jobId: Id<"jobs">; onError: (error: unknown) => void }) {
   const result = useQuery(api.media.result, { token, jobId });
   const details = useQuery(api.generation.details, { token, jobId });
-  const retryPlanning = useMutation(api.generation.retryPlanning);
-  const checkLessonProvider = useAction(api.generation.checkLessonProvider);
-  const [retryError, setRetryError] = useState("");
-  const [retrying, setRetrying] = useState(false);
   const sources = details?.sources.length ? <details className="rounded-xl border border-border bg-card px-4"><summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">Research sources ({details.sources.length})</summary><ul className="space-y-2 border-t border-border py-3 text-sm text-muted-foreground">{details.sources.map(source => <li key={source.id}><a href={source.url} target="_blank" rel="noreferrer" className="underline underline-offset-4">{source.title}</a></li>)}</ul><p className="pb-3 text-xs text-muted-foreground">Sources inform the script. Review findings appear below when the draft is rendered.</p></details> : null;
-  if (!result?.video) return <>{sources}{details?.canRetry ? <button className="primary-button" disabled={retrying} onClick={async () => { setRetrying(true); setRetryError(""); try { await checkLessonProvider({ token, jobId }); await retryPlanning({ token, jobId }); } catch (error) { setRetryError(friendlyError(error)); onError(error); } finally { setRetrying(false); } }}>{details.sources.length ? "Retry using saved research" : "Retry generation"}</button> : null}{retryError ? <p>{retryError}</p> : null}<LessonReview key={jobId} token={token} jobId={jobId} approved={false} onError={onError} /></>;
+  if (!result?.video) return <div className="space-y-4"><RecoveryPanel token={token} jobId={jobId} onError={onError} />{sources}<LessonReview key={jobId} token={token} jobId={jobId} approved={false} onError={onError} /></div>;
   return <div className="space-y-4">
+    <RecoveryPanel token={token} jobId={jobId} onError={onError} />
     {result.generated && !result.approved ? <p className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 text-sm leading-6 text-amber-800"><strong>Unapproved draft</strong>: For your review. Email delivery is disabled until this version passes.</p> : null}
     <video className="aspect-video w-full rounded-2xl border border-border bg-black" controls playsInline preload="metadata" poster={result.poster || undefined} src={result.video} crossOrigin="anonymous" aria-label="Rendered explainer lesson">
       {result.captions ? <track kind="captions" src={result.captions} srcLang="en" label="English" /> : null}

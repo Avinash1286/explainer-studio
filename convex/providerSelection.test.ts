@@ -7,6 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import schema from "./schema";
 import { api, internal } from "./_generated/api";
 import { DEFAULT_OPENAI_MODEL, PROVIDER_MESSAGES } from "../packages/contracts/provider";
+import { MAX_PROVIDER_ATTEMPTS } from "../packages/contracts/retry";
 const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
 const token = "b".repeat(64);
 const brief = { topic: "How does a loudspeaker produce sound?", duration: 60, audience: "beginner" as const, requestId: "provider-choice-test-001" };
@@ -35,11 +36,49 @@ it("rejects missing OpenAI credentials before any lesson, quota or network opera
   expect(await t.query(api.jobs.list, { token })).toEqual([]);
   expect(fetch).not.toHaveBeenCalled();
 });
-it.each([[401, PROVIDER_MESSAGES.invalidKey], [404, PROVIDER_MESSAGES.unavailableModel], [429, PROVIDER_MESSAGES.rateLimit]])("returns a safe actionable toast for model preflight HTTP %s", async (status, message) => {
+it.each([[401, "OpenAI credentials are missing, invalid, or lack access."], [404, "OpenAI cannot access the configured model or resource."]])("returns a safe actionable toast for permanent model preflight HTTP %s", async (status, message) => {
   const t = await setup(true);
   const transport = vi.fn().mockResolvedValue(Response.json({ error: { message: "secret-upstream-detail" } }, { status })); vi.stubGlobal("fetch", transport);
   await expect(t.action(api.generation.checkProvider, { token, generationProvider: "openai" })).rejects.toThrow(message);
   expect(transport).toHaveBeenCalledTimes(1);
+  expect(await t.query(api.jobs.list, { token })).toHaveLength(0);
+});
+it("allows temporary 429 preflight trouble, then durably backs off the saved job without starting research", async () => {
+  vi.useFakeTimers();
+  const t = await setup(true), calls: number[] = [];
+  const transport = vi.fn().mockImplementation(async () => {
+    calls.push(Date.now());
+    return Response.json({ error: { type: "rate_limit_exceeded", message: "secret-upstream-detail" } }, { status: 429, headers: { "Retry-After": "60" } });
+  });
+  vi.stubGlobal("fetch", transport);
+  await expect(t.action(api.generation.checkProvider, { token, generationProvider: "openai" })).resolves.toBeNull();
+  expect(transport).toHaveBeenCalledOnce();
+  const jobId = await t.mutation(api.jobs.create, { token, ...brief, generationProvider: "openai" });
+  await t.mutation(api.generation.generate, { token, jobId });
+  await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
+  const job = await t.run(ctx => ctx.db.get(jobId));
+  expect(job).toMatchObject({ generationProvider: "openai", status: "failed", recovery: { stage: "Model access", state: "failed", attempt: MAX_PROVIDER_ATTEMPTS, maxAttempts: MAX_PROVIDER_ATTEMPTS } });
+  expect(job?.stageMessage).toContain("OpenAI is temporarily rate limited.");
+  expect(job?.stageMessage).not.toContain("secret-upstream-detail");
+  expect(job?.stageMessage).toContain(`All ${MAX_PROVIDER_ATTEMPTS} automatic attempts were used.`);
+  expect(transport).toHaveBeenCalledTimes(1 + MAX_PROVIDER_ATTEMPTS);
+  expect(transport.mock.calls.every(([url]) => url === `https://api.openai.com/v1/models/${DEFAULT_OPENAI_MODEL}`)).toBe(true);
+  // Ignore the initial user preflight: every subsequent workflow retry must
+  // respect the provider cooldown, with later waits growing exponentially.
+  const workflowCalls = calls.slice(1);
+  expect(workflowCalls.slice(1).map((time, index) => time - workflowCalls[index]).every(delay => delay >= 60_000)).toBe(true);
+  expect(workflowCalls[3] - workflowCalls[2]).toBeGreaterThanOrEqual(120_000);
+  expect(workflowCalls[4] - workflowCalls[3]).toBeGreaterThanOrEqual(240_000);
+  const events = await t.run(ctx => ctx.db.query("jobEvents").withIndex("by_jobId", q => q.eq("jobId", jobId)).collect());
+  expect(events.filter(event => event.kind === "provider_retry")).toHaveLength(MAX_PROVIDER_ATTEMPTS - 1);
+  expect(await t.run(ctx => ctx.db.query("generationArtifacts").collect())).toHaveLength(0);
+});
+it("rejects exhausted OpenAI quota at preflight instead of treating all 429s as temporary", async () => {
+  const t = await setup(true);
+  const transport = vi.fn().mockResolvedValue(Response.json({ error: { type: "insufficient_quota", message: "secret-upstream-detail" } }, { status: 429 }));
+  vi.stubGlobal("fetch", transport);
+  await expect(t.action(api.generation.checkProvider, { token, generationProvider: "openai" })).rejects.toThrow("OpenAI has exhausted the app's credits or usage quota.");
+  expect(transport).toHaveBeenCalledOnce();
   expect(await t.query(api.jobs.list, { token })).toHaveLength(0);
 });
 it("checks the configured model and keeps provider preflight authenticated", async () => {
@@ -72,7 +111,7 @@ it("stops a durable OpenAI job before research if model access disappears", asyn
   const jobId = await t.mutation(api.jobs.create, { token, ...brief, generationProvider: "openai" });
   await t.mutation(api.generation.generate, { token, jobId });
   await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
-  expect(await t.run(ctx => ctx.db.get(jobId))).toMatchObject({ generationProvider: "openai", status: "failed", stageMessage: PROVIDER_MESSAGES.unavailableModel });
+  expect(await t.run(ctx => ctx.db.get(jobId))).toMatchObject({ generationProvider: "openai", status: "failed", stageMessage: expect.stringContaining("OpenAI cannot access the configured model or resource."), recovery: { stage: "Model access", state: "failed", attempt: 1 } });
   expect(transport).toHaveBeenCalledTimes(1);
   expect(await t.run(ctx => ctx.db.query("generationArtifacts").collect())).toHaveLength(0);
 });
@@ -80,7 +119,9 @@ it("sanitizes provider failures from delayed workflow completions", async () => 
   const t = await setup(true); const jobId = await t.mutation(api.jobs.create, { token, ...brief, generationProvider: "openai" });
   await t.run(ctx => ctx.db.patch(jobId, { workflowId: "workflow-test", status: "planning", generation: true }));
   await t.mutation(internal.generation.finished, { workflowId: "workflow-test" as WorkflowId, result: { kind: "failed", error: "openai request failed (429): do-not-show-this" }, context: { jobId } });
-  expect((await t.query(api.jobs.list, { token }))[0].stageMessage).toBe(PROVIDER_MESSAGES.rateLimit);
+  const message = (await t.query(api.jobs.list, { token }))[0].stageMessage;
+  expect(message).toContain("OpenAI is temporarily rate limited.");
+  expect(message).not.toContain("do-not-show-this");
 });
 it("checks existing lessons while new generation is paused without spending a review retry", async () => {
   const t = await setup(true); const jobId = await t.mutation(api.jobs.create, { token, ...brief, generationProvider: "openai" });
@@ -89,7 +130,7 @@ it("checks existing lessons while new generation is paused without spending a re
   await t.action(api.generation.checkLessonProvider, { token, jobId });
   expect((await t.run(ctx => ctx.db.get(jobId)))?.reviewRetries).toBeUndefined();
   transport.mockResolvedValue(Response.json({}, { status: 404 }));
-  await expect(t.action(api.generation.checkLessonProvider, { token, jobId })).rejects.toThrow(PROVIDER_MESSAGES.unavailableModel);
+  await expect(t.action(api.generation.checkLessonProvider, { token, jobId })).rejects.toThrow("OpenAI cannot access the configured model or resource.");
   expect((await t.run(ctx => ctx.db.get(jobId)))?.reviewRetries).toBeUndefined();
 });
 it("returns missing-key guidance before spending the existing lesson review retry", async () => {

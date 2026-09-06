@@ -10,6 +10,7 @@
 
 import type * as delivery from "../delivery.js";
 import type * as generation from "../generation.js";
+import type * as generationRetry from "../generationRetry.js";
 import type * as http from "../http.js";
 import type * as icons from "../icons.js";
 import type * as jobs from "../jobs.js";
@@ -31,6 +32,7 @@ import type * as mailActions from "../mailActions.js";
 import type * as mailWebhook from "../mailWebhook.js";
 import type * as media from "../media.js";
 import type * as planning from "../planning.js";
+import type * as recovery from "../recovery.js";
 import type * as reviewActions from "../reviewActions.js";
 import type * as reviews from "../reviews.js";
 import type * as serviceReadiness from "../serviceReadiness.js";
@@ -48,6 +50,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   delivery: typeof delivery;
   generation: typeof generation;
+  generationRetry: typeof generationRetry;
   http: typeof http;
   icons: typeof icons;
   jobs: typeof jobs;
@@ -69,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   mailWebhook: typeof mailWebhook;
   media: typeof media;
   planning: typeof planning;
+  recovery: typeof recovery;
   reviewActions: typeof reviewActions;
   reviews: typeof reviews;
   serviceReadiness: typeof serviceReadiness;

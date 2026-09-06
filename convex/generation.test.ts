@@ -194,7 +194,7 @@ describe("durable topic generation", () => {
     });
     vi.stubGlobal("fetch", fetcher);
     await t.mutation(api.generation.generate, { token, jobId });
-    await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
+    await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers(), 2000);
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("failed");
     const saved = await t.run(ctx => ctx.db.query("generationArtifacts").withIndex("by_jobId_and_stage", q => q.eq("jobId", jobId)).take(14));
     const savedIds = saved.filter(a => a.stage.startsWith("visual-")).map(a => a.stage.slice(7));
@@ -202,9 +202,10 @@ describe("durable topic generation", () => {
     const counts = new Map(savedIds.map(id => [id, calls.filter(call => call === id).length]));
     const failedJob = (await t.run(ctx => ctx.db.get(jobId)))!;
     await t.run(ctx => ctx.db.patch(failedJob.sessionId, { expired: false, expiresAt: Date.now() + 86_400_000 }));
-    expect(await t.query(api.generation.details, { token, jobId })).toMatchObject({ canRetry: true });
+    expect(await t.query(api.recovery.details, { token, jobId })).toMatchObject({ canResume: true, savedCheckpoints: expect.arrayContaining(["Research and sources", "Narration script", "2 illustrated scenes"]) });
     unavailable = false;
-    await t.mutation(api.generation.retryPlanning, { token, jobId });
+    vi.stubEnv("FIRECRAWL_API_KEY", ""); // Saved research does not need this provider again.
+    await t.mutation(api.recovery.resume, { token, jobId, requestId: "resume-direction-0001" });
     await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("rendering");
     for (const id of savedIds) expect(calls.filter(call => call === id)).toHaveLength(counts.get(id)!);
@@ -284,7 +285,7 @@ describe("durable topic generation", () => {
     await t.mutation(api.generation.generate, { token, jobId });
     await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
     expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("failed");
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher).toHaveBeenCalledTimes(5);
     expect(await t.mutation(internal.media.claim, { worker: "a", protocol: 3 })).toBeNull();
   });
   it("cancels the real workflow without allowing its completion to revive the job", async () => {

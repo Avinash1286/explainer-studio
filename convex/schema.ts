@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const generationProvider = v.union(v.literal("nim"), v.literal("openai"));
+export const recoveryState = v.object({ stage: v.string(), state: v.union(v.literal("running"), v.literal("waiting"), v.literal("failed")), attempt: v.number(), maxAttempts: v.number(), reason: v.optional(v.string()), nextRetryAt: v.optional(v.number()), updatedAt: v.number(), runId: v.string() });
 
 export const reviewFrame = v.object({ sceneId: v.string(), frame: v.number(), storageId: v.id("_storage") });
 export const mediaResult = v.object({ video: v.id("_storage"), project: v.id("_storage"), captions: v.id("_storage"), poster: v.id("_storage"), durationSeconds: v.number(), frames: v.optional(v.array(reviewFrame)) });
@@ -28,12 +29,17 @@ export default defineSchema({
     automaticRepairs: v.optional(v.number()), userRevisions: v.optional(v.number()),
     planningRetries: v.optional(v.number()),
     reviewRetries: v.optional(v.number()),
+    generationRunId: v.optional(v.string()), reviewRunId: v.optional(v.string()),
+    resumeCount: v.optional(v.number()), lastResumedAt: v.optional(v.number()),
+    recovery: v.optional(recoveryState),
   }).index("by_sessionId_and_createdAt", ["sessionId", "createdAt"])
     .index("by_sessionId_and_requestId", ["sessionId", "requestId"])
     .index("by_status", ["status"]),
   jobEvents: defineTable({
     jobId: v.id("jobs"), kind: v.string(), message: v.string(), createdAt: v.number(),
   }).index("by_jobId", ["jobId"]),
+  jobResumes: defineTable({ jobId: v.id("jobs"), requestId: v.string(), revision: v.number(), createdAt: v.number() }).index("by_jobId_and_requestId", ["jobId", "requestId"]),
+  repairCheckpoints: defineTable({ requestId: v.id("revisionRequests"), stage: v.string(), scopeJson: v.string(), json: v.string(), createdAt: v.number() }).index("by_requestId_and_stage", ["requestId", "stage"]),
   workers: defineTable({
     workerId: v.string(), instanceId: v.string(), lastHeartbeat: v.number(),
     capabilities: v.array(v.string()), version: v.string(),
@@ -55,7 +61,7 @@ export default defineSchema({
   lessonReviews: defineTable({ jobId: v.id("jobs"), revision: v.number(), status: v.union(v.literal("pending"), v.literal("passed"), v.literal("rejected"), v.literal("unavailable")), reportJson: v.optional(v.string()), provider: v.optional(v.union(v.literal("cloudflare"), v.literal("nvidia"), v.literal("openai"), v.literal("mixed"))), model: v.optional(v.string()), responseId: v.optional(v.string()), usageJson: v.optional(v.string()), createdAt: v.number() }).index("by_jobId_and_revision", ["jobId", "revision"]),
   reviewCheckpoints: defineTable({ jobId: v.id("jobs"), revision: v.number(), kind: v.union(v.literal("evidence"), v.literal("facts"), v.literal("scene")), sceneId: v.string(), evidenceId: v.optional(v.id("reviewCheckpoints")), scopeJson: v.optional(v.string()), json: v.string(), createdAt: v.number() }).index("by_jobId_and_revision", ["jobId", "revision"]).index("by_scope", ["jobId", "revision", "kind", "sceneId"]),
   lessonVersions: defineTable({ jobId: v.id("jobs"), revision: v.number(), projectJson: v.string(), provenanceJson: v.string(), result: mediaResult, createdAt: v.number() }).index("by_jobId_and_revision", ["jobId", "revision"]),
-  revisionRequests: defineTable({ jobId: v.id("jobs"), fromRevision: v.number(), requestId: v.string(), sceneIds: v.array(v.string()), instruction: v.string(), status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")), automatic: v.boolean(), recoveryAttempted: v.optional(v.boolean()), attemptsJson: v.optional(v.string()) }).index("by_jobId_and_requestId", ["jobId", "requestId"]),
+  revisionRequests: defineTable({ jobId: v.id("jobs"), fromRevision: v.number(), requestId: v.string(), sceneIds: v.array(v.string()), instruction: v.string(), status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")), automatic: v.boolean(), recoveryAttempted: v.optional(v.boolean()), attemptsJson: v.optional(v.string()), runId: v.optional(v.string()), resumeCount: v.optional(v.number()), lastResumedAt: v.optional(v.number()) }).index("by_jobId_and_requestId", ["jobId", "requestId"]),
   recipients: defineTable({ jobId: v.id("jobs"), email: v.string(), codeHash: v.string(), expiresAt: v.number(), attempts: v.number(), verifiedAt: v.optional(v.number()) }).index("by_jobId", ["jobId"]),
   mailOutbox: defineTable({ jobId: v.id("jobs"), key: v.string(), inbox: v.string(), recipientId: v.id("recipients"), kind: v.union(v.literal("verification"), v.literal("lesson")), revision: v.number(), bodyJson: v.string(), state: v.union(v.literal("queued"), v.literal("sending"), v.literal("sent"), v.literal("delivered"), v.literal("bounced"), v.literal("failed"), v.literal("unknown")), messageId: v.optional(v.string()), createdAt: v.number(), expiresAt: v.number(), attempt: v.number() }).index("by_key", ["key"]).index("by_messageId", ["messageId"]).index("by_jobId", ["jobId"]),
   mailEvents: defineTable({ eventId: v.string(), createdAt: v.number() }).index("by_eventId", ["eventId"]),

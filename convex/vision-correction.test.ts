@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { inspectSceneFrames, assembleFrameReviews, validateSceneFrameReview } from "./lib/critic";
-import { goodReview, reviewSetup, sampleProject } from "../tests/review-helpers";
+import { currentReviewArgs, goodReview, reviewSetup, sampleProject } from "../tests/review-helpers";
 import { testSources } from "./testFixtures";
 import { internal } from "./_generated/api";
 
@@ -102,9 +102,10 @@ describe("one bounded scene review correction", () => {
     await t.mutation(internal.media.complete, { ...lease, result });
     const transport = vi.fn<typeof fetch>().mockResolvedValueOnce(cf({ ...valid, visualPass: false })).mockResolvedValueOnce(cf(rejected));
     vi.stubGlobal("fetch", transport);
-    await t.action(internal.reviewActions.prepare, { jobId, revision: 1 });
-    await t.action(internal.reviewActions.checkScene, { jobId, revision: 1, sceneId });
-    await t.action(internal.reviewActions.checkScene, { jobId, revision: 1, sceneId });
+    const args = await currentReviewArgs(t, jobId);
+    await t.action(internal.reviewActions.prepare, args);
+    await t.action(internal.reviewActions.checkScene, { ...args, sceneId });
+    await t.action(internal.reviewActions.checkScene, { ...args, sceneId });
     const checkpoint = await t.run(ctx => ctx.db.query("reviewCheckpoints").withIndex("by_scope", q => q.eq("jobId", jobId).eq("revision", 1).eq("kind", "scene").eq("sceneId", sceneId)).unique());
     expect(JSON.parse(checkpoint!.json).validationAttempts.map((attempt: { outcome: string }) => attempt.outcome)).toEqual(["invalid-output", "valid"]);
     expect(JSON.parse(checkpoint!.json).report.visualPass).toBe(false);

@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import { repairInput } from "./lib/repair";
 import { testSources } from "./testFixtures";
-import { goodReview, owner, reviewSetup, sampleProject } from "../tests/review-helpers";
-import { MODEL_SERVICE_UNAVAILABLE, transientProviderFailure } from "../packages/contracts/provider";
+import { goodReview, owner, reviewSetup, sampleProject, currentReviewArgs } from "../tests/review-helpers";
+import { transientProviderFailure } from "../packages/contracts/provider";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -20,7 +20,7 @@ async function setup(automatic = true) {
     report.scenes[0].visualPass = false;
     report.scenes[0].issues = [{ sceneId: "water-0", kind: "layout", detail: "Title too long", repair: "Shorten the title" }];
   }
-  await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(report), provider: "cloudflare", model: "test", usageJson: "{}" });
+  await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId), reportJson: JSON.stringify(report), provider: "cloudflare", model: "test", usageJson: "{}" });
   if (!automatic) await t.mutation(api.reviews.revise, { token: owner, jobId, revision: 1, requestId: "edit-retry-request-001", sceneId: "water-0", instruction: "Shorten the title" });
   return current;
 }
@@ -61,19 +61,19 @@ describe("durable transient repair recovery", () => {
     expect(transport).toHaveBeenCalledTimes(3);
   });
 
-  it("stops after three transient attempts and reports an outage while retaining the draft", async () => {
+  it("stops after five transient attempts and reports an outage while retaining the draft", async () => {
     const { t, jobId, lease } = await setup();
     const transport = vi.fn<typeof fetch>().mockImplementation(async url => new Response("private error body", { status: String(url).includes("nvidia") ? 503 : 429 }));
     vi.stubGlobal("fetch", transport);
     await t.finishAllScheduledFunctions(() => vi.runOnlyPendingTimers());
-    expect(transport).toHaveBeenCalledTimes(6);
+    expect(transport).toHaveBeenCalledTimes(10);
     const job = await t.run(ctx => ctx.db.get(jobId));
-    expect(job).toMatchObject({ status: "failed", revision: 1, automaticRepairs: 1, stageMessage: MODEL_SERVICE_UNAVAILABLE });
+    expect(job).toMatchObject({ status: "failed", revision: 1, automaticRepairs: 1, recovery: { stage: "repair", state: "failed", attempt: 5, maxAttempts: 5 } });
     const task = await t.run(ctx => ctx.db.get(lease.taskId));
     expect(task?.result).toBeDefined();
     expect(JSON.parse(task!.projectJson!)).toEqual(sampleProject);
     const events = await t.run(ctx => ctx.db.query("jobEvents").withIndex("by_jobId", q => q.eq("jobId", jobId)).take(20));
-    expect(events.filter(event => event.kind === "repair_retry")).toHaveLength(2);
+    expect(events.filter(event => event.kind === "repair_retry")).toHaveLength(4);
     expect(events.some(event => event.message.includes("private error body"))).toBe(false);
   });
 
@@ -96,7 +96,7 @@ describe("durable transient repair recovery", () => {
     expect(transport).toHaveBeenCalledTimes(6);
     const job = await t.run(ctx => ctx.db.get(jobId));
     expect(job).toMatchObject({ status: "failed", revision: 1, automaticRepairs: 1 });
-    expect(job?.stageMessage).toContain("supported replacement");
+    expect(job?.stageMessage).toContain("did not pass validation");
   });
 
   it("classifies only terminal transient failures and cannot retry a cancelled request", async () => {

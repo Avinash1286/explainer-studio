@@ -36,7 +36,7 @@ export function renderedReviewSamples(project: Project, value: unknown, duration
   return frameSamples(scenes);
 }
 
-const versionArgs = { jobId: v.id("jobs"), revision: v.number() };
+const versionArgs = { jobId: v.id("jobs"), revision: v.number(), runId: v.optional(v.string()) };
 
 // Validate the whole rendered artifact once, before any model call. Checkpoints
 // bind these immutable storage objects and the requested inputs to the revision.
@@ -79,7 +79,7 @@ export const checkFacts = internalAction({ args: versionArgs, returns: v.null(),
 } });
 
 export const checkScene = internalAction({ args: { ...versionArgs, sceneId: v.string() }, returns: v.null(), handler: async (ctx, args): Promise<null> => {
-  const version = { jobId: args.jobId, revision: args.revision };
+  const version = { jobId: args.jobId, revision: args.revision, runId: args.runId };
   const state = await ctx.runQuery(internal.reviews.checkpointContext, version);
   if (!state) return null;
   if (!state.evidence) throw new Error("Missing prepared review evidence");
@@ -100,6 +100,9 @@ export const checkScene = internalAction({ args: { ...versionArgs, sceneId: v.st
     // URLs was rejected in live qualification; never omit the images to retry.
     frames.push({ sceneId: sample.sceneId, frame: sample.frame, url: `data:image/jpeg;base64,${btoa(binary)}` });
   }
+  // Storage reads can outlive an owner cancellation or resume. Check the run
+  // again before sending its decoded images to a provider.
+  if (!await ctx.runQuery(internal.reviews.context, version)) return null;
   const result = await inspectSceneFrames(providerConfig(state.current.job.generationProvider), project, sources, args.sceneId, frames);
   await ctx.runMutation(internal.reviews.saveCheckpoint, { ...args, kind: "scene", evidenceId: state.evidence._id, json: JSON.stringify(result) });
   return null;
@@ -118,12 +121,21 @@ export const inspect = internalAction({ args: versionArgs, returns: v.null(), ha
   return null;
 } });
 
-export const rewrite = internalAction({ args: { requestId: v.id("revisionRequests") }, returns: v.null(), handler: async (ctx, args) => {
+export const rewrite = internalAction({ args: { requestId: v.id("revisionRequests"), runId: v.optional(v.string()) }, returns: v.null(), handler: async (ctx, args) => {
   const current = await ctx.runQuery(internal.reviews.repairContext, args);
   if (!current) return null;
   const previous = projectSchema.parse(JSON.parse(current.task.projectJson!));
   const sources = researchSchema.parse(JSON.parse(current.research).sources);
-  const result = await repairScenes(providerConfig(current.job.generationProvider), previous, sources, current.request.sceneIds, current.request.instruction, fetch, current.reviewContext);
+  const result = await repairScenes(providerConfig(current.job.generationProvider), previous, sources, current.request.sceneIds, current.request.instruction, fetch, current.reviewContext, {
+    load: async stage => {
+      const saved = await ctx.runQuery(internal.reviews.readRepairCheckpoint, { ...args, stage, scopeJson: current.scopeJson });
+      if (!saved) throw new Error("Repair checkpoint run is no longer active");
+      return saved.json ? JSON.parse(saved.json) : null;
+    },
+    save: async (stage, value) => {
+      if (!await ctx.runMutation(internal.reviews.saveRepairCheckpoint, { ...args, stage, scopeJson: current.scopeJson, json: JSON.stringify(value) })) throw new Error("Repair checkpoint run is no longer active");
+    },
+  });
   await ctx.runMutation(internal.reviews.replace, { ...args, projectJson: JSON.stringify(result.data.project), evidenceJson: JSON.stringify(result.data.evidence), attemptsJson: JSON.stringify(result.attempts) });
   return null;
 } });

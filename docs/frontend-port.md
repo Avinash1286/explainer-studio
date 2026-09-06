@@ -16,9 +16,11 @@ The font, screenshot and sixteen UI illustrations are copied from the supplied p
 
 ## Backend behavior preserved
 
-The composer keeps NIM + Workers AI as the default and OpenAI as a separately selected route. Missing setup and model-check failures surface as toasts before a new lesson is created. OpenAI remains intentionally disabled. Duration/audience controls live in the composer; Enter submits, Shift+Enter inserts a line and IME composition does not submit. Duplicate clicks are fenced and retrying an uncertain create reuses the request ID.
+The composer keeps NIM + Workers AI as the default and OpenAI as a separately selected route. Missing setup and permanent model-access failures surface as toasts before a new lesson is created; temporary preflight outages can proceed into a saved job with durable retries. OpenAI remains intentionally disabled. Duration/audience controls live in the composer; Enter submits, Shift+Enter inserts a line and IME composition does not submit. Duplicate clicks are fenced and retrying an uncertain create reuses the request ID.
 
 Threads show actual pipeline stages, source links, rendered media, review findings, supported retries and scene edits. Share/email actions remain gated by approval and explicit recipient consent. The gallery is private to the browser workspace; it does not publish lessons.
+
+The recovery update replaces the separate planning/review retry buttons with one panel above lesson outputs. It shows the failed stage, safe reason, saved progress and automatic retry timing, then offers **Resume from saved progress** when the server permits it. The browser countdown never starts a retry; manual resume reuses an identity-scoped request ID and calls the recovery endpoint without a model preflight. Scene-edit and approval gates remain separate. See [recovery and limits](release-operations.md#recovery-and-limits).
 
 Only supported source interactions were mapped. Account controls, HLS previews and exact queue percentages are not presented because this backend does not provide them. Video output stays 16:9 with a clean canvas; the landing page's graph-paper styling is confined to the frontend.
 

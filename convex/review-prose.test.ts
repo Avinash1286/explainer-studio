@@ -4,7 +4,7 @@ import { compactSceneReview } from "./lib/reviewProse";
 import { validateSceneFrameReview } from "./lib/critic";
 import { directorInput } from "./lib/director";
 import { repairInput, visualOnlyRepair } from "./lib/repair";
-import { goodReview, reviewSetup, sampleProject } from "../tests/review-helpers";
+import { currentRepairArgs, currentReviewArgs, goodReview, reviewSetup, sampleProject } from "../tests/review-helpers";
 import { syntheticVisualPlan } from "../tests/director-helpers";
 import { testSources } from "./testFixtures";
 
@@ -68,8 +68,9 @@ describe("bounded critic prose projection",()=>{
   });
 
   it("keeps saved original prose immutable and gives automatic repair the complete overflow text",async()=>{
-    const {t,jobId,lease,result}=await reviewSetup(),args={jobId,revision:1};
+    const {t,jobId,lease,result}=await reviewSetup();
     await t.mutation(internal.media.complete,{...lease,result});
+    const args=await currentReviewArgs(t,jobId);
     await t.action(internal.reviewActions.prepare,args);
     const evidence=(await t.run(ctx=>ctx.db.query("reviewCheckpoints").collect())).find(row=>row.kind==="evidence")!;
     await t.mutation(internal.reviews.saveCheckpoint,{...args,kind:"facts",sceneId:"",evidenceId:evidence._id,json:JSON.stringify({data:goodReview(),attempts:[{provider:"nvidia",outcome:"success",elapsedMs:1}]})});
@@ -84,7 +85,8 @@ describe("bounded critic prose projection",()=>{
     for(const scene of goodReview().scenes.slice(1))await t.mutation(internal.reviews.saveCheckpoint,{...args,kind:"scene",sceneId:scene.sceneId,evidenceId:evidence._id,json:JSON.stringify({report:{summary:"Passing scene",...scene},inference:inference(scene.sceneId)})});
     await t.mutation(internal.reviews.assemble,args);
     const request=(await t.run(ctx=>ctx.db.query("revisionRequests").collect()))[0];
-    const context=await t.query(internal.reviews.repairContext,{requestId:request._id});
+    const repairArgs=await currentRepairArgs(t,request._id);
+    const context=await t.query(internal.reviews.repairContext,repairArgs);
     expect(JSON.parse(context!.reviewContext!).scenes).toEqual([originalReview()]);
     expect(visualOnlyRepair(request.instruction,[sceneId])).toBe(true);
     const input=repairInput(sampleProject,testSources,[sceneId],request.instruction,context!.reviewContext);
@@ -100,7 +102,7 @@ describe("bounded critic prose projection",()=>{
       return Response.json({choices:[{message:{content:JSON.stringify(patch)}}]});
     });
     vi.stubEnv("NVIDIA_API_KEY","test");vi.stubGlobal("fetch",transport);
-    await t.action(internal.reviewActions.rewrite,{requestId:request._id});
+    await t.action(internal.reviewActions.rewrite,repairArgs);
     expect(transport).toHaveBeenCalledTimes(1);
     const saved=(await t.run(ctx=>ctx.db.query("reviewCheckpoints").collect())).find(row=>row.kind==="scene"&&row.sceneId===sceneId)!;
     expect(JSON.parse(saved.json).proseCompaction.original).toEqual(originalReview());

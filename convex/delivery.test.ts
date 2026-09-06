@@ -1,7 +1,7 @@
 import { Webhook } from "svix";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
-import { goodReview, owner, reviewSetup } from "../tests/review-helpers";
+import { goodReview, owner, reviewSetup, currentReviewArgs } from "../tests/review-helpers";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers(); });
 const code = "c".repeat(64);
@@ -11,7 +11,7 @@ async function setup(approved = true) {
   const current = await reviewSetup(); const { t, jobId, lease, result } = current;
   vi.stubEnv("AGENTMAIL_API_KEY", "test"); vi.stubEnv("AGENTMAIL_INBOX_ID", "test-inbox"); vi.stubEnv("AGENTMAIL_WEBHOOK_SECRET", webhookSecret); vi.stubEnv("CONVEX_SITE_URL", "https://example.convex.site");
   await t.mutation(internal.media.complete, { ...lease, result });
-  if (approved) await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
+  if (approved) await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId), reportJson: JSON.stringify(goodReview()), provider: "cloudflare", model: "test", responseId: "test", usageJson: "{}" });
   return current;
 }
 describe("verified lesson delivery", () => {

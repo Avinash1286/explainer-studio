@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { reviewSetup, goodReview, owner } from "../tests/review-helpers";
+import { reviewSetup, goodReview, owner, currentReviewArgs } from "../tests/review-helpers";
 import { api, internal } from "./_generated/api";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
@@ -10,7 +10,7 @@ describe("approved version sharing without email", () => {
     expect(await t.query(api.showcase.list, {})).toEqual([]);
     await expect(t.mutation(internal.showcase.publish, entry)).rejects.toThrow("approved");
     await t.mutation(internal.media.complete, { ...lease, result });
-    await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(goodReview()), provider: "nvidia", model: "test", usageJson: "{}" });
+    await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId), reportJson: JSON.stringify(goodReview()), provider: "nvidia", model: "test", usageJson: "{}" });
     expect(await t.query(api.showcase.list, {})).toEqual([]);
     await t.mutation(internal.showcase.publish, entry);
     expect(await t.query(api.showcase.get, { slug: entry.slug })).not.toBeNull();
@@ -22,7 +22,7 @@ describe("approved version sharing without email", () => {
     const args = { token: owner, jobId, revision: 1, shareToken };
     await expect(t.mutation(api.delivery.createShare, args)).rejects.toThrow("reviewed");
     await t.mutation(internal.media.complete, { ...lease, result });
-    await t.mutation(internal.reviews.commit, { jobId, revision: 1, reportJson: JSON.stringify(goodReview()), provider: "nvidia", model: "test", usageJson: "{}" });
+    await t.mutation(internal.reviews.commit, { ...await currentReviewArgs(t, jobId), reportJson: JSON.stringify(goodReview()), provider: "nvidia", model: "test", usageJson: "{}" });
     const url = await t.mutation(api.delivery.createShare, args);
     expect(await t.mutation(api.delivery.createShare, args)).toBe(url);
     expect(await t.query(api.delivery.shared, { token: shareToken })).not.toBeNull();

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
-import { goodReview, owner, reviewSetup, sampleProject } from "../tests/review-helpers";
+import { goodReview, owner, reviewSetup, sampleProject, currentReviewArgs } from "../tests/review-helpers";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -58,7 +58,7 @@ describe("durable review checkpoints",()=>{
   });
 
   it("cannot assemble a lesson with missing factual or scene checkpoints",async()=>{
-    const {t,jobId}=await setup(),args={jobId,revision:1};
+    const {t,jobId}=await setup(),args=await currentReviewArgs(t,jobId);
     const transport=vi.fn<typeof fetch>().mockImplementation(async(_,request)=>response(scope(request)));
     vi.stubGlobal("fetch",transport);
     await t.action(internal.reviewActions.prepare,args);
@@ -72,7 +72,7 @@ describe("durable review checkpoints",()=>{
   });
 
   it("rejects foreign evidence and wrong scene payloads, and discards stale revision results",async()=>{
-    const {t,jobId}=await setup(),args={jobId,revision:1};
+    const {t,jobId}=await setup(),args=await currentReviewArgs(t,jobId);
     await t.action(internal.reviewActions.prepare,args);
     const evidence=(await t.run(ctx=>ctx.db.query("reviewCheckpoints").collect())).find(row=>row.kind==="evidence")!;
     const otherJob=await t.mutation(api.jobs.create,{token:owner,topic:"A different lesson",duration:60,audience:"beginner",requestId:"foreign-evidence-request"});
@@ -90,7 +90,7 @@ describe("durable review checkpoints",()=>{
   });
 
   it("stops paid work after cancellation and cannot save an in-flight verdict",async()=>{
-    const {t,jobId}=await setup(),args={jobId,revision:1};
+    const {t,jobId}=await setup(),args=await currentReviewArgs(t,jobId);
     const transport=vi.fn<typeof fetch>().mockImplementation(async(_,request)=>response(scope(request)));
     vi.stubGlobal("fetch",transport);
     await t.action(internal.reviewActions.prepare,args);
@@ -108,7 +108,7 @@ describe("durable review checkpoints",()=>{
   });
 
   it("resumes a partial compatibility inspection through the durable workflow without re-reviewing saved gates",async()=>{
-    const {t,jobId}=await setup(),args={jobId,revision:1},failedScene=sampleProject.scenes[1].id;
+    const {t,jobId}=await setup(),args=await currentReviewArgs(t,jobId),failedScene=sampleProject.scenes[1].id;
     let unavailable=true;
     const calls:string[]=[];
     const transport=vi.fn<typeof fetch>().mockImplementation(async(_,request)=>{

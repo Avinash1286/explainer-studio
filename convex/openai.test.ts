@@ -7,7 +7,7 @@ import { inspectFacts } from "./lib/factCheck";
 import { openAISchema, structured, type ProviderConfig } from "./lib/providers";
 import { repairInput, repairScenes } from "./lib/repair";
 import { DEFAULT_OPENAI_MODEL, PROVIDER_MESSAGES } from "../packages/contracts/provider";
-import { goodReview, reviewSetup, sampleProject } from "../tests/review-helpers";
+import { currentReviewArgs, goodReview, reviewSetup, sampleProject } from "../tests/review-helpers";
 import { testDraft, testSources } from "./testFixtures";
 import { syntheticVisualPlan } from "../tests/director-helpers";
 
@@ -215,7 +215,7 @@ describe("OpenAI rendered evidence and workflow", () => {
       return completed(sceneReview(prompt.targetSceneId),`resp-pixels-${prompt.targetSceneId}`);
     });
     vi.stubGlobal("fetch", transport);
-    await t.action(internal.reviewActions.inspect, { jobId, revision: 1 });
+    await t.action(internal.reviewActions.inspect, await currentReviewArgs(t, jobId));
     expect(transport).toHaveBeenCalledTimes(1+sampleProject.scenes.length);
     expect(transport.mock.calls.every(call => call[0] === "https://api.openai.com/v1/responses")).toBe(true);
     const body = JSON.parse(String(transport.mock.calls[1][1]?.body));

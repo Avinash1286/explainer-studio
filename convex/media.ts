@@ -3,7 +3,6 @@ import { internalMutation, mutation, query, type MutationCtx } from "./_generate
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { requireSession } from "./lib/session";
-import { start } from "@convex-dev/workflow";
 import { mediaResult } from "./schema";
 import { projectSchema } from "../packages/contracts/scene";
 import { limits } from "./lib/limits";
@@ -137,6 +136,17 @@ export const retryFailed = internalMutation({ args: { jobId: v.id("jobs") }, ret
   return null;
 } });
 
+// Owner recovery reuses the exact project and gives the renderer a fresh,
+// bounded lease budget while keeping monotonically increasing attempt fences.
+export const resumeSaved = internalMutation({ args: { jobId: v.id("jobs") }, returns: v.null(), handler: async (ctx, { jobId }) => {
+  const job = await ctx.db.get(jobId);
+  const task = await ctx.db.query("mediaTasks").withIndex("by_jobId", q => q.eq("jobId", jobId)).unique();
+  if (job?.status !== "failed" || task?.status !== "failed" || task.result) throw new ConvexError("Only a failed render can resume from the saved project");
+  await ctx.db.patch(task._id, { status: "queued", attemptBase: task.attempt, worker: undefined, leaseUntil: 0 });
+  await ctx.db.patch(jobId, { status: "rendering", recovery: undefined, stageMessage: "Resuming rendering from the saved project. Research and scenes will be reused.", updatedAt: Date.now() });
+  return null;
+} });
+
 export const registerUpload = internalMutation({
   args: { ...leaseArgs, storageId: v.id("_storage") }, returns: v.null(),
   handler: async (ctx, args) => {
@@ -190,10 +200,10 @@ export const complete = internalMutation({
       }
       await ctx.db.insert("lessonVersions", { jobId: job._id, revision: job.revision, projectJson: task.projectJson, provenanceJson: task.provenanceJson || "{}", result: args.result, createdAt: Date.now() });
       await ctx.db.insert("lessonReviews", { jobId: job._id, revision: job.revision, status: "pending", createdAt: Date.now() });
-      await start(ctx, internal.reviews.runDurable, { jobId: job._id, revision: job.revision }, { startAsync: true });
     }
     await ctx.db.patch(task._id, { status: "completed", result: args.result });
     await ctx.db.patch(task.jobId, { status: task.projectJson ? "reviewing" : "completed", duration: args.result.durationSeconds, stageMessage: task.projectJson ? "Draft rendered. Checking source support and actual video frames." : "Original scripted demo rendered with Kokoro narration.", updatedAt: Date.now() });
+    if (task.projectJson) await ctx.runMutation(internal.reviews.enqueue, { jobId: job._id, revision: job.revision });
     return null;
   },
 });

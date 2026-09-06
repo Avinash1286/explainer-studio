@@ -4,7 +4,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { ExternalLink, Link2, Mail, PencilLine, RotateCcw, ShieldCheck } from "lucide-react";
+import { ExternalLink, Link2, Mail, PencilLine, ShieldCheck } from "lucide-react";
 import { friendlyError } from "./studio-toast";
 
 const buttonStyle = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50";
@@ -20,7 +20,6 @@ export function LessonReview({ token, jobId, approved, onError }: { token: strin
   const revokeShares = useMutation(api.delivery.revokeShares);
   const [share, setShare] = useState<{ token: string; url: string; revision: number } | null>(null);
   const revise = useMutation(api.reviews.revise);
-  const retryReview = useMutation(api.reviews.retryReview);
   const checkLessonProvider = useAction(api.generation.checkLessonProvider);
   const verify = useMutation(api.delivery.verify);
   const requestEmail = useAction(api.mailActions.requestVerification);
@@ -44,7 +43,6 @@ export function LessonReview({ token, jobId, approved, onError }: { token: strin
   return <section className="review-panel min-w-0 space-y-4 text-foreground" aria-label="Lesson review and delivery" aria-busy={busy}>
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <h3 className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck size={17} className="text-muted-foreground" aria-hidden="true" />Review · revision {review.revision}</h3>
-      {review.canRetryReview ? <button className={`${buttonStyle} mt-4`} disabled={busy} onClick={() => void perform(async () => { await checkLessonProvider({ token, jobId }); await retryReview({ token, jobId, revision: review.revision }); }, "Review queued using the saved video.")}><RotateCcw size={15} aria-hidden="true" />Retry unavailable review</button> : null}
       {!review.reviews.length ? <p className="mt-3 text-sm leading-6 text-muted-foreground">This draft has not had a factual and visual review.</p> : <div className="mt-3 space-y-2">{review.reviews.map(r => <details key={r.revision} open={r.revision === review.revision} className="rounded-xl border border-border bg-background px-3 sm:px-4">
         <summary className="min-h-11 cursor-pointer rounded-lg py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Revision {r.revision}: {r.status}</summary>
         <div className="space-y-3 border-t border-border py-3 text-sm leading-6 text-muted-foreground">
