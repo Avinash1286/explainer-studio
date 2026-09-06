@@ -10,6 +10,8 @@ The owner requested the frontend design and UX from `F:\wbev` for this project. 
 - `/showcase/`: operator-published examples from the existing showcase API.
 - Existing `/?job=…`, root gallery/chat bookmarks and `/lesson/index.html?...` remain functional. Browser back/forward observes URL selection. New chat on a legacy root bookmark keeps the workspace open with `?view=chat`.
 
+Convex's static host returns the root document for pretty paths. `HomeEntry` also resolves `/chalk/` and `/showcase/` from the browser location so direct visits and refreshes select the intended screen without a backend routing change.
+
 The font, screenshot and sixteen UI illustrations are copied from the supplied project. UI primitives and Tailwind styles follow its implementation. Source/font/artwork notices are linked from `ATTRIBUTIONS.md`.
 
 ## Backend behavior preserved
@@ -27,5 +29,7 @@ Browser verification covered the landing page and studio at desktop and 390-pixe
 A temporary local fixture additionally checked populated history search, completed/failed lesson states and delayed requests. Completion preserved a newer draft and respected gallery navigation; an unchanged request opened its new thread normally. The fixture route was removed before the release build. The legacy About Chalk link uses full navigation because Next's same-page link transition did not notify the custom query-string store in the browser check.
 
 Local `npm run check` passed on September 6, 2026: all 4,818 assets verified, TypeScript and ESLint passed, 305 isolated tests passed across 31 files, and web/worker builds completed. The source font, favicon and UI images are included in the static export. Frontend deployment uses the production Convex URL through the existing build script and `--skip-convex`; no media-worker rollout is required for this UI port.
+
+The frontend was published to the existing production Convex site. Browser checks loaded existing private lesson history, a completed lesson with its review/share/recipient-consent controls, the private gallery and the public solar lesson with five sources. The live disabled-OpenAI submission displayed its setup toast and left history unchanged. The port commit `792f3ad` also passed the Vercel Git integration's full clean-install validation.
 
 This port is a frontend change. It does not establish reference-level video quality or close the open live-provider and hackathon acceptance items in the existing evidence records.
